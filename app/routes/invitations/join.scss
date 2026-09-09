@@ -1,0 +1,102 @@
+.invite-heading {
+	text-align: center;
+	margin-bottom: 25px;
+}
+.invite-icon {
+	width: 58px;
+	height: 58px;
+	margin: 15px auto;
+	display: grid;
+	place-items: center;
+	border-radius: 20px;
+	background: var(--coral-soft);
+	color: var(--coral);
+	transform: rotate(-4deg);
+}
+.invite-heading h1 {
+	margin: 0;
+	font-size: 31px;
+}
+.invite-card,
+.join-form {
+	background: white;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	box-shadow: var(--shadow);
+}
+.invite-card-main {
+	padding: 28px;
+	text-align: center;
+}
+.invite-card-main h2 {
+	margin: 12px 0 10px;
+	font-size: 27px;
+}
+.invite-card-main p {
+	max-width: 590px;
+	margin: auto;
+	color: var(--muted);
+	line-height: 1.8;
+	font-size: 17px;
+}
+.condition-list {
+	margin: 0;
+	border-top: 1px solid var(--line);
+	display: grid;
+	grid-template-columns: 1.4fr 1fr 1fr;
+}
+.condition-list div {
+	padding: 18px 20px;
+	border-right: 1px solid var(--line);
+}
+.condition-list div:last-child {
+	border: 0;
+}
+.condition-list dt {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--muted);
+	font-size: 15px;
+}
+.condition-list dt .icon {
+	width: 14px;
+}
+.condition-list dd {
+	margin: 6px 0 0;
+	font-size: 16px;
+	font-weight: 700;
+}
+.invite-deadline {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 6px;
+	padding: 11px;
+	background: var(--yellow-soft);
+	color: #8e6c19;
+	font-size: 15px;
+}
+.join-form {
+	padding: 26px 30px;
+	margin-top: 16px;
+}
+.join-form h2 {
+	margin: 0;
+	font-size: 22px;
+}
+.join-form > div:first-child p {
+	margin: 5px 0 20px;
+	color: var(--muted);
+	font-size: 16px;
+}
+.join-form > small {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	margin-top: 10px;
+	color: var(--muted);
+	font-size: 15px;
+}
+

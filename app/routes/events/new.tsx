@@ -11,7 +11,7 @@ import {
 import type { Route } from "./+types/new";
 
 export function meta() {
-	return [{ title: "イベントを作る | yotei" }];
+	return [{ title: "イベントを作る | vacaro" }];
 }
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
@@ -63,7 +63,7 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const submitting = navigation.state === "submitting";
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<PageIntro
 				eyebrow="CREATE EVENT"
 				title="イベントを作る"

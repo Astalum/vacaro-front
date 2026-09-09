@@ -1,0 +1,274 @@
+.account-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+.account-card {
+	padding: 28px 30px;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: white;
+	box-shadow: 0 4px 18px rgba(23, 36, 61, 0.025);
+}
+.account-card-heading {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+.account-avatar.large,
+.account-card-icon {
+	width: 52px;
+	height: 52px;
+	font-size: 22px;
+	flex: 0 0 auto;
+}
+.account-card-heading > div:last-child {
+	flex: 1;
+}
+.account-card h2 {
+	margin: 2px 0 4px;
+	font-size: 24px;
+}
+.account-card p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 16px;
+	line-height: 1.7;
+}
+.account-type {
+	color: var(--coral);
+	font:
+		700 15px / 1 "DM Sans",
+		sans-serif;
+	letter-spacing: 0.12em;
+}
+.account-card > form {
+	margin-top: 18px;
+	padding-top: 16px;
+	border-top: 1px solid var(--line);
+}
+.text-button {
+	border: 0;
+	padding: 0;
+	background: transparent;
+	color: var(--muted);
+	font-size: 16px;
+	font-weight: 700;
+	text-decoration: underline;
+	cursor: pointer;
+}
+.account-upgrade {
+	margin-top: 22px;
+	padding: 18px;
+	border-radius: 10px;
+	background: #f8f7f3;
+	display: flex;
+	align-items: center;
+	gap: 20px;
+}
+.account-upgrade p {
+	flex: 1;
+}
+.google-button {
+	border: 1px solid #d9dce1;
+	background: white;
+	color: var(--ink);
+	box-shadow: 0 5px 16px rgba(23, 36, 61, 0.08);
+}
+.account-login-card {
+	width: 100%;
+	padding-block: 45px;
+	text-align: center;
+}
+.account-login-card .account-card-icon {
+	margin: 0 auto 16px;
+}
+.account-login-card p {
+	margin: 0 auto 22px;
+	max-width: 360px;
+}
+.calendar-icon {
+	border-radius: 13px;
+	background: #eef4ff;
+	color: #4285f4;
+	display: grid;
+	place-items: center;
+}
+.integration-card .account-card-heading {
+	align-items: flex-start;
+}
+.integration-actions {
+	display: flex;
+	gap: 9px;
+	margin-top: 22px;
+	padding-top: 20px;
+	border-top: 1px solid var(--line);
+}
+.calendar-settings-card {
+	scroll-margin-top: 24px;
+}
+.settings-section-heading {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 24px;
+	padding-bottom: 22px;
+	border-bottom: 1px solid var(--line);
+}
+.settings-label {
+	display: block;
+	margin-bottom: 7px;
+	color: #4285f4;
+	font:
+		700 13px / 1 "DM Sans",
+		sans-serif;
+	letter-spacing: 0.12em;
+}
+.settings-section-heading h2 {
+	margin: 0 0 5px;
+}
+.selection-count {
+	flex: 0 0 auto;
+	padding: 7px 11px;
+	border-radius: 999px;
+	background: #eef4ff;
+	color: #3674d2;
+	font-size: 14px;
+	font-weight: 700;
+}
+.settings-calendar-list {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+	margin-top: 20px;
+}
+.settings-calendar-option {
+	position: relative;
+	min-height: 58px;
+	padding: 12px 14px;
+	border: 1px solid #e0e4eb;
+	border-radius: 10px;
+	background: white;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+	transition:
+		border-color 0.18s,
+		box-shadow 0.18s,
+		background 0.18s;
+}
+.settings-calendar-option:has(input:checked) {
+	border-color: #a9c7f5;
+	background: #f8fbff;
+	box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.08);
+}
+.settings-calendar-option input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+.calendar-checkmark {
+	width: 22px;
+	height: 22px;
+	border: 1px solid #cdd3dc;
+	border-radius: 6px;
+	display: grid;
+	place-items: center;
+	color: transparent;
+	background: white;
+}
+.settings-calendar-option input:focus-visible + .calendar-checkmark {
+	outline: 3px solid rgba(66, 133, 244, 0.22);
+	outline-offset: 2px;
+}
+.settings-calendar-option input:checked + .calendar-checkmark {
+	border-color: #4285f4;
+	background: #4285f4;
+	color: white;
+}
+.settings-calendar-option em {
+	padding: 3px 7px;
+	border-radius: 999px;
+	background: #eef4ff;
+	color: #4285f4;
+	font-size: 13px;
+	font-style: normal;
+	font-weight: 700;
+}
+.settings-save-row {
+	min-height: 66px;
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid var(--line);
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 20px;
+}
+.save-message {
+	font-size: 14px;
+	font-weight: 700;
+}
+.save-message.success {
+	color: #277d68;
+}
+.save-message.error {
+	color: #a3473b;
+}
+.settings-error,
+.settings-empty-calendar {
+	margin-top: 20px;
+}
+.settings-empty-calendar {
+	min-height: 100px;
+	border-radius: 10px;
+	background: #f8f7f3;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	color: var(--muted);
+}
+.settings-empty-calendar p {
+	margin: 0;
+}
+.empty-state {
+	width: 100%;
+	margin: 30px 0;
+	padding: 55px 30px;
+	border: 1px dashed #d8d3ca;
+	border-radius: 14px;
+	background: white;
+	text-align: center;
+	color: var(--muted);
+}
+.empty-state .icon {
+	color: var(--coral);
+}
+.empty-state h2,
+.empty-state h3 {
+	color: var(--ink);
+	margin: 12px 0 5px;
+}
+.empty-state p {
+	margin: 0 0 20px;
+	font-size: 16px;
+}
+.empty-state.compact {
+	margin: 0 24px 24px;
+	padding: 30px;
+}
+.availability-list {
+	border-top: 0;
+	padding: 0;
+}
+.availability-list > div {
+	gap: 4px;
+}
+.availability-list small {
+	flex: 1;
+	line-height: 1.5;
+	white-space: normal;
+}
+

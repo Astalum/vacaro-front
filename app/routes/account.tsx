@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
 	data,
 	Form,
@@ -7,19 +8,43 @@ import {
 	useSearchParams,
 } from "react-router";
 import { Icon, PageIntro, PageShell } from "../components/ui";
-import { ApiError, apiErrorData, apiRequest, type User } from "../lib/api";
+import {
+	ApiError,
+	apiErrorData,
+	apiRequest,
+	clearSavedCalendarIDs,
+	type GoogleCalendar,
+	saveCalendarIDs,
+	savedCalendarIDs,
+	type User,
+} from "../lib/api";
 import type { Route } from "./+types/account";
 
 export function meta() {
-	return [{ title: "アカウント設定 | yotei" }];
+	return [{ title: "ユーザー設定 | vacaro" }];
 }
 
 export async function clientLoader() {
 	try {
-		return { user: await apiRequest<User>("/me") };
+		const user = await apiRequest<User>("/me");
+		const calendarOptions =
+			user.account_type === "registered"
+				? await apiRequest<{ calendars: GoogleCalendar[] }>(
+						"/integrations/google-calendar/calendars",
+					)
+						.then((result) => ({ calendars: result.calendars, error: null }))
+						.catch((error: unknown) => ({
+							calendars: [] as GoogleCalendar[],
+							error: apiErrorData(error),
+						}))
+				: { calendars: [] as GoogleCalendar[], error: null };
+		return { user, calendarOptions };
 	} catch (error) {
 		if (error instanceof ApiError && error.status === 401)
-			return { user: null };
+			return {
+				user: null,
+				calendarOptions: { calendars: [] as GoogleCalendar[], error: null },
+			};
 		throw error;
 	}
 }
@@ -63,7 +88,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
 export function HydrateFallback() {
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="page-loading">アカウント情報を読み込んでいます…</div>
 		</PageShell>
 	);
@@ -73,18 +98,48 @@ export default function Account({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { user } = loaderData;
+	const { user, calendarOptions } = loaderData;
 	const navigation = useNavigation();
 	const [searchParams] = useSearchParams();
 	const intent = navigation.formData?.get("intent");
 	const calendarConnected = searchParams.get("google_calendar") === "connected";
+	const [selectedCalendarIDs, setSelectedCalendarIDs] = useState<string[]>(() =>
+		savedCalendarIDs(calendarOptions.calendars),
+	);
+	const [preferenceMessage, setPreferenceMessage] = useState<{
+		kind: "success" | "error";
+		text: string;
+	} | null>(null);
+	useEffect(() => {
+		if (actionData?.kind === "disconnected") {
+			clearSavedCalendarIDs();
+			setSelectedCalendarIDs([]);
+		}
+	}, [actionData]);
+	const toggleCalendar = (calendarID: string) => {
+		setPreferenceMessage(null);
+		setSelectedCalendarIDs((current) =>
+			current.includes(calendarID)
+				? current.filter((id) => id !== calendarID)
+				: [...current, calendarID],
+		);
+	};
+	const saveCalendarPreference = () => {
+		const saved = saveCalendarIDs(selectedCalendarIDs);
+		setPreferenceMessage({
+			kind: saved ? "success" : "error",
+			text: saved
+				? "使用するカレンダーを保存しました"
+				: "設定を保存できませんでした。ブラウザの保存設定をご確認ください。",
+		});
+	};
 
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<PageIntro
-				eyebrow="ACCOUNT"
-				title="アカウント設定"
-				description="ログイン情報とGoogleカレンダー連携を管理します。"
+				eyebrow="USER SETTINGS"
+				title="ユーザー設定"
+				description="プロフィールとカレンダーの取り込み設定を管理します。"
 			/>
 
 			{calendarConnected && (
@@ -173,47 +228,136 @@ export default function Account({
 					</section>
 
 					{user.account_type === "registered" && (
-						<section className="account-card integration-card">
-							<div className="account-card-heading">
-								<div className="account-card-icon calendar-icon">
-									<Icon name="calendar" />
+						<>
+							<section className="account-card integration-card">
+								<div className="account-card-heading">
+									<div className="account-card-icon calendar-icon">
+										<Icon name="calendar" />
+									</div>
+									<div>
+										<h2>Googleカレンダー連携</h2>
+										<p>
+											予定の空き時間を回答へ取り込むための接続を管理します。
+										</p>
+									</div>
 								</div>
-								<div>
-									<h2>Googleカレンダー連携</h2>
-									<p>
-										予定が入っていない時間を、参加可能時間としてプレビューできます。
-									</p>
+								<div className="integration-actions">
+									<Form method="post">
+										<button
+											className="button button-primary"
+											type="submit"
+											name="intent"
+											value="calendar-connect"
+											disabled={navigation.state !== "idle"}
+										>
+											{intent === "calendar-connect"
+												? "Googleへ移動しています…"
+												: "接続・再接続する"}
+										</button>
+									</Form>
+									<Form method="post">
+										<button
+											className="button button-ghost"
+											type="submit"
+											name="intent"
+											value="calendar-disconnect"
+											disabled={navigation.state !== "idle"}
+										>
+											{intent === "calendar-disconnect"
+												? "解除しています…"
+												: "接続を解除"}
+										</button>
+									</Form>
 								</div>
-							</div>
-							<div className="integration-actions">
-								<Form method="post">
-									<button
-										className="button button-primary"
-										type="submit"
-										name="intent"
-										value="calendar-connect"
-										disabled={navigation.state !== "idle"}
-									>
-										{intent === "calendar-connect"
-											? "Googleへ移動しています…"
-											: "接続・再接続する"}
-									</button>
-								</Form>
-								<Form method="post">
-									<button
-										className="button button-ghost"
-										type="submit"
-										name="intent"
-										value="calendar-disconnect"
-										disabled={navigation.state !== "idle"}
-									>
-										{intent === "calendar-disconnect"
-											? "解除しています…"
-											: "接続を解除"}
-									</button>
-								</Form>
-							</div>
-						</section>
+							</section>
+
+							<section
+								className="account-card calendar-settings-card"
+								id="calendar-settings"
+							>
+								<div className="settings-section-heading">
+									<div>
+										<span className="settings-label">CALENDAR PREFERENCE</span>
+										<h2>使用するカレンダー</h2>
+										<p>
+											空き時間の判定で「予定あり」として扱うカレンダーを選択します。
+										</p>
+									</div>
+									{calendarOptions.calendars.length > 0 && (
+										<span className="selection-count">
+											{selectedCalendarIDs.length}件選択中
+										</span>
+									)}
+								</div>
+								{calendarOptions.error ? (
+									<div className="calendar-picker-error settings-error">
+										<Icon name="info" size={18} />
+										<div>
+											<strong>カレンダー一覧を取得できませんでした</strong>
+											<p>
+												Googleカレンダーを接続または再接続して、一覧を読み込んでください。
+											</p>
+										</div>
+									</div>
+								) : calendarOptions.calendars.length > 0 ? (
+									<>
+										<div className="settings-calendar-list">
+											{calendarOptions.calendars.map((calendar) => (
+												<label
+													className="settings-calendar-option"
+													key={calendar.id}
+												>
+													<input
+														type="checkbox"
+														checked={selectedCalendarIDs.includes(calendar.id)}
+														onChange={() => toggleCalendar(calendar.id)}
+													/>
+													<span className="calendar-checkmark">
+														<Icon name="check" size={15} />
+													</span>
+													<span
+														className="calendar-color"
+														style={{
+															backgroundColor:
+																calendar.background_color || "#4285f4",
+														}}
+													/>
+													<span className="calendar-option-name">
+														{calendar.summary}
+													</span>
+													{calendar.primary && <em>メイン</em>}
+												</label>
+											))}
+										</div>
+										<div className="settings-save-row">
+											{preferenceMessage && (
+												<span
+													className={`save-message ${preferenceMessage.kind}`}
+													aria-live="polite"
+												>
+													{preferenceMessage.text}
+												</span>
+											)}
+											<button
+												className="button button-primary"
+												type="button"
+												disabled={selectedCalendarIDs.length === 0}
+												onClick={saveCalendarPreference}
+											>
+												設定を保存
+											</button>
+										</div>
+									</>
+								) : (
+									<div className="settings-empty-calendar">
+										<Icon name="calendar" size={26} />
+										<p>
+											カレンダーを接続すると、ここで取り込み対象を選択できます。
+										</p>
+									</div>
+								)}
+							</section>
+						</>
 					)}
 				</div>
 			)}

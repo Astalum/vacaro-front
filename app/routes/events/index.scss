@@ -1,0 +1,58 @@
+.event-list {
+	width: 100%;
+}
+.event-list article {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	background: white;
+	border: 1px solid var(--line);
+	border-radius: 13px;
+	padding: 20px;
+}
+.event-list-date {
+	width: 56px;
+	height: 61px;
+	background: var(--coral-soft);
+	color: var(--coral);
+	border-radius: 9px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+.event-list-date b {
+	font: 700 28px / 1 "DM Sans";
+}
+.event-list-date small {
+	font: 700 15px "DM Sans";
+}
+.event-list-body {
+	flex: 1;
+}
+.event-list-body h2 {
+	margin: 5px 0;
+	font-size: 22px;
+}
+.event-list-body p {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin: 0;
+	color: var(--muted);
+	font-size: 15px;
+}
+.event-list-progress {
+	text-align: center;
+	padding: 0 20px;
+	border-left: 1px solid var(--line);
+}
+.event-list-progress strong {
+	display: block;
+	font: 700 22px "DM Sans";
+}
+.event-list-progress span {
+	font-size: 15px;
+	color: var(--muted);
+}
+

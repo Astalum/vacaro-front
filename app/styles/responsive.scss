@@ -1,0 +1,688 @@
+@media (max-width: 900px) {
+	.fullscreen-shell {
+		height: auto;
+		min-height: 100dvh;
+		padding: 0;
+		overflow: visible;
+	}
+	.page-main.fullscreen-main {
+		width: 100%;
+		height: auto;
+		min-height: 100dvh;
+		padding: 18px var(--page-gutter) 28px;
+		border: 0;
+		border-radius: 0;
+		display: block;
+		overflow: visible;
+	}
+	.page-main.fullscreen-main::after {
+		display: none;
+	}
+	.fullscreen-main > .availability-overview {
+		margin: 0;
+	}
+	.fullscreen-main .respond-panel,
+	.fullscreen-main .availability-workspace,
+	.fullscreen-main .availability-schedule-column,
+	.fullscreen-main .availability-schedule-grid {
+		display: block;
+	}
+	.fullscreen-main .respond-panel {
+		padding: 0;
+		border: 0;
+		box-shadow: none;
+	}
+	.fullscreen-main .respond-panel > .panel-heading,
+	.fullscreen-main .availability-import-column,
+	.fullscreen-main .availability-calendar-shell,
+	.fullscreen-main .availability-editor-column,
+	.fullscreen-main .availability-actions {
+		margin-top: 14px;
+		margin-left: 0;
+	}
+	.fullscreen-main .availability-calendar-shell {
+		height: auto;
+	}
+	.fullscreen-main .availability-week-scroll {
+		max-height: 68dvh;
+	}
+	.fullscreen-main .availability-week-calendar {
+		--calendar-body-height: clamp(48rem, 120dvh, 64rem);
+	}
+	.fullscreen-main .availability-editor-column {
+		overflow: visible;
+	}
+	.fullscreen-main .availability-actions {
+		position: sticky;
+		bottom: 10px;
+		z-index: 20;
+	}
+	.hero {
+		grid-template-columns: 1fr;
+		text-align: center;
+		padding-top: 55px;
+	}
+	.hero-copy {
+		position: relative;
+		z-index: 2;
+	}
+	.eyebrow,
+	.hero-actions,
+	.hero-note {
+		justify-content: center;
+	}
+	.hero-visual {
+		min-height: 400px;
+	}
+	.mock-window {
+		width: min(485px, 85vw);
+	}
+	.manage-grid {
+		grid-template-columns: 1fr;
+	}
+	.decision-panel {
+		max-width: none;
+	}
+	.head-links {
+		position: static;
+		display: flex;
+		justify-content: center;
+		margin-top: 18px;
+	}
+}
+
+@media (max-width: 680px) {
+	:root {
+		--page-gutter: 15px;
+	}
+	.app-header {
+		height: 64px;
+	}
+	.app-header nav > a:not(.button) {
+		display: none;
+	}
+	.app-header nav {
+		gap: 8px;
+	}
+	.hero {
+		min-height: auto;
+		padding-block: 55px 65px;
+		gap: 35px;
+	}
+	.hero h1 {
+		font-size: 40px;
+	}
+	.hero-lead {
+		font-size: 19px;
+	}
+	.hero-actions {
+		flex-direction: column;
+		gap: 18px;
+	}
+	.hero-visual {
+		min-height: 320px;
+	}
+	.sun-shape {
+		width: 310px;
+		height: 290px;
+	}
+	.mock-window {
+		width: 330px;
+	}
+	.mock-body {
+		padding: 18px;
+	}
+	.float-one {
+		left: -5px;
+		top: 22px;
+	}
+	.float-two {
+		right: -5px;
+		bottom: 18px;
+	}
+	.steps-grid {
+		grid-template-columns: 1fr;
+		gap: 55px;
+	}
+	.steps-grid article:not(:last-child)::after {
+		display: none;
+	}
+	.how-section {
+		padding-block: 70px;
+	}
+	.page-main {
+		padding-top: 40px;
+	}
+	.page-intro h1 {
+		font-size: 33px;
+	}
+	.progress-steps li span {
+		display: none;
+	}
+	.progress-steps li:not(:last-child)::after {
+		margin-right: 12px;
+	}
+	.form-section,
+	.respond-panel {
+		padding: 23px 19px;
+	}
+	.two-cols {
+		grid-template-columns: 1fr;
+		gap: 0;
+	}
+	.candidate-row {
+		flex-wrap: wrap;
+	}
+	.candidate-row .grow {
+		flex-basis: calc(100% - 40px);
+	}
+	.time-field {
+		width: calc(50% - 25px);
+	}
+	.candidate-row .icon-button {
+		margin-left: auto;
+	}
+	.manage-heading {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 18px;
+	}
+	.manage-title {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+	.manage-actions {
+		width: 100%;
+	}
+	.manage-actions .button {
+		flex: 1;
+	}
+	.stats-row {
+		grid-template-columns: 1fr;
+	}
+	.panel-heading {
+		align-items: flex-start;
+		gap: 15px;
+	}
+	.table-scroll {
+		overflow-x: auto;
+	}
+	.answer-row {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.answer-choices {
+		max-width: none;
+	}
+	.answer-choices button {
+		flex-direction: column;
+		gap: 0;
+	}
+	.event-meta {
+		flex-direction: column;
+		align-items: center;
+		gap: 7px;
+	}
+	.availability-page-head {
+		padding: 20px 18px;
+	}
+	.availability-page-head .event-meta {
+		align-items: flex-start;
+	}
+	.availability-title-row {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.availability-title-row p {
+		width: 100%;
+		white-space: normal;
+	}
+	.share-page-kicker-row {
+		flex-wrap: wrap;
+	}
+	.event-summary h2 {
+		font-size: 27px;
+	}
+	.answer-legend.compact {
+		display: none;
+	}
+	.recommend-banner div {
+		display: block;
+	}
+	.recommend-banner p {
+		margin-top: 3px;
+	}
+	.confirmed-details {
+		align-items: flex-start;
+		flex-direction: column;
+		padding-left: 20px;
+	}
+	.confirmed-date {
+		gap: 18px;
+	}
+	.confirmed-date > div:last-child strong {
+		font-size: 24px;
+	}
+	.confirmed-actions {
+		flex-direction: column;
+	}
+	.form-actions.horizontal .button {
+		flex: 1;
+	}
+	.window-fields {
+		grid-template-columns: 1fr;
+		gap: 0;
+	}
+	.window-arrow {
+		display: none;
+	}
+	.condition-list {
+		grid-template-columns: 1fr;
+	}
+	.condition-list div {
+		border-right: 0;
+		border-bottom: 1px solid var(--line);
+	}
+	.interval-row {
+		grid-template-columns: auto 1fr;
+	}
+	.interval-row .time-divider {
+		display: none;
+	}
+	.interval-row .field {
+		grid-column: 2;
+	}
+	.interval-row .icon-button {
+		grid-column: 2;
+		margin-left: auto;
+	}
+	.respond-panel .panel-heading,
+	.calendar-preview,
+	.account-upgrade {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	.calendar-import-button,
+	.calendar-preview .button,
+	.account-upgrade .button {
+		width: 100%;
+	}
+	.calendar-option-list {
+		grid-template-columns: 1fr;
+	}
+	.integration-actions {
+		flex-direction: column;
+	}
+	.settings-section-heading,
+	.settings-save-row {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.settings-calendar-list {
+		grid-template-columns: 1fr;
+	}
+	.settings-save-row .button {
+		width: 100%;
+	}
+	.integration-actions form,
+	.integration-actions .button {
+		width: 100%;
+	}
+	.availability-actions {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.availability-action-buttons {
+		width: 100%;
+	}
+	.availability-actions .button {
+		flex: 1;
+	}
+	.candidate-cards {
+		grid-template-columns: 1fr;
+	}
+	.section-title-row {
+		gap: 15px;
+	}
+	.response-count {
+		flex: 0 0 auto;
+	}
+	.schedule-calendar-legend {
+		justify-content: flex-start;
+		flex-wrap: wrap;
+	}
+	.selected-schedule-detail {
+		grid-template-columns: auto 1fr;
+		align-items: start;
+	}
+	.selected-schedule-people {
+		grid-column: 2;
+		min-width: 0;
+		padding: 10px 0 0;
+		border-top: 1px solid #bfe0d6;
+		border-left: 0;
+	}
+	.daily-candidate-list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.candidate-date {
+		min-width: 0;
+	}
+	.candidate-avatars {
+		display: none;
+	}
+	.event-list article {
+		align-items: flex-start;
+		flex-wrap: wrap;
+	}
+	.event-list-progress {
+		margin-left: auto;
+	}
+}
+
+/* Navigation becomes a touch-friendly menu on phones. */
+@media (max-width: 680px) {
+	html {
+		scroll-padding-top: 78px;
+	}
+	body {
+		overflow-x: hidden;
+	}
+	.app-header {
+		position: sticky;
+		top: 0;
+		z-index: 50;
+	}
+	.header-inner {
+		position: relative;
+	}
+	.app-header nav {
+		position: absolute;
+		top: calc(100% + 9px);
+		inset-inline: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+		padding: 8px;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: rgba(255, 255, 255, 0.98);
+		box-shadow: 0 18px 45px rgba(23, 36, 61, 0.16);
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(-8px);
+		transition:
+			opacity 0.18s,
+			transform 0.18s,
+			visibility 0.18s;
+	}
+	.app-header nav.open {
+		opacity: 1;
+		visibility: visible;
+		transform: translateY(0);
+	}
+	.app-header nav > a,
+	.app-header nav > .account-link {
+		width: 100%;
+		min-height: 46px;
+		padding: 0 12px;
+		border-radius: 8px;
+		display: flex;
+		justify-content: flex-start;
+	}
+	.hero h1 {
+		font-size: clamp(34px, 11vw, 40px);
+	}
+	.mock-window {
+		width: min(330px, calc(100vw - 30px));
+	}
+	.app-header nav > a:not(.button):hover {
+		background: var(--coral-soft);
+	}
+	.app-header nav .button {
+		margin-top: 5px;
+	}
+	.mobile-menu-button {
+		width: 44px;
+		height: 44px;
+		padding: 0;
+		border: 1px solid var(--line);
+		border-radius: 9px;
+		background: white;
+		display: grid;
+		place-content: center;
+		gap: 5px;
+		cursor: pointer;
+	}
+	.mobile-menu-button span {
+		width: 19px;
+		height: 2px;
+		border-radius: 2px;
+		background: var(--ink);
+		transition:
+			transform 0.18s,
+			opacity 0.18s;
+	}
+	.mobile-menu-button.open span:nth-child(1) {
+		transform: translateY(7px) rotate(45deg);
+	}
+	.mobile-menu-button.open span:nth-child(2) {
+		opacity: 0;
+	}
+	.mobile-menu-button.open span:nth-child(3) {
+		transform: translateY(-7px) rotate(-45deg);
+	}
+	.page-main {
+		padding-bottom: 64px;
+	}
+	.manage-actions,
+	.form-actions.horizontal {
+		flex-wrap: wrap;
+	}
+	.event-list-body {
+		min-width: 0;
+	}
+	.event-list-body h2,
+	.share-event h2 {
+		overflow-wrap: anywhere;
+	}
+	.event-list-body p {
+		align-items: flex-start;
+		flex-wrap: wrap;
+		line-height: 1.6;
+	}
+	.event-list article > .button {
+		width: 100%;
+	}
+	.footer {
+		height: auto;
+		padding-block: 28px;
+	}
+	.schedule-calendar-scroll,
+	.table-scroll {
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: thin;
+	}
+	.availability-week-scroll {
+		-webkit-overflow-scrolling: touch;
+		scrollbar-width: thin;
+	}
+	.availability-week-calendar {
+		--calendar-head-height: clamp(3.25rem, 10dvh, 4rem);
+		--calendar-body-height: clamp(44rem, 130dvh, 60rem);
+		min-width: clamp(42rem, 190vw, 48rem);
+	}
+}
+
+@media (max-width: 460px) {
+	:root {
+		--page-gutter: 12px;
+	}
+	.availability-action-buttons {
+		align-items: stretch;
+		flex-direction: column-reverse;
+	}
+	.availability-actions .button {
+		width: 100%;
+	}
+	.brand {
+		font-size: 26px;
+	}
+	.page-intro {
+		margin-bottom: 30px;
+	}
+	.page-intro h1 {
+		font-size: 31px;
+	}
+	.page-intro p {
+		font-size: 18px;
+	}
+	.hero {
+		padding-top: 42px;
+	}
+	.hero-visual {
+		min-height: 290px;
+	}
+	.mock-window {
+		width: calc(100vw - 24px);
+	}
+	.mock-top span {
+		max-width: 190px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.float-card {
+		padding: 9px 11px;
+		font-size: 15px;
+	}
+	.section-heading h2 {
+		font-size: 28px;
+	}
+	.form-section,
+	.respond-panel,
+	.join-form,
+	.account-card {
+		padding: 20px 16px;
+	}
+	.field input,
+	.field textarea,
+	.field select {
+		min-width: 0;
+		font-size: 21px;
+	}
+	.duration-box {
+		align-items: flex-start;
+		padding: 16px;
+	}
+	.duration-icon {
+		display: none;
+	}
+	.time-field {
+		width: calc(50% - 21px);
+	}
+	.share-event,
+	.share-block {
+		padding: 20px 16px;
+	}
+	.share-event {
+		align-items: flex-start;
+	}
+	.date-tile {
+		width: 50px;
+		height: 55px;
+		flex: 0 0 auto;
+	}
+	.copy-field {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.copy-field span {
+		width: 100%;
+		padding: 12px;
+	}
+	.copy-field button {
+		min-height: 44px;
+		justify-content: center;
+	}
+	.admin-url,
+	.confirm-banner,
+	.availability-guide {
+		align-items: flex-start;
+	}
+	.confirm-banner {
+		flex-wrap: wrap;
+	}
+	.confirm-banner a {
+		width: 100%;
+		justify-content: flex-end;
+	}
+	.invite-heading h1 {
+		font-size: 27px;
+	}
+	.invite-card-main {
+		padding: 24px 16px;
+	}
+	.condition-list div {
+		padding: 15px 16px;
+	}
+	.section-title-row {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.response-count {
+		width: max-content;
+	}
+	.candidate-summary,
+	.availability-board {
+		padding: 18px 14px;
+	}
+	.schedule-calendar-toolbar {
+		gap: 10px;
+	}
+	.schedule-calendar-toolbar h3 {
+		min-width: 120px;
+	}
+	.daily-candidate-list {
+		grid-template-columns: 1fr;
+	}
+	.selected-schedule-detail {
+		padding: 14px;
+	}
+	.availability-calendar-toolbar {
+		gap: 9px;
+	}
+	.availability-calendar-toolbar > div {
+		min-width: 164px;
+	}
+	.availability-calendar-toolbar h3 {
+		font-size: 18px;
+	}
+	.availability-week-legend {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.selected-day-heading {
+		align-items: flex-start;
+	}
+	.confirmed-card {
+		padding-inline: 16px;
+	}
+	.confirmed-date {
+		gap: 12px;
+	}
+	.confirmed-date > div:first-child {
+		min-width: 66px;
+	}
+	.confirmed-date > div:last-child strong {
+		font-size: 22px;
+	}
+	.created-actions .button,
+	.confirmed-actions .button,
+	.form-actions:not(.horizontal) .button {
+		width: 100%;
+	}
+}
+

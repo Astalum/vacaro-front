@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { Icon, PageShell } from "../../components/ui";
 import {
@@ -14,15 +15,15 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `共通候補 — ${loaderData.event.title} | yotei`
-				: "共通候補 | yotei",
+				? `共通候補 — ${loaderData.event.title} | vacaro`
+				: "共通候補 | vacaro",
 		},
 	];
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const [event, candidates, availability] = await Promise.all([
 		apiRequest<Event>(`/events/${params.eventId}`),
-		apiRequest<Candidate[]>(`/events/${params.eventId}/candidates?limit=20`),
+		apiRequest<Candidate[]>(`/events/${params.eventId}/candidates?limit=100`),
 		apiRequest<ParticipantAvailability[]>(
 			`/events/${params.eventId}/availability`,
 		),
@@ -30,6 +31,66 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	return { event, candidates, availability };
 }
 clientLoader.hydrate = true as const;
+
+function dateParts(value: string, timeZone: string) {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).formatToParts(new Date(value));
+	const get = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((part) => part.type === type)?.value ?? "";
+	const year = Number(get("year"));
+	const month = Number(get("month"));
+	const day = Number(get("day"));
+	return {
+		year,
+		month,
+		day,
+		key: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+	};
+}
+
+function monthKeysBetween(start: string, end: string, timeZone: string) {
+	const first = dateParts(start, timeZone);
+	const last = dateParts(end, timeZone);
+	const months: string[] = [];
+	const cursor = new Date(Date.UTC(first.year, first.month - 1, 1));
+	const limit = new Date(Date.UTC(last.year, last.month - 1, 1));
+	while (cursor <= limit) {
+		months.push(
+			`${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, "0")}`,
+		);
+		cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+	}
+	return months;
+}
+
+function monthCells(monthKey: string) {
+	const [year, month] = monthKey.split("-").map(Number);
+	const first = new Date(Date.UTC(year, month - 1, 1));
+	const start = new Date(first);
+	start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+	return Array.from({ length: 42 }, (_, index) => {
+		const date = new Date(start);
+		date.setUTCDate(start.getUTCDate() + index);
+		return {
+			key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`,
+			day: date.getUTCDate(),
+			inMonth: date.getUTCMonth() === month - 1,
+		};
+	});
+}
+
+function timeLabel(value: string, timeZone: string) {
+	return new Intl.DateTimeFormat("ja-JP", {
+		timeZone,
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).format(new Date(value));
+}
 export function HydrateFallback() {
 	return (
 		<PageShell>
@@ -48,6 +109,67 @@ export default function Results({ loaderData }: Route.ComponentProps) {
 			item.participant.id,
 			item.participant.display_name,
 		]),
+	);
+	const months = monthKeysBetween(
+		event.window_start_at,
+		event.window_end_at,
+		event.time_zone,
+	);
+	const initialMonth = candidates[0]
+		? dateParts(candidates[0].start_at, event.time_zone).key.slice(0, 7)
+		: months[0];
+	const [activeMonth, setActiveMonth] = useState(initialMonth);
+	const [selectedCandidateKey, setSelectedCandidateKey] = useState(
+		candidates[0] ? `${candidates[0].start_at}-${candidates[0].end_at}` : null,
+	);
+	const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
+	const activeMonthIndex = months.indexOf(activeMonth);
+	const startDateKey = dateParts(event.window_start_at, event.time_zone).key;
+	const endDateKey = dateParts(event.window_end_at, event.time_zone).key;
+	const candidatesByDate = new Map<string, Candidate[]>();
+	for (const candidate of candidates) {
+		const key = dateParts(candidate.start_at, event.time_zone).key;
+		candidatesByDate.set(key, [
+			...(candidatesByDate.get(key) ?? []),
+			candidate,
+		]);
+	}
+	const selectedCandidate = candidates.find(
+		(candidate) =>
+			`${candidate.start_at}-${candidate.end_at}` === selectedCandidateKey,
+	);
+	const selectedRank = selectedCandidate
+		? candidates.indexOf(selectedCandidate) + 1
+		: 0;
+	const expandedCandidates = expandedDateKey
+		? (candidatesByDate.get(expandedDateKey) ?? [])
+		: [];
+	const changeMonth = (nextIndex: number) => {
+		const nextMonth = months[nextIndex];
+		if (!nextMonth) return;
+		setActiveMonth(nextMonth);
+		setExpandedDateKey(null);
+		const nextCandidate = candidates.find((candidate) =>
+			dateParts(candidate.start_at, event.time_zone).key.startsWith(nextMonth),
+		);
+		setSelectedCandidateKey(
+			nextCandidate
+				? `${nextCandidate.start_at}-${nextCandidate.end_at}`
+				: null,
+		);
+	};
+	const monthTitle = new Intl.DateTimeFormat("ja-JP", {
+		year: "numeric",
+		month: "long",
+		timeZone: "UTC",
+	}).format(
+		new Date(
+			Date.UTC(
+				Number(activeMonth.split("-")[0]),
+				Number(activeMonth.split("-")[1]) - 1,
+				1,
+			),
+		),
 	);
 	return (
 		<PageShell>
@@ -94,59 +216,185 @@ export default function Results({ loaderData }: Route.ComponentProps) {
 						人が回答
 					</span>
 				</div>
-				{candidates.length === 0 ? (
-					<div className="empty-state compact">
-						<Icon name="clock" size={28} />
-						<h3>共通候補はまだありません</h3>
-						<p>参加者の回答が増えると、ここに候補が表示されます。</p>
+				<div className="schedule-calendar-shell">
+					<div className="schedule-calendar-toolbar">
+						<button
+							type="button"
+							aria-label="前の月"
+							disabled={activeMonthIndex <= 0}
+							onClick={() => changeMonth(activeMonthIndex - 1)}
+						>
+							<Icon name="back" size={18} />
+						</button>
+						<h3>{monthTitle}</h3>
+						<button
+							type="button"
+							aria-label="次の月"
+							disabled={activeMonthIndex >= months.length - 1}
+							onClick={() => changeMonth(activeMonthIndex + 1)}
+						>
+							<Icon name="chevron" size={18} />
+						</button>
 					</div>
-				) : (
-					<div className="candidate-cards">
-						{candidates.slice(0, 6).map((candidate, index) => (
-							<article
-								key={`${candidate.start_at}-${candidate.end_at}`}
-								className={index === 0 ? "best" : ""}
-							>
-								{index === 0 && (
-									<span className="best-label">
-										<Icon name="sparkle" size={12} /> BEST
-									</span>
-								)}
-								<span className="rank">{index + 1}</span>
-								<h3>
-									{
-										formatDateRange(
-											candidate.start_at,
-											candidate.end_at,
-											event.time_zone,
-										).split(" 〜 ")[0]
-									}
-								</h3>
+					<div className="schedule-calendar-scroll">
+						<div className="schedule-calendar">
+							{["日", "月", "火", "水", "木", "金", "土"].map(
+								(weekday, index) => (
+									<div
+										className={`schedule-weekday weekday-${index}`}
+										key={weekday}
+									>
+										{weekday}
+									</div>
+								),
+							)}
+							{monthCells(activeMonth).map((cell, cellIndex) => {
+								const dayCandidates = cell.inMonth
+									? (candidatesByDate.get(cell.key) ?? [])
+									: [];
+								const outsideWindow =
+									cell.key < startDateKey || cell.key > endDateKey;
+								return (
+									<div
+										className={`schedule-day ${!cell.inMonth ? "other-month" : ""} ${outsideWindow ? "outside-window" : ""}`}
+										key={cell.key}
+									>
+										<span
+											className={`schedule-day-number weekday-${cellIndex % 7}`}
+										>
+											{cell.day}
+										</span>
+										<div className="schedule-day-candidates">
+											{dayCandidates.slice(0, 3).map((candidate) => {
+												const key = `${candidate.start_at}-${candidate.end_at}`;
+												const ratio =
+													candidate.total_participant_count > 0
+														? candidate.available_participant_count /
+															candidate.total_participant_count
+														: 0;
+												return (
+													<button
+														className={`schedule-candidate ${ratio === 1 ? "all" : ratio >= 0.7 ? "high" : "partial"} ${selectedCandidateKey === key ? "selected" : ""}`}
+														key={key}
+														type="button"
+														onClick={() => setSelectedCandidateKey(key)}
+													>
+														<strong>
+															{timeLabel(candidate.start_at, event.time_zone)}
+														</strong>
+														<span>
+															{candidate.available_participant_count}/
+															{candidate.total_participant_count}人
+														</span>
+													</button>
+												);
+											})}
+											{dayCandidates.length > 3 && (
+												<button
+													className="more-candidates"
+													type="button"
+													onClick={() => setExpandedDateKey(cell.key)}
+												>
+													ほか{dayCandidates.length - 3}件
+												</button>
+											)}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+					<div className="schedule-calendar-legend">
+						<span>
+							<i className="all" /> 全員参加可能
+						</span>
+						<span>
+							<i className="high" /> 参加可能な人が多い
+						</span>
+						<span>
+							<i className="partial" /> 一部が参加可能
+						</span>
+					</div>
+				</div>
+				{expandedDateKey && (
+					<div className="daily-candidate-drawer">
+						<div className="daily-candidate-heading">
+							<div>
 								<strong>
 									{new Intl.DateTimeFormat("ja-JP", {
-										timeZone: event.time_zone,
-										hour: "2-digit",
-										minute: "2-digit",
-									}).format(new Date(candidate.start_at))}
-									〜
-									{new Intl.DateTimeFormat("ja-JP", {
-										timeZone: event.time_zone,
-										hour: "2-digit",
-										minute: "2-digit",
-									}).format(new Date(candidate.end_at))}
+										month: "long",
+										day: "numeric",
+										weekday: "short",
+										timeZone: "UTC",
+									}).format(new Date(`${expandedDateKey}T00:00:00Z`))}
 								</strong>
-								<div className="candidate-count">
-									<b>{candidate.available_participant_count}</b>
-									<span>/ {candidate.total_participant_count}人が参加可能</span>
-								</div>
-								<p>
-									{candidate.available_participant_ids
-										.map((id) => participantById.get(id))
-										.filter(Boolean)
-										.join("、")}
-								</p>
-							</article>
-						))}
+								<span>{expandedCandidates.length}件の候補</span>
+							</div>
+							<button type="button" onClick={() => setExpandedDateKey(null)}>
+								閉じる
+							</button>
+						</div>
+						<div className="daily-candidate-list">
+							{expandedCandidates.map((candidate) => {
+								const key = `${candidate.start_at}-${candidate.end_at}`;
+								return (
+									<button
+										className={selectedCandidateKey === key ? "selected" : ""}
+										key={key}
+										type="button"
+										onClick={() => setSelectedCandidateKey(key)}
+									>
+										<strong>
+											{timeLabel(candidate.start_at, event.time_zone)}〜
+											{timeLabel(candidate.end_at, event.time_zone)}
+										</strong>
+										<span>
+											{candidate.available_participant_count} /{" "}
+											{candidate.total_participant_count}人
+										</span>
+									</button>
+								);
+							})}
+						</div>
+					</div>
+				)}
+				{selectedCandidate ? (
+					<div className="selected-schedule-detail">
+						<span className="selected-rank">
+							{selectedRank === 1 ? (
+								<Icon name="sparkle" size={15} />
+							) : (
+								`#${selectedRank}`
+							)}
+						</span>
+						<div className="selected-schedule-date">
+							<small>選択中の候補</small>
+							<strong>
+								{formatDateRange(
+									selectedCandidate.start_at,
+									selectedCandidate.end_at,
+									event.time_zone,
+								)}
+							</strong>
+						</div>
+						<div className="selected-schedule-people">
+							<b>{selectedCandidate.available_participant_count}</b>
+							<span>
+								/ {selectedCandidate.total_participant_count}人が参加可能
+							</span>
+							<small>
+								{selectedCandidate.available_participant_ids
+									.map((id) => participantById.get(id))
+									.filter(Boolean)
+									.join("、") || "該当する参加者はいません"}
+							</small>
+						</div>
+					</div>
+				) : (
+					<div className="empty-state compact calendar-empty-state">
+						<Icon name="clock" size={28} />
+						<h3>この月の共通候補はまだありません</h3>
+						<p>参加者の回答が増えると、カレンダーに候補が表示されます。</p>
 					</div>
 				)}
 			</section>

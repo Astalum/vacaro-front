@@ -12,8 +12,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `日程が決まりました — ${loaderData.title} | yotei`
-				: "確定した日程 | yotei",
+				? `日程が決まりました — ${loaderData.title} | vacaro`
+				: "確定した日程 | vacaro",
 		},
 	];
 }
@@ -23,7 +23,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 clientLoader.hydrate = true as const;
 export function HydrateFallback() {
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="page-loading">確定した日程を読み込んでいます…</div>
 		</PageShell>
 	);
@@ -33,7 +33,7 @@ export default function Confirmed({ loaderData: event }: Route.ComponentProps) {
 	const confirmed = event.confirmed_start_at && event.confirmed_end_at;
 	if (!confirmed)
 		return (
-			<PageShell narrow>
+			<PageShell>
 				<div className="empty-state">
 					<Icon name="clock" size={35} />
 					<h2>日程はまだ確定していません</h2>
@@ -49,7 +49,7 @@ export default function Confirmed({ loaderData: event }: Route.ComponentProps) {
 		);
 	const start = new Date(event.confirmed_start_at as string);
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="confirmed-hero">
 				<div className="success-badge">
 					<Icon name="check" size={32} />

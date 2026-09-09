@@ -1,0 +1,142 @@
+.confirmed-hero {
+	padding-top: 35px;
+}
+.confirmed-hero > p {
+	color: var(--ink);
+	font-weight: 600;
+}
+.celebration {
+	position: absolute;
+	font-size: 21px;
+}
+.confetti-one {
+	left: 20%;
+	top: 60px;
+	color: var(--coral);
+}
+.confetti-two {
+	right: 23%;
+	top: 40px;
+	color: var(--yellow);
+}
+.confetti-three {
+	right: 16%;
+	top: 105px;
+	color: var(--mint);
+	font-size: 15px;
+}
+.confirmed-card {
+	background: white;
+	border: 1px solid var(--line);
+	border-radius: 15px;
+	overflow: hidden;
+	box-shadow: var(--shadow);
+	text-align: center;
+	padding: 30px;
+}
+.confirmed-label {
+	color: var(--coral);
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+}
+.confirmed-date {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 28px;
+	margin: 18px 0 25px;
+}
+.confirmed-date > div:first-child {
+	display: flex;
+	flex-direction: column;
+}
+.confirmed-date > div:first-child small {
+	font: 700 15px "DM Sans";
+	color: var(--coral);
+	letter-spacing: 0.15em;
+}
+.confirmed-date > div:first-child strong {
+	font: 700 48px / 1 "DM Sans";
+}
+.confirmed-date > span {
+	height: 55px;
+	width: 1px;
+	background: var(--line);
+}
+.confirmed-date > div:last-child {
+	display: flex;
+	flex-direction: column;
+	text-align: left;
+}
+.confirmed-date b {
+	font-size: 17px;
+}
+.confirmed-date > div:last-child strong {
+	font-size: 28px;
+}
+.confirmed-details {
+	display: flex;
+	justify-content: center;
+	gap: 20px;
+	border-top: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	padding: 15px 0;
+}
+.confirmed-details p {
+	margin: 0;
+	color: var(--muted);
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 15px;
+}
+.host-message {
+	background: #f8f7f3;
+	border-radius: 10px;
+	display: flex;
+	gap: 12px;
+	text-align: left;
+	padding: 16px;
+	margin-top: 22px;
+}
+.host-message div {
+	flex: 1;
+}
+.host-message small {
+	color: var(--muted);
+	font-size: 15px;
+	font-weight: 700;
+}
+.host-message p {
+	margin: 4px 0 0;
+	font-size: 16px;
+	line-height: 1.6;
+}
+.confirmed-actions {
+	display: flex;
+	justify-content: center;
+	gap: 9px;
+	margin-top: 23px;
+}
+.simple-date-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.simple-date-list > div {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: #faf9f6;
+	border: 1px solid #ece9e3;
+	border-radius: 9px;
+	padding: 9px 12px;
+}
+.simple-date-list .candidate-number {
+	margin: 0;
+}
+.simple-date-list strong {
+	flex: 1;
+	font-size: 17px;
+}

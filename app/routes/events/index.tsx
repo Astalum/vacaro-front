@@ -9,7 +9,7 @@ import {
 import type { Route } from "./+types/index";
 
 export function meta() {
-	return [{ title: "イベント一覧 | yotei" }];
+	return [{ title: "イベント一覧 | vacaro" }];
 }
 export async function clientLoader() {
 	return apiRequest<Event[]>("/events");

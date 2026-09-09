@@ -226,6 +226,7 @@ Cookie属性：
 | `GET` | `/api/v1/auth/google/start` | 不要 | `303` |
 | `GET` | `/api/v1/auth/google/callback` | 不要 | `303` |
 | `POST` | `/api/v1/integrations/google-calendar` | Google認証 | `200` |
+| `GET` | `/api/v1/integrations/google-calendar/calendars` | Google認証・Calendar連携 | `200` |
 | `GET` | `/api/v1/integrations/google-calendar/callback` | Google認証 | `303` |
 | `DELETE` | `/api/v1/integrations/google-calendar` | Google認証・Calendar連携 | `204` |
 | `POST` | `/api/v1/events/{event_id}/google-calendar-availability/preview` | 参加者・Calendar連携 | `200` |
@@ -645,7 +646,7 @@ Googleの`sub`をアカウント識別子として使用し、メールアドレ
 POST /api/v1/integrations/google-calendar
 ```
 
-Google認証済みセッションが必要。Calendar FreeBusy権限を求める認可URLを返す。
+Google認証済みセッションが必要。Calendar FreeBusy権限とカレンダー一覧の読み取り権限を求める認可URLを返す。
 
 ```json
 {
@@ -669,7 +670,31 @@ GET /api/v1/integrations/google-calendar/callback?code=<code>&state=<state>
 {PUBLIC_APP_URL}?google_calendar=connected
 ```
 
-### 10.5 Googleカレンダー連携解除
+### 10.5 Googleカレンダー一覧
+
+```http
+GET /api/v1/integrations/google-calendar/calendars
+```
+
+空き時間の判定対象として選択できるメイン・共有・サブカレンダーを返す。予定のタイトルや内容は返さない。
+
+```json
+{
+  "data": {
+    "calendars": [
+      {
+        "id": "user@example.com",
+        "summary": "メインカレンダー",
+        "primary": true,
+        "selected": true,
+        "background_color": "#4285f4"
+      }
+    ]
+  }
+}
+```
+
+### 10.6 Googleカレンダー連携解除
 
 ```http
 DELETE /api/v1/integrations/google-calendar
@@ -677,7 +702,7 @@ DELETE /api/v1/integrations/google-calendar
 
 Google側でRefresh Tokenを失効させた後、DBの暗号文を削除する。成功時は`204`。未連携の場合は`409 calendar_not_connected`。
 
-### 10.6 空き時間プレビュー
+### 10.7 空き時間プレビュー
 
 ```http
 POST /api/v1/events/{event_id}/google-calendar-availability/preview

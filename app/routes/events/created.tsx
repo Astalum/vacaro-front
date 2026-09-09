@@ -10,7 +10,7 @@ import {
 import type { Route } from "./+types/created";
 
 export function meta() {
-	return [{ title: "イベントを作成しました | yotei" }];
+	return [{ title: "イベントを作成しました | vacaro" }];
 }
 
 export async function clientLoader({
@@ -25,7 +25,7 @@ clientLoader.hydrate = true as const;
 
 export function HydrateFallback() {
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="page-loading">イベントを準備しています…</div>
 		</PageShell>
 	);
@@ -41,7 +41,7 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 		window.setTimeout(() => setCopied(false), 1800);
 	};
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="success-hero">
 				<div className="success-badge">
 					<Icon name="check" size={32} />

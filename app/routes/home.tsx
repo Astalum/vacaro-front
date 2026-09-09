@@ -3,7 +3,7 @@ import { AppHeader, Icon } from "../components/ui";
 
 export function meta() {
 	return [
-		{ title: "Yotei — みんなの予定が、ひとつになる" },
+		{ title: "Vacaro — みんなの予定が、ひとつになる" },
 		{ name: "description", content: "シンプルな日程調整アプリ" },
 	];
 }
@@ -76,7 +76,7 @@ export default function Home() {
 								<i />
 								<i />
 								<i />
-								<span>yotei.app/invitations/7ka92</span>
+								<span>vacaro.app/invitations/7ka92</span>
 							</div>
 							<div className="mock-body">
 								<div className="mock-event-head">
@@ -175,9 +175,9 @@ export default function Home() {
 						<i />
 						<i />
 					</span>
-					yotei
+					vacaro
 				</Link>
-				<span>© 2026 yotei</span>
+				<span>© 2026 vacaro</span>
 			</footer>
 		</div>
 	);

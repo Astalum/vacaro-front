@@ -1,0 +1,63 @@
+.root-error {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 30px;
+	text-align: center;
+}
+.root-error > span {
+	color: var(--coral);
+	font:
+		700 48px / 1 "DM Sans",
+		sans-serif;
+}
+.root-error h1 {
+	margin: 16px 0 6px;
+}
+.root-error p {
+	color: var(--muted);
+	margin: 0 0 24px;
+}
+.root-error pre {
+	max-width: 900px;
+	overflow: auto;
+	text-align: left;
+}
+
+.page-loading {
+	min-height: 420px;
+	display: grid;
+	place-items: center;
+	color: var(--muted);
+	font-size: 18px;
+}
+.form-error {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 14px 16px;
+	border: 1px solid #f4bcb3;
+	border-radius: 9px;
+	background: var(--coral-soft);
+	color: #a3473b;
+	font-size: 16px;
+}
+.form-error span {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+.form-error strong {
+	color: var(--ink);
+}
+.inline-error-link {
+	width: max-content;
+	margin-top: 3px;
+	color: #8e372d;
+	font-weight: 700;
+	text-decoration: underline;
+}
+
+/* Account */

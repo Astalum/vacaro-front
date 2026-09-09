@@ -24,7 +24,7 @@ docker compose up --build
 WSL側へNode.jsをインストールしていない場合はこちらを使用します。
 
 ```bash
-docker compose -f compose.dev.yaml up --build
+LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f compose.dev.yaml up --build
 ```
 
 ブラウザで `http://localhost:3000` を開きます。ソースコードの変更は自動的に反映されます。
@@ -52,6 +52,8 @@ http://localhost:8080/api/v1/integrations/google-calendar/callback
 ```
 
 `vacaro-back`の`.env`へ`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_LOGIN_REDIRECT_URL`、`GOOGLE_CALENDAR_REDIRECT_URL`、`TOKEN_ENCRYPTION_KEY`を設定してください。フロントエンドはログイン開始、コールバック後の完了表示、ログアウト、カレンダー接続と空き時間プレビューに対応しています。
+
+カレンダー連携では空き時間取得用の`calendar.freebusy`に加え、読み込み対象を選択するための`calendar.calendarlist.readonly`権限を使用します。権限追加前に接続済みだった場合は、`/account`からGoogleカレンダーを再接続してください。
 
 バックエンドのURLを変更する場合：
 
@@ -88,7 +90,7 @@ docker compose -f compose.dev.yaml down
 
 | URL | 用途 |
 | --- | --- |
-| `/account` | Googleログイン・カレンダー連携の管理 |
+| `/account` | ユーザー情報・Googleカレンダー連携・取り込み対象の設定 |
 | `/events/new` | イベント作成 |
 | `/invitations/:inviteToken` | 招待確認・参加 |
 | `/events/:eventId/availability` | 参加可能時間の回答 |

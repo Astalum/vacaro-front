@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ApiError, apiRequest, type User } from "../lib/api";
 
@@ -134,7 +134,7 @@ export function Brand() {
 				<i />
 				<i />
 			</span>
-			yotei
+			vacaro
 		</Link>
 	);
 }
@@ -177,11 +177,41 @@ function AccountNavigation() {
 }
 
 export function AppHeader({ compact = false }: { compact?: boolean }) {
+	const [menuOpen, setMenuOpen] = useState(false);
+
+	useEffect(() => {
+		if (!menuOpen) return;
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setMenuOpen(false);
+		};
+		window.addEventListener("keydown", closeOnEscape);
+		return () => window.removeEventListener("keydown", closeOnEscape);
+	}, [menuOpen]);
+
 	return (
 		<header className={`app-header ${compact ? "compact" : ""}`}>
 			<div className="wrap header-inner">
 				<Brand />
-				<nav>
+				<button
+					className={`mobile-menu-button ${menuOpen ? "open" : ""}`}
+					type="button"
+					aria-label={menuOpen ? "メニューを閉じる" : "メニューを開く"}
+					aria-expanded={menuOpen}
+					aria-controls="site-navigation"
+					onClick={() => setMenuOpen((open) => !open)}
+				>
+					<span />
+					<span />
+					<span />
+				</button>
+				<nav
+					id="site-navigation"
+					className={menuOpen ? "open" : ""}
+					onClick={() => setMenuOpen(false)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter" || event.key === " ") setMenuOpen(false);
+					}}
+				>
 					{!compact && <a href="/#how">使い方</a>}
 					<Link to="/events">イベント一覧</Link>
 					<AccountNavigation />
@@ -196,15 +226,17 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
 
 export function PageShell({
 	children,
-	narrow = false,
+	fullScreen = false,
 }: {
 	children: ReactNode;
-	narrow?: boolean;
+	fullScreen?: boolean;
 }) {
 	return (
-		<div className="site-shell page-shell">
-			<AppHeader compact />
-			<main className={`page-main wrap ${narrow ? "narrow" : ""}`}>
+		<div
+			className={`site-shell page-shell ${fullScreen ? "fullscreen-shell" : ""}`}
+		>
+			{!fullScreen && <AppHeader compact />}
+			<main className={`page-main wrap ${fullScreen ? "fullscreen-main" : ""}`}>
 				{children}
 			</main>
 		</div>

@@ -8,7 +8,8 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import "./app.css";
+import "./styles/tailwind.css";
+import "./app.scss";
 import { ApiError } from "./lib/api";
 
 export const links: Route.LinksFunction = () => [

@@ -1,0 +1,48 @@
+.mock-free-grid {
+	margin-top: 20px;
+	border: 1px solid #eeece7;
+	border-radius: 8px;
+	overflow: hidden;
+}
+.mock-free-grid > div {
+	display: grid;
+	grid-template-columns: 65px 1fr;
+	align-items: center;
+	min-height: 37px;
+	border-bottom: 1px solid #eeece7;
+}
+.mock-free-grid > div:last-child {
+	border-bottom: 0;
+}
+.mock-free-grid strong {
+	padding-left: 10px;
+	font-size: 15px;
+}
+.mock-free-grid > div > span {
+	height: 9px;
+	position: relative;
+	margin-right: 12px;
+	background: repeating-linear-gradient(
+		90deg,
+		#f0eee9 0 1px,
+		transparent 1px 25%
+	);
+}
+.mock-free-grid > div > span i {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	background: var(--mint);
+	border-radius: 5px;
+}
+.mock-free-grid .mock-hours {
+	grid-template-columns: 65px repeat(4, 1fr);
+	min-height: 27px;
+	background: #faf9f6;
+	color: #8d919a;
+}
+.mock-free-grid .mock-hours b {
+	font-size: 15px;
+	font-weight: 500;
+}
+

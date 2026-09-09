@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+	cacheDir: ".react-router/vite",
 	plugins: [tailwindcss(), reactRouter()],
 	server: {
 		port: 3000,

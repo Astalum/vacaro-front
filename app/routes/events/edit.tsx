@@ -13,8 +13,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `編集 — ${loaderData.title} | yotei`
-				: "イベントを編集 | yotei",
+				? `編集 — ${loaderData.title} | vacaro`
+				: "イベントを編集 | vacaro",
 		},
 	];
 }
@@ -70,7 +70,7 @@ function inputDateTime(value: string | null) {
 
 export function HydrateFallback() {
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="page-loading">イベントを読み込んでいます…</div>
 		</PageShell>
 	);
@@ -83,7 +83,7 @@ export default function EditEvent({
 	const navigation = useNavigation();
 	const saving = navigation.state === "submitting";
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<PageIntro
 				eyebrow="EDIT EVENT"
 				title="イベントを編集"

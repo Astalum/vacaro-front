@@ -57,6 +57,58 @@ export interface AvailabilityInterval {
 	updated_at?: string;
 }
 
+export interface GoogleCalendar {
+	id: string;
+	summary: string;
+	primary: boolean;
+	selected: boolean;
+	background_color?: string;
+}
+
+export const CALENDAR_SELECTION_STORAGE_KEY = "vacaro.calendar-selection";
+
+export function savedCalendarIDs(calendars: GoogleCalendar[]) {
+	const availableIDs = new Set(calendars.map((calendar) => calendar.id));
+	try {
+		const value = window.localStorage.getItem(CALENDAR_SELECTION_STORAGE_KEY);
+		const saved = value ? (JSON.parse(value) as unknown) : null;
+		if (Array.isArray(saved)) {
+			const valid = saved.filter(
+				(id): id is string => typeof id === "string" && availableIDs.has(id),
+			);
+			if (valid.length > 0) return valid;
+		}
+	} catch {
+		// Storage may be unavailable in privacy-focused browser modes.
+	}
+	const preferred = calendars.filter(
+		(calendar) => calendar.primary || calendar.selected,
+	);
+	return (preferred.length > 0 ? preferred : calendars.slice(0, 1)).map(
+		(calendar) => calendar.id,
+	);
+}
+
+export function saveCalendarIDs(calendarIDs: string[]) {
+	try {
+		window.localStorage.setItem(
+			CALENDAR_SELECTION_STORAGE_KEY,
+			JSON.stringify(calendarIDs),
+		);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function clearSavedCalendarIDs() {
+	try {
+		window.localStorage.removeItem(CALENDAR_SELECTION_STORAGE_KEY);
+	} catch {
+		// Nothing else is required when storage is unavailable.
+	}
+}
+
 export interface ParticipantAvailability {
 	participant: Participant;
 	intervals: AvailabilityInterval[];

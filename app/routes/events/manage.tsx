@@ -18,8 +18,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `イベント管理 — ${loaderData.event.title} | yotei`
-				: "イベント管理 | yotei",
+				? `イベント管理 — ${loaderData.event.title} | vacaro`
+				: "イベント管理 | vacaro",
 		},
 	];
 }

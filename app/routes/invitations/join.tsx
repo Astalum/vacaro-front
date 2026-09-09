@@ -16,8 +16,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `招待 — ${loaderData.title} | yotei`
-				: "イベントへの招待 | yotei",
+				? `招待 — ${loaderData.title} | vacaro`
+				: "イベントへの招待 | vacaro",
 		},
 	];
 }
@@ -69,7 +69,7 @@ export async function clientAction({
 
 export function HydrateFallback() {
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="page-loading">招待情報を読み込んでいます…</div>
 		</PageShell>
 	);
@@ -82,7 +82,7 @@ export default function JoinEvent({
 	const navigation = useNavigation();
 	const joining = navigation.state === "submitting";
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="invite-heading">
 				<span className="page-eyebrow">YOU'RE INVITED</span>
 				<div className="invite-icon">

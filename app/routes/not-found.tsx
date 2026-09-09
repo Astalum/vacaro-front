@@ -2,12 +2,12 @@ import { Link } from "react-router";
 import { Icon, PageShell } from "../components/ui";
 
 export function meta() {
-	return [{ title: "ページが見つかりません | yotei" }];
+	return [{ title: "ページが見つかりません | vacaro" }];
 }
 
 export default function NotFound() {
 	return (
-		<PageShell narrow>
+		<PageShell>
 			<div className="not-found">
 				<span>404</span>
 				<div className="empty-calendar">
