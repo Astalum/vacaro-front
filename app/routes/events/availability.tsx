@@ -1,14 +1,18 @@
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { data, Form, useNavigation } from "react-router";
+import { data, Form, Link, useNavigation } from "react-router";
 import { Icon, PageShell } from "../../components/ui";
 import {
 	ApiError,
 	type AvailabilityInterval,
 	apiErrorData,
 	apiRequest,
+	type CalendarAvailabilityWindow,
 	type Event,
 	formatDateRange,
+	type GoogleCalendar,
 	minutesLabel,
+	savedCalendarAvailabilityWindow,
+	savedCalendarIDs,
 } from "../../lib/api";
 import type { Route } from "./+types/availability";
 
@@ -31,13 +35,21 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	const [event, availability] = await Promise.all([
+	const [event, availability, calendarOptions] = await Promise.all([
 		apiRequest<Event>(`/events/${params.eventId}`),
 		apiRequest<{ response_status: string; intervals: AvailabilityInterval[] }>(
 			`/events/${params.eventId}/my-availability`,
 		),
+		apiRequest<{ calendars: GoogleCalendar[] }>(
+			"/integrations/google-calendar/calendars",
+		)
+			.then((result) => ({ calendars: result.calendars, error: null }))
+			.catch((error: unknown) => ({
+				calendars: [] as GoogleCalendar[],
+				error: apiErrorData(error),
+			})),
 	]);
-	return { event, availability };
+	return { event, availability, calendarOptions };
 }
 clientLoader.hydrate = true as const;
 
@@ -47,6 +59,27 @@ export async function clientAction({
 }: Route.ClientActionArgs) {
 	const formData = await request.formData();
 	try {
+		if (formData.get("intent") === "calendar-preview") {
+			const parsedCalendarIDs = JSON.parse(
+				String(formData.get("calendar_ids") ?? "[]"),
+			) as unknown;
+			const calendarIDs = Array.isArray(parsedCalendarIDs)
+				? parsedCalendarIDs.filter(
+						(calendarID): calendarID is string =>
+							typeof calendarID === "string" && calendarID.length > 0,
+					)
+				: [];
+			const result = await apiRequest<{ intervals: AvailabilityInterval[] }>(
+				`/events/${params.eventId}/google-calendar-availability/preview`,
+				{
+					method: "POST",
+					body: JSON.stringify({
+						calendar_ids: calendarIDs.length > 0 ? calendarIDs : ["primary"],
+					}),
+				},
+			);
+			return { kind: "preview" as const, intervals: result.intervals };
+		}
 		const ranges =
 			formData.get("intent") === "none"
 				? []
@@ -131,6 +164,18 @@ function time(value: number) {
 	return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
 
+function dateTimeAtMinute(key: string, value: number) {
+	return value === DAY_MINUTES
+		? `${addDays(key, 1)}T00:00`
+		: `${key}T${time(value)}`;
+}
+
+function endsAtDayBoundary(range: TimeRange, key: string) {
+	return (
+		range.end === `${key}T24:00` || range.end === `${addDays(key, 1)}T00:00`
+	);
+}
+
 function segmentOnDate(range: TimeRange, key: string) {
 	const startOfDay = `${key}T00:00`;
 	const nextDay = `${addDays(key, 1)}T00:00`;
@@ -162,6 +207,39 @@ function mergeRanges(ranges: TimeRange[], added: TimeRange) {
 	return [...pending, merged].sort((a, b) => a.start.localeCompare(b.start));
 }
 
+function clipCalendarIntervals(
+	intervals: AvailabilityInterval[],
+	timeZone: string,
+	dailyWindow: CalendarAvailabilityWindow,
+	eventStart: string,
+	eventEnd: string,
+) {
+	const clipped: TimeRange[] = [];
+	for (const interval of intervals) {
+		const intervalStart = localDateTime(interval.start_at, timeZone);
+		const intervalEnd = localDateTime(interval.end_at, timeZone);
+		let key = intervalStart.slice(0, 10);
+		const finalKey = intervalEnd.slice(0, 10);
+
+		while (key <= finalKey) {
+			const dailyStart = `${key}T${dailyWindow.start}`;
+			const dailyEnd = `${key}T${dailyWindow.end}`;
+			const start = [intervalStart, dailyStart, eventStart].reduce(
+				(latest, value) => (value > latest ? value : latest),
+			);
+			const end = [intervalEnd, dailyEnd, eventEnd].reduce((earliest, value) =>
+				value < earliest ? value : earliest,
+			);
+			if (start < end) {
+				clipped.push({ id: crypto.randomUUID(), start, end });
+			}
+			key = addDays(key, 1);
+		}
+	}
+
+	return clipped.sort((a, b) => a.start.localeCompare(b.start));
+}
+
 function pointerMinutes(clientY: number, target: HTMLElement) {
 	const bounds = target.getBoundingClientRect();
 	const value = ((clientY - bounds.top) / bounds.height) * DAY_MINUTES;
@@ -180,8 +258,13 @@ export default function AvailabilityPage({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { event, availability } = loaderData;
+	const { event, availability, calendarOptions } = loaderData;
 	const navigation = useNavigation();
+	const [calendarWindow] = useState(() => savedCalendarAvailabilityWindow());
+	const selectedCalendarIDs = useMemo(
+		() => savedCalendarIDs(calendarOptions.calendars),
+		[calendarOptions.calendars],
+	);
 	const windowStart = localDateTime(event.window_start_at, event.time_zone);
 	const windowEnd = localDateTime(event.window_end_at, event.time_zone);
 	const firstDate = windowStart.slice(0, 10);
@@ -213,15 +296,41 @@ export default function AvailabilityPage({
 		() => Array.from({ length: 7 }, (_, index) => addDays(activeWeek, index)),
 		[activeWeek],
 	);
+	const importedRanges = useMemo(
+		() =>
+			actionData?.kind === "preview"
+				? clipCalendarIntervals(
+						actionData.intervals,
+						event.time_zone,
+						calendarWindow,
+						windowStart,
+						windowEnd,
+					)
+				: [],
+		[actionData, calendarWindow, event.time_zone, windowEnd, windowStart],
+	);
+
+	useEffect(() => {
+		if (actionData?.kind !== "preview") return;
+		setRanges(importedRanges);
+		if (importedRanges[0]) {
+			const importedDate = importedRanges[0].start.slice(0, 10);
+			setSelectedDate(importedDate);
+			setWeekIndex(Math.max(0, weekOptions.indexOf(weekStart(importedDate))));
+		}
+	}, [actionData, importedRanges, weekOptions]);
 
 	useEffect(() => {
 		const scroller = scrollRef.current;
 		if (!scroller) return;
 		const startMinute = days.includes(firstDate)
-			? minutes(windowStart)
-			: 8 * 60;
+			? Math.max(
+					minutes(windowStart),
+					minutes(`2000-01-01T${calendarWindow.start}`),
+				)
+			: minutes(`2000-01-01T${calendarWindow.start}`);
 		scroller.scrollTop = (startMinute / DAY_MINUTES) * 1248;
-	}, [days, firstDate, windowStart]);
+	}, [calendarWindow.start, days, firstDate, windowStart]);
 
 	const allowedRange = (key: string) => ({
 		start: key === firstDate ? minutes(windowStart) : 0,
@@ -266,33 +375,26 @@ export default function AvailabilityPage({
 		if (!drag || drag.pointerId !== pointer.pointerId) return;
 		const added = {
 			id: crypto.randomUUID(),
-			start: `${drag.date}T${time(drag.start)}`,
-			end: `${drag.date}T${time(drag.end)}`,
+			start: dateTimeAtMinute(drag.date, drag.start),
+			end: dateTimeAtMinute(drag.date, drag.end),
 		};
 		setRanges((current) => mergeRanges(current, added));
 		setDrag(null);
 	};
-	const updateTime = (id: string, field: "start" | "end", value: string) =>
+	const updateTime = (
+		id: string,
+		field: "start" | "end",
+		value: string,
+		key: string,
+	) =>
 		setRanges((current) =>
 			current.map((range) =>
-				range.id === id
-					? { ...range, [field]: `${range[field].slice(0, 10)}T${value}` }
-					: range,
+				range.id === id ? { ...range, [field]: `${key}T${value}` } : range,
 			),
 		);
 
 	const selectedRanges = ranges.filter((range) =>
 		segmentOnDate(range, selectedDate),
-	);
-	const totalMinutes = ranges.reduce(
-		(total, range) =>
-			total +
-			Math.max(
-				0,
-				(new Date(range.end).getTime() - new Date(range.start).getTime()) /
-					60000,
-			),
-		0,
 	);
 	const weekTitle = `${new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric" }).format(dateFromKey(days[0]))} — ${new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric" }).format(dateFromKey(days[6]))}`;
 	const selectedTitle = new Intl.DateTimeFormat("ja-JP", {
@@ -307,9 +409,38 @@ export default function AvailabilityPage({
 		<PageShell fullScreen>
 			<Form method="post" className="schedule-page">
 				<input type="hidden" name="intervals" value={JSON.stringify(ranges)} />
+				<input
+					type="hidden"
+					name="calendar_ids"
+					value={JSON.stringify(selectedCalendarIDs)}
+				/>
 				<section className="schedule-main">
 					<div className="schedule-guide">
-						カレンダーをドラッグして、空いている時間を追加してください
+						<span>
+							カレンダーをドラッグして、空いている時間を追加してください
+						</span>
+						{calendarOptions.calendars.length > 0 ? (
+							<button
+								type="submit"
+								name="intent"
+								value="calendar-preview"
+								className="schedule-import"
+								disabled={submitting}
+								title="現在の入力を、Googleカレンダーから読み取った空き時間で置き換えます"
+							>
+								<Icon name="calendar" size={16} />
+								{submittingIntent === "calendar-preview"
+									? "読み取り中…"
+									: `${calendarWindow.start}〜${calendarWindow.end}を取り込む`}
+							</button>
+						) : (
+							<Link
+								className="schedule-settings-link"
+								to="/account#calendar-settings"
+							>
+								カレンダー設定
+							</Link>
+						)}
 					</div>
 					<div className="schedule-calendar">
 						<header className="schedule-toolbar">
@@ -376,9 +507,6 @@ export default function AvailabilityPage({
 											onPointerUp={finishDrag}
 											onPointerCancel={() => setDrag(null)}
 										>
-											{!enabled && (
-												<span className="schedule-outside-label">範囲外</span>
-											)}
 											{enabled && allowed.start > 0 && (
 												<i
 													className="schedule-mask top"
@@ -430,26 +558,26 @@ export default function AvailabilityPage({
 						<h1>{event.title}</h1>
 						{event.description && <p>{event.description}</p>}
 						<div className="schedule-meta">
-							<Icon name="calendar" size={15} />
-							<div>
+							<div className="schedule-meta-label">
+								<Icon name="calendar" size={18} />
 								<span>調整期間</span>
-								<strong>
-									{formatDateRange(
-										event.window_start_at,
-										event.window_end_at,
-										event.time_zone,
-									)}
-								</strong>
 							</div>
+							<strong>
+								{formatDateRange(
+									event.window_start_at,
+									event.window_end_at,
+									event.time_zone,
+								)}
+							</strong>
 						</div>
 						<div className="schedule-meta">
-							<Icon name="clock" size={15} />
-							<div>
+							<div className="schedule-meta-label">
+								<Icon name="clock" size={18} />
 								<span>所要時間</span>
-								<strong>
-									必要時間：{minutesLabel(event.duration_minutes)}
-								</strong>
 							</div>
+							<strong className="schedule-duration-value">
+								{minutesLabel(event.duration_minutes)}
+							</strong>
 						</div>
 					</section>
 					<section className="schedule-editor">
@@ -462,18 +590,47 @@ export default function AvailabilityPage({
 									aria-label="開始時刻"
 									value={range.start.slice(11, 16)}
 									onChange={(event) =>
-										updateTime(range.id, "start", event.target.value)
+										updateTime(
+											range.id,
+											"start",
+											event.target.value,
+											selectedDate,
+										)
 									}
 								/>
 								<span>〜</span>
-								<input
-									type="time"
-									aria-label="終了時刻"
-									value={range.end.slice(11, 16)}
-									onChange={(event) =>
-										updateTime(range.id, "end", event.target.value)
-									}
-								/>
+								<div
+									className={`schedule-time-input${
+										endsAtDayBoundary(range, selectedDate)
+											? " is-end-of-day"
+											: ""
+									}`}
+								>
+									<input
+										type="time"
+										aria-label={
+											endsAtDayBoundary(range, selectedDate)
+												? "終了時刻 24:00"
+												: "終了時刻"
+										}
+										value={
+											endsAtDayBoundary(range, selectedDate)
+												? "00:00"
+												: range.end.slice(11, 16)
+										}
+										onChange={(event) =>
+											updateTime(
+												range.id,
+												"end",
+												event.target.value,
+												selectedDate,
+											)
+										}
+									/>
+									{endsAtDayBoundary(range, selectedDate) && (
+										<span aria-hidden="true">24:00</span>
+									)}
+								</div>
 								<button
 									type="button"
 									aria-label="削除"
@@ -483,7 +640,7 @@ export default function AvailabilityPage({
 										)
 									}
 								>
-									<Icon name="trash" size={14} />
+									<Icon name="trash" size={20} />
 								</button>
 							</div>
 						))}
@@ -491,16 +648,16 @@ export default function AvailabilityPage({
 					{actionData?.kind === "saved" && (
 						<p className="schedule-message success">回答を保存しました</p>
 					)}
+					{actionData?.kind === "preview" && (
+						<p className="schedule-message success">
+							{calendarWindow.start}〜{calendarWindow.end}の範囲から
+							{importedRanges.length}件を取り込みました
+						</p>
+					)}
 					{actionData?.kind === "error" && (
 						<p className="schedule-message error">{actionData.error.message}</p>
 					)}
 					<footer className="schedule-submit">
-						<div>
-							<span>回答内容</span>
-							<strong>
-								空き時間 {ranges.length}件・合計 {minutesLabel(totalMinutes)}
-							</strong>
-						</div>
 						<button
 							type="submit"
 							name="intent"
