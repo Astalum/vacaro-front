@@ -10,12 +10,14 @@
 	gap: 55px;
 	padding-block: 75px 85px;
 }
+.hero-copy {
+	transform: translateX(clamp(40px, 4vw, 80px));
+}
 .eyebrow,
 .page-eyebrow,
 .section-kicker {
 	font:
-		700 16px / 1.2 "DM Sans",
-		sans-serif;
+		800 16px / 1.2 var(--font-gothic);
 	letter-spacing: 0.18em;
 	color: var(--coral);
 }
@@ -23,7 +25,7 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 10px;
-	font-family: "Noto Sans JP";
+	font-family: var(--font-gothic);
 	letter-spacing: 0.08em;
 }
 .eyebrow span {
@@ -297,7 +299,7 @@
 }
 .step-no {
 	color: #e6e3dc;
-	font: 700 18px "DM Sans";
+	font: 800 18px var(--font-gothic);
 	position: absolute;
 	left: 10px;
 	top: 0;
@@ -349,4 +351,3 @@
 .footer .brand {
 	color: var(--ink);
 }
-

@@ -38,7 +38,7 @@ export default function Home() {
 					<div className="hero-copy">
 						<span className="eyebrow">
 							<span />
-							予定を合わせる、をもっと軽く。
+							日程調整をもっと柔軟に
 						</span>
 						<h1>
 							みんなの予定が、
@@ -61,9 +61,14 @@ export default function Home() {
 								使い方を見る <Icon name="down" size={16} />
 							</a>
 						</div>
-						<p className="hero-note">
-							<Icon name="check" size={14} /> アカウント登録なし・無料で使えます
-						</p>
+						<div>
+							<p className="hero-note">
+								<Icon name="check" size={14} /> アカウント登録なし・無料で使えます！
+							</p>
+							<p className="hero-note">
+								<Icon name="check" size={14} /> アカウント登録でGoogleカレンダー連携も！
+							</p>
+						</div>
 					</div>
 					<div
 						className="hero-visual"
@@ -119,7 +124,7 @@ export default function Home() {
 								</div>
 								<div className="mock-recommend">
 									<Icon name="sparkle" size={15} />{" "}
-									18:00〜20:00なら4人が参加できます
+									19:00〜22:00なら4人が参加できます
 								</div>
 							</div>
 						</div>
