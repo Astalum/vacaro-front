@@ -5,7 +5,6 @@ import {
 	redirect,
 	redirectDocument,
 	useNavigation,
-	useSearchParams,
 } from "react-router";
 import { Icon, PageIntro, PageShell } from "../components/ui";
 import {
@@ -14,11 +13,15 @@ import {
 	apiRequest,
 	clearSavedCalendarIDs,
 	type GoogleCalendar,
+	saveCalendarAvailabilityWindow,
 	saveCalendarIDs,
+	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
 	type User,
 } from "../lib/api";
 import type { Route } from "./+types/account";
+
+type CalendarConnectionStatus = "connected" | "disconnected" | "unknown";
 
 export function meta() {
 	return [{ title: "ユーザー設定 | vacaro" }];
@@ -32,18 +35,36 @@ export async function clientLoader() {
 				? await apiRequest<{ calendars: GoogleCalendar[] }>(
 						"/integrations/google-calendar/calendars",
 					)
-						.then((result) => ({ calendars: result.calendars, error: null }))
-						.catch((error: unknown) => ({
-							calendars: [] as GoogleCalendar[],
-							error: apiErrorData(error),
+						.then((result) => ({
+							calendars: result.calendars,
+							error: null,
+							connectionStatus: "connected" as const,
 						}))
-				: { calendars: [] as GoogleCalendar[], error: null };
+						.catch((error: unknown) => {
+							const apiError = apiErrorData(error);
+							return {
+								calendars: [] as GoogleCalendar[],
+								error: apiError,
+								connectionStatus: (apiError.code === "calendar_not_connected"
+									? "disconnected"
+									: "unknown") as CalendarConnectionStatus,
+							};
+						})
+				: {
+						calendars: [] as GoogleCalendar[],
+						error: null,
+						connectionStatus: "disconnected" as const,
+					};
 		return { user, calendarOptions };
 	} catch (error) {
 		if (error instanceof ApiError && error.status === 401)
 			return {
 				user: null,
-				calendarOptions: { calendars: [] as GoogleCalendar[], error: null },
+				calendarOptions: {
+					calendars: [] as GoogleCalendar[],
+					error: null,
+					connectionStatus: "disconnected" as const,
+				},
 			};
 		throw error;
 	}
@@ -100,13 +121,22 @@ export default function Account({
 }: Route.ComponentProps) {
 	const { user, calendarOptions } = loaderData;
 	const navigation = useNavigation();
-	const [searchParams] = useSearchParams();
 	const intent = navigation.formData?.get("intent");
-	const calendarConnected = searchParams.get("google_calendar") === "connected";
+	const calendarConnectionStatus: CalendarConnectionStatus =
+		actionData?.kind === "disconnected"
+			? "disconnected"
+			: calendarOptions.connectionStatus;
 	const [selectedCalendarIDs, setSelectedCalendarIDs] = useState<string[]>(() =>
 		savedCalendarIDs(calendarOptions.calendars),
 	);
+	const [availabilityWindow, setAvailabilityWindow] = useState(() =>
+		savedCalendarAvailabilityWindow(),
+	);
 	const [preferenceMessage, setPreferenceMessage] = useState<{
+		kind: "success" | "error";
+		text: string;
+	} | null>(null);
+	const [availabilityWindowMessage, setAvailabilityWindowMessage] = useState<{
 		kind: "success" | "error";
 		text: string;
 	} | null>(null);
@@ -133,6 +163,26 @@ export default function Account({
 				: "設定を保存できませんでした。ブラウザの保存設定をご確認ください。",
 		});
 	};
+	const saveAvailabilityWindow = () => {
+		if (
+			!availabilityWindow.start ||
+			!availabilityWindow.end ||
+			availabilityWindow.start >= availabilityWindow.end
+		) {
+			setAvailabilityWindowMessage({
+				kind: "error",
+				text: "終了時刻は開始時刻より後にしてください",
+			});
+			return;
+		}
+		const saved = saveCalendarAvailabilityWindow(availabilityWindow);
+		setAvailabilityWindowMessage({
+			kind: saved ? "success" : "error",
+			text: saved
+				? "取り込み時間帯を保存しました"
+				: "設定を保存できませんでした。ブラウザの保存設定をご確認ください。",
+		});
+	};
 
 	return (
 		<PageShell>
@@ -142,15 +192,6 @@ export default function Account({
 				description="プロフィールとカレンダーの取り込み設定を管理します。"
 			/>
 
-			{calendarConnected && (
-				<div className="confirm-banner compact-banner">
-					<Icon name="check" />
-					<div>
-						<strong>Googleカレンダーを接続しました</strong>
-						<span>参加可能時間の入力画面から空き時間を取り込めます。</span>
-					</div>
-				</div>
-			)}
 			{actionData?.kind === "disconnected" && (
 				<div className="confirm-banner compact-banner">
 					<Icon name="check" />
@@ -188,7 +229,7 @@ export default function Account({
 								{user.display_name.trim().charAt(0) || "U"}
 							</div>
 							<div>
-								<span className="account-type">
+								<span className="account-section-label">
 									{user.account_type === "registered"
 										? "GOOGLE ACCOUNT"
 										: "GUEST ACCOUNT"}
@@ -235,11 +276,24 @@ export default function Account({
 										<Icon name="calendar" />
 									</div>
 									<div>
+										<span className="account-section-label">
+											CALENDAR CONNECTION
+										</span>
 										<h2>Googleカレンダー連携</h2>
 										<p>
 											予定の空き時間を回答へ取り込むための接続を管理します。
 										</p>
 									</div>
+									<span
+										className={`integration-status ${calendarConnectionStatus}`}
+									>
+										<i />
+										{calendarConnectionStatus === "connected"
+											? "接続済み"
+											: calendarConnectionStatus === "disconnected"
+												? "未接続"
+												: "確認できません"}
+									</span>
 								</div>
 								<div className="integration-actions">
 									<Form method="post">
@@ -252,7 +306,9 @@ export default function Account({
 										>
 											{intent === "calendar-connect"
 												? "Googleへ移動しています…"
-												: "接続・再接続する"}
+												: calendarConnectionStatus === "connected"
+													? "再接続する"
+													: "接続する"}
 										</button>
 									</Form>
 									<Form method="post">
@@ -261,7 +317,10 @@ export default function Account({
 											type="submit"
 											name="intent"
 											value="calendar-disconnect"
-											disabled={navigation.state !== "idle"}
+											disabled={
+												navigation.state !== "idle" ||
+												calendarConnectionStatus === "disconnected"
+											}
 										>
 											{intent === "calendar-disconnect"
 												? "解除しています…"
@@ -271,13 +330,85 @@ export default function Account({
 								</div>
 							</section>
 
+							<section className="account-card availability-window-card">
+								<div className="settings-section-heading">
+									<div>
+										<span className="account-section-label">
+											AVAILABILITY WINDOW
+										</span>
+										<h2>空き時間の取り込み範囲</h2>
+										<p>
+											Googleカレンダーから取り込む際、毎日この時間帯だけを空き時間として読み取ります。
+										</p>
+									</div>
+								</div>
+								<div className="settings-time-window">
+									<label>
+										<span>
+											<em>IN</em>
+											開始時刻
+										</span>
+										<input
+											type="time"
+											value={availabilityWindow.start}
+											onChange={(event) => {
+												setAvailabilityWindowMessage(null);
+												setAvailabilityWindow((current) => ({
+													...current,
+													start: event.target.value,
+												}));
+											}}
+										/>
+									</label>
+									<span className="time-window-separator" aria-hidden="true">
+										〜
+									</span>
+									<label>
+										<span>
+											<em>OUT</em>
+											終了時刻
+										</span>
+										<input
+											type="time"
+											value={availabilityWindow.end}
+											onChange={(event) => {
+												setAvailabilityWindowMessage(null);
+												setAvailabilityWindow((current) => ({
+													...current,
+													end: event.target.value,
+												}));
+											}}
+										/>
+									</label>
+								</div>
+								<div className="settings-save-row">
+									{availabilityWindowMessage && (
+										<span
+											className={`save-message ${availabilityWindowMessage.kind}`}
+											aria-live="polite"
+										>
+											{availabilityWindowMessage.text}
+										</span>
+									)}
+									<button
+										className="button button-primary"
+										type="button"
+										onClick={saveAvailabilityWindow}
+									>
+										取り込み範囲を保存
+									</button>
+								</div>
+							</section>
+
 							<section
 								className="account-card calendar-settings-card"
 								id="calendar-settings"
 							>
 								<div className="settings-section-heading">
 									<div>
-										<span className="settings-label">CALENDAR PREFERENCE</span>
+										<span className="account-section-label">
+											CALENDAR PREFERENCE
+										</span>
 										<h2>使用するカレンダー</h2>
 										<p>
 											空き時間の判定で「予定あり」として扱うカレンダーを選択します。
@@ -289,7 +420,12 @@ export default function Account({
 										</span>
 									)}
 								</div>
-								{calendarOptions.error ? (
+								{calendarConnectionStatus === "disconnected" ? (
+									<div className="settings-empty-calendar">
+										<Icon name="calendar" size={20} />
+										<p>連携カードからGoogleカレンダーを接続してください。</p>
+									</div>
+								) : calendarOptions.error ? (
 									<div className="calendar-picker-error settings-error">
 										<Icon name="info" size={18} />
 										<div>
