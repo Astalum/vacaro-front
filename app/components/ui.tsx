@@ -212,12 +212,14 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
 						if (event.key === "Enter" || event.key === " ") setMenuOpen(false);
 					}}
 				>
-					{!compact && <a href="/#how">使い方</a>}
-					<Link to="/events">イベント一覧</Link>
-					<AccountNavigation />
-					<Link className="button button-dark button-small" to="/events/new">
+					<Link
+						className="button event-create-button button-small"
+						to="/events/new"
+					>
 						<Icon name="plus" size={16} /> イベントを作る
 					</Link>
+					<Link to="/events">イベント一覧</Link>
+					<AccountNavigation />
 				</nav>
 			</div>
 		</header>
