@@ -1,5 +1,17 @@
 import { data, Form, redirect, useNavigation } from "react-router";
 import { Icon, PageIntro, PageShell } from "../../components/ui";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "../../components/ui/card";
+import { Field, FieldGroup, FieldLabel } from "../../components/ui/field";
+import { Input } from "../../components/ui/input";
+import { NativeSelect } from "../../components/ui/native-select";
+import { Textarea } from "../../components/ui/textarea";
 import {
 	ApiError,
 	apiErrorData,
@@ -71,170 +83,163 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 				backTo="/"
 				backLabel="トップへ戻る"
 			/>
-			<ol className="progress-steps" aria-label="作成ステップ">
-				<li className="active">
-					<b>1</b>
-					<span>イベント情報</span>
-				</li>
-				<li className="active">
-					<b>2</b>
-					<span>調整条件</span>
-				</li>
-				<li>
-					<b>3</b>
-					<span>作成完了</span>
-				</li>
-			</ol>
-			<Form className="form-stack" method="post">
+			<Form className="new-event-form space-y-6" method="post">
 				{actionData?.error && (
-					<div className="form-error">
-						<Icon name="info" size={17} />
-						<span>
+					<div className="flex items-start gap-3 rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
+						<Icon name="info" size={20} />
+						<span className="grid gap-1 text-base font-semibold">
 							<strong>{actionData.error.message}</strong>
 							{actionData.error.fields &&
 								Object.values(actionData.error.fields).join(" / ")}
 						</span>
 					</div>
 				)}
-				<section className="form-section">
-					<div className="form-section-title">
-						<span>01</span>
-						<div>
-							<h2>イベント情報</h2>
-							<p>参加者に表示される基本情報です。</p>
-						</div>
-					</div>
-					<div className="field">
-						<label htmlFor="title">
-							イベント名 <em>必須</em>
-						</label>
-						<input
-							id="title"
-							name="title"
-							defaultValue="プロジェクト打ち上げ 🎉"
-							required
-						/>
-					</div>
-					<div className="field">
-						<label htmlFor="description">
-							説明 <small>任意</small>
-						</label>
-						<textarea
-							id="description"
-							name="description"
-							rows={4}
-							defaultValue="半年間のプロジェクト、本当にお疲れさまでした！みんなでゆっくりご飯を食べましょう。"
-						/>
-						<span className="field-hint">
-							場所や目的など、参加者に伝えたいことを書けます。
-						</span>
-					</div>
-					<div className="two-cols">
-						<div className="field">
-							<label htmlFor="owner">
-								主催者名 <em>必須</em>
-							</label>
-							<input
-								id="owner"
-								name="display_name"
-								defaultValue="山田 太郎"
-								required
-							/>
-						</div>
-						<div className="field">
-							<label htmlFor="timezone">
-								タイムゾーン <em>必須</em>
-							</label>
-							<select id="timezone" name="time_zone" defaultValue="Asia/Tokyo">
-								<option value="Asia/Tokyo">日本時間（Asia/Tokyo）</option>
-							</select>
-						</div>
-					</div>
-				</section>
-				<section className="form-section">
-					<div className="form-section-title">
-						<span>02</span>
-						<div>
-							<h2>調整する期間</h2>
-							<p>参加者はこの期間内で、空いている時間を自由に登録します。</p>
-						</div>
-					</div>
-					<div className="window-fields">
-						<div className="field">
-							<label htmlFor="window-start">
-								期間の開始 <em>必須</em>
-							</label>
-							<input
-								id="window-start"
-								name="window_start_at"
-								type="datetime-local"
-								defaultValue="2026-06-14T09:00"
-								required
-							/>
-						</div>
-						<span className="window-arrow">→</span>
-						<div className="field">
-							<label htmlFor="window-end">
-								期間の終了 <em>必須</em>
-							</label>
-							<input
-								id="window-end"
-								name="window_end_at"
-								type="datetime-local"
-								defaultValue="2026-06-21T22:00"
-								required
-							/>
-						</div>
-					</div>
-					<div className="duration-box">
-						<div className="duration-icon">
-							<Icon name="clock" />
-						</div>
-						<div className="field">
-							<label htmlFor="duration">
-								イベントに必要な時間 <em>必須</em>
-							</label>
-							<select id="duration" name="duration_minutes" defaultValue="120">
-								<option value="30">30分</option>
-								<option value="60">1時間</option>
-								<option value="90">1時間30分</option>
-								<option value="120">2時間</option>
-								<option value="180">3時間</option>
-							</select>
-							<span className="field-hint">
-								この長さ以上、全員の予定が重なる時間を候補として探します。
-							</span>
-						</div>
-					</div>
-					<div className="field">
-						<label htmlFor="deadline">
-							回答期限 <small>任意</small>
-						</label>
-						<input
-							id="deadline"
-							name="response_deadline_at"
-							type="datetime-local"
-							defaultValue="2026-06-12T23:59"
-						/>
-					</div>
-				</section>
-				<div className="form-notice">
-					<Icon name="sparkle" size={17} />
-					<span>
-						<strong>候補日時を並べる必要はありません</strong>
-						参加者が登録した空き時間から、参加可能人数が多い時間を自動で見つけます。
-					</span>
+				<div className="grid items-stretch gap-6 xl:grid-cols-2">
+					<Card className="new-event-card h-full overflow-hidden">
+						<CardHeader className="border-b border-border pb-6">
+							<div className="flex items-center gap-3">
+								<span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">
+									<Icon name="info" size={21} />
+								</span>
+								<CardTitle>イベント情報</CardTitle>
+							</div>
+						</CardHeader>
+						<CardContent className="flex-1">
+							<FieldGroup>
+								<Field>
+									<FieldLabel htmlFor="title">
+										イベント名 <Badge variant="destructive">必須</Badge>
+									</FieldLabel>
+									<Input
+										id="title"
+										name="title"
+										defaultValue="プロジェクト打ち上げ 🎉"
+										required
+									/>
+								</Field>
+								<Field>
+									<FieldLabel htmlFor="description">
+										説明 <Badge variant="outline">任意</Badge>
+									</FieldLabel>
+									<Textarea id="description" name="description" rows={4} />
+								</Field>
+								<div className="grid gap-5 md:grid-cols-2">
+									<Field>
+										<FieldLabel htmlFor="owner">
+											主催者名 <Badge variant="destructive">必須</Badge>
+										</FieldLabel>
+										<Input
+											id="owner"
+											name="display_name"
+											defaultValue="山田 太郎"
+											required
+										/>
+									</Field>
+									<Field>
+										<FieldLabel htmlFor="timezone">
+											タイムゾーン <Badge variant="destructive">必須</Badge>
+										</FieldLabel>
+										<NativeSelect
+											id="timezone"
+											name="time_zone"
+											defaultValue="Asia/Tokyo"
+										>
+											<option value="Asia/Tokyo">日本時間（Asia/Tokyo）</option>
+										</NativeSelect>
+									</Field>
+								</div>
+							</FieldGroup>
+						</CardContent>
+					</Card>
+
+					<Card className="new-event-card h-full overflow-hidden">
+						<CardHeader className="border-b border-border pb-6">
+							<div className="flex items-center gap-3">
+								<span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">
+									<Icon name="calendar" size={21} />
+								</span>
+								<CardTitle>調整する期間</CardTitle>
+							</div>
+						</CardHeader>
+						<CardContent className="flex-1">
+							<FieldGroup>
+								<div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+									<Field>
+										<FieldLabel htmlFor="window-start">
+											期間の開始 <Badge variant="destructive">必須</Badge>
+										</FieldLabel>
+										<Input
+											id="window-start"
+											name="window_start_at"
+											type="datetime-local"
+											defaultValue="2026-06-14T09:00"
+											required
+										/>
+									</Field>
+									<span className="hidden h-14 items-center justify-center px-1 text-xl font-extrabold text-primary md:flex">
+										→
+									</span>
+									<Field>
+										<FieldLabel htmlFor="window-end">
+											期間の終了 <Badge variant="destructive">必須</Badge>
+										</FieldLabel>
+										<Input
+											id="window-end"
+											name="window_end_at"
+											type="datetime-local"
+											defaultValue="2026-06-21T22:00"
+											required
+										/>
+									</Field>
+								</div>
+
+								<Field>
+									<FieldLabel htmlFor="duration">
+										イベントに必要な時間
+										<Badge variant="destructive">必須</Badge>
+									</FieldLabel>
+									<NativeSelect
+										id="duration"
+										name="duration_minutes"
+										defaultValue="60"
+									>
+										<option value="30">30分</option>
+										<option value="60">1時間</option>
+										<option value="90">1時間30分</option>
+										<option value="120">2時間</option>
+										<option value="180">3時間</option>
+									</NativeSelect>
+								</Field>
+
+								<Field>
+									<FieldLabel htmlFor="deadline">
+										回答期限 <Badge variant="outline">任意</Badge>
+									</FieldLabel>
+									<Input
+										id="deadline"
+										name="response_deadline_at"
+										type="datetime-local"
+										defaultValue="2026-06-12T23:59"
+									/>
+								</Field>
+							</FieldGroup>
+						</CardContent>
+					</Card>
 				</div>
-				<div className="form-actions">
-					<button
-						className="button button-primary button-large"
+
+				<div className="flex flex-col items-center justify-center gap-3 pt-1 sm:flex-row-reverse">
+					<Button
+						className="event-create-button min-w-64"
 						type="submit"
+						size="lg"
 						disabled={submitting}
 					>
-						{submitting ? "作成しています…" : "イベントを作成する"}{" "}
-						<Icon name="arrow" size={18} />
-					</button>
-					<span>入力内容はあとから変更できます</span>
+						{submitting ? "作成しています…" : "イベントを作成する"}
+						<Icon name="arrow" size={19} />
+					</Button>
+					<span className="text-sm font-semibold text-muted-foreground">
+						入力内容はあとから変更できます
+					</span>
 				</div>
 			</Form>
 		</PageShell>
