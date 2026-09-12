@@ -211,7 +211,7 @@ export default function EditEvent({
 						</div>
 					</div>
 					<div className="field">
-						<label htmlFor="edit-duration">イベントに必要な時間</label>
+						<label htmlFor="edit-duration">イベントに必要な時間（分）</label>
 						<input
 							id="edit-duration"
 							name="duration_minutes"
