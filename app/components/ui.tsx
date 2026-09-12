@@ -273,12 +273,11 @@ export function PersistentInviteUrl() {
 	if (!inviteUrl) return null;
 
 	return (
-		<section className="persistent-invite-dock" aria-label="参加者用の招待URL">
+		<section className="persistent-invite-dock" aria-label="招待URL">
 			<span className="persistent-invite-dock-icon">
 				<Icon name="link" size={18} />
 			</span>
 			<div>
-				<strong>参加者用の招待URL</strong>
 				<a href={inviteUrl} target="_blank" rel="noreferrer" title={inviteUrl}>
 					{inviteUrl}
 				</a>

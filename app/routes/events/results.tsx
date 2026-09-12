@@ -8,6 +8,7 @@ import {
 	type Candidate,
 	type Event,
 	formatDateRange,
+	localDateTimeToIso,
 	minutesLabel,
 	type ParticipantAvailability,
 	type SchedulingGroup,
@@ -83,11 +84,39 @@ export async function clientAction({
 			return { success: "確定を取り消しました" };
 		}
 		if (intent === "confirm") {
+			const confirmationDate = String(formData.get("confirmation_date") ?? "");
+			const confirmationTime = String(formData.get("confirmation_time") ?? "");
+			const validDate = /^\d{4}-\d{2}-\d{2}$/.test(confirmationDate);
+			const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(confirmationTime);
+			const startAt =
+				validDate && validTime
+					? localDateTimeToIso(`${confirmationDate}T${confirmationTime}`)
+					: null;
+			const durationMinutes = Number(formData.get("duration_minutes"));
+			if (
+				!startAt ||
+				!Number.isInteger(durationMinutes) ||
+				durationMinutes < 5 ||
+				durationMinutes > 1440
+			) {
+				return data(
+					{
+						error: {
+							code: "invalid_confirmation_time",
+							message: "カレンダーで日付を選び、開始時刻を入力してください",
+						},
+					},
+					{ status: 400 },
+				);
+			}
+			const endAt = new Date(
+				new Date(startAt).getTime() + durationMinutes * 60_000,
+			).toISOString();
 			await apiRequest(confirmationPath, {
 				method: "PUT",
 				body: JSON.stringify({
-					start_at: String(formData.get("start_at") ?? ""),
-					end_at: String(formData.get("end_at") ?? ""),
+					start_at: startAt,
+					end_at: endAt,
 				}),
 			});
 			return { success: "開催日時を確定しました" };
@@ -175,6 +204,43 @@ function candidateAvailabilityLevel(candidate: Candidate) {
 	return "partial";
 }
 
+export function mergeCandidateIntervals(candidates: Candidate[]) {
+	const sorted = [...candidates].sort(
+		(left, right) =>
+			new Date(left.start_at).getTime() - new Date(right.start_at).getTime(),
+	);
+	const intervals: Candidate[] = [];
+	for (const candidate of sorted) {
+		const previous = intervals.at(-1);
+		const sameParticipants =
+			previous &&
+			previous.available_participant_count ===
+				candidate.available_participant_count &&
+			previous.total_participant_count === candidate.total_participant_count &&
+			[...previous.available_participant_ids].sort().join("\u0000") ===
+				[...candidate.available_participant_ids].sort().join("\u0000");
+		if (
+			previous &&
+			sameParticipants &&
+			new Date(candidate.start_at).getTime() <=
+				new Date(previous.end_at).getTime()
+		) {
+			if (
+				new Date(candidate.end_at).getTime() >
+				new Date(previous.end_at).getTime()
+			) {
+				previous.end_at = candidate.end_at;
+			}
+			continue;
+		}
+		intervals.push({
+			...candidate,
+			available_participant_ids: [...candidate.available_participant_ids],
+		});
+	}
+	return intervals;
+}
+
 export function HydrateFallback() {
 	return (
 		<PageShell showPersistentInviteUrl={false}>
@@ -229,20 +295,11 @@ export default function Results({
 		? dateParts(initialCandidate.start_at, event.time_zone).key.slice(0, 7)
 		: months[0];
 	const [activeMonth, setActiveMonth] = useState(initialMonth);
-	const [selectedCandidateKey, setSelectedCandidateKey] = useState(
-		initialCandidate
-			? `${initialCandidate.start_at}-${initialCandidate.end_at}`
-			: null,
-	);
 	const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
-	const firstCandidateKey = initialCandidate
-		? `${initialCandidate.start_at}-${initialCandidate.end_at}`
-		: null;
-	const selectionContext = `${activeGroup?.id ?? "whole-event"}\u0000${initialMonth}\u0000${firstCandidateKey ?? ""}`;
+	const selectionContext = `${activeGroup?.id ?? "whole-event"}\u0000${initialMonth}`;
 	useEffect(() => {
-		const [, nextMonth, nextCandidateKey] = selectionContext.split("\u0000");
+		const [, nextMonth] = selectionContext.split("\u0000");
 		setActiveMonth(nextMonth);
-		setSelectedCandidateKey(nextCandidateKey || null);
 		setExpandedDateKey(null);
 	}, [selectionContext]);
 	const activeMonthIndex = months.indexOf(activeMonth);
@@ -256,26 +313,20 @@ export default function Results({
 			candidate,
 		]);
 	}
-	const selectedCandidate = candidates.find(
-		(candidate) =>
-			`${candidate.start_at}-${candidate.end_at}` === selectedCandidateKey,
+	const intervalsByDate = new Map(
+		[...candidatesByDate].map(([key, dayCandidates]) => [
+			key,
+			mergeCandidateIntervals(dayCandidates),
+		]),
 	);
-	const expandedCandidates = expandedDateKey
-		? (candidatesByDate.get(expandedDateKey) ?? [])
+	const expandedIntervals = expandedDateKey
+		? (intervalsByDate.get(expandedDateKey) ?? [])
 		: [];
 	const changeMonth = (nextIndex: number) => {
 		const nextMonth = months[nextIndex];
 		if (!nextMonth) return;
 		setActiveMonth(nextMonth);
 		setExpandedDateKey(null);
-		const nextCandidate = candidates.find((candidate) =>
-			dateParts(candidate.start_at, event.time_zone).key.startsWith(nextMonth),
-		);
-		setSelectedCandidateKey(
-			nextCandidate
-				? `${nextCandidate.start_at}-${nextCandidate.end_at}`
-				: null,
-		);
 	};
 	const monthTitle = new Intl.DateTimeFormat("ja-JP", {
 		year: "numeric",
@@ -392,7 +443,7 @@ export default function Results({
 								人が回答
 							</span>
 							<p className="candidate-calendar-description">
-								必要時間を確保できる時間を、参加可能人数順に表示しています。
+								参加者が集まれる連続した時間帯を、日付ごとに表示しています。
 							</p>
 						</div>
 						<div className="schedule-calendar-shell">
@@ -428,8 +479,8 @@ export default function Results({
 										),
 									)}
 									{monthCells(activeMonth).map((cell, cellIndex) => {
-										const dayCandidates = cell.inMonth
-											? (candidatesByDate.get(cell.key) ?? [])
+										const dayIntervals = cell.inMonth
+											? (intervalsByDate.get(cell.key) ?? [])
 											: [];
 										const outsideWindow =
 											cell.key < startDateKey || cell.key > endDateKey;
@@ -437,23 +488,6 @@ export default function Results({
 										const openDateCandidates = () => {
 											if (!clickableDate) return;
 											setExpandedDateKey(cell.key);
-											if (dayCandidates.length === 0) {
-												setSelectedCandidateKey(null);
-												return;
-											}
-											const selectedOnThisDate = dayCandidates.some(
-												(candidate) =>
-													`${candidate.start_at}-${candidate.end_at}` ===
-													selectedCandidateKey,
-											);
-											if (!selectedOnThisDate) {
-												const [firstCandidate] = dayCandidates;
-												if (firstCandidate) {
-													setSelectedCandidateKey(
-														`${firstCandidate.start_at}-${firstCandidate.end_at}`,
-													);
-												}
-											}
 										};
 										return (
 											<div
@@ -464,7 +498,7 @@ export default function Results({
 													<button
 														type="button"
 														className="schedule-day-hit-area"
-														aria-label={`${cell.key}${dayCandidates.length > 0 ? "の候補を表示" : "を選択（候補なし）"}`}
+														aria-label={`${cell.key}${dayIntervals.length > 0 ? "の時間帯を表示" : "を選択（時間帯なし）"}`}
 														onClick={openDateCandidates}
 													/>
 												)}
@@ -474,42 +508,25 @@ export default function Results({
 													{cell.day}
 												</span>
 												<div className="schedule-day-candidates">
-													{dayCandidates.slice(0, 3).map((candidate) => {
-														const key = `${candidate.start_at}-${candidate.end_at}`;
-														return (
-															<button
-																className={`schedule-candidate ${candidateAvailabilityLevel(candidate)} ${selectedCandidateKey === key ? "selected" : ""}`}
-																key={key}
-																type="button"
-																onClick={(clickEvent) => {
-																	clickEvent.stopPropagation();
-																	setSelectedCandidateKey(key);
-																}}
-															>
-																<strong>
-																	{timeLabel(
-																		candidate.start_at,
-																		event.time_zone,
-																	)}
-																</strong>
-																<span>
-																	{candidate.available_participant_count}/
-																	{candidate.total_participant_count}人
-																</span>
-															</button>
-														);
-													})}
-													{dayCandidates.length > 3 && (
-														<button
-															className="more-candidates"
-															type="button"
-															onClick={(clickEvent) => {
-																clickEvent.stopPropagation();
-																openDateCandidates();
-															}}
+													{dayIntervals.slice(0, 2).map((interval) => (
+														<div
+															className={`schedule-gathering-interval ${candidateAvailabilityLevel(interval)}`}
+															key={`${interval.start_at}-${interval.end_at}-${interval.available_participant_ids.join("-")}`}
 														>
-															ほか{dayCandidates.length - 3}件
-														</button>
+															<strong>
+																{timeLabel(interval.start_at, event.time_zone)}
+																〜{timeLabel(interval.end_at, event.time_zone)}
+															</strong>
+															<span>
+																{interval.available_participant_count}/
+																{interval.total_participant_count}人
+															</span>
+														</div>
+													))}
+													{dayIntervals.length > 2 && (
+														<span className="more-candidates">
+															ほか{dayIntervals.length - 2}区間
+														</span>
 													)}
 												</div>
 											</div>
@@ -535,12 +552,12 @@ export default function Results({
 					<section className="candidate-summary candidate-options-panel">
 						<div className="section-title-row">
 							<div>
-								<span className="page-eyebrow">CANDIDATES</span>
-								<h2>候補を確認</h2>
-								<p>日付を選ぶと、その日の候補を一覧で確認できます。</p>
+								<span className="page-eyebrow">TIME RANGES</span>
+								<h2>集まれる時間帯</h2>
+								<p>日付を選ぶと、連続して集まれる時間帯を確認できます。</p>
 							</div>
 						</div>
-						{expandedDateKey && (
+						{expandedDateKey ? (
 							<div className="daily-candidate-drawer">
 								<div className="daily-candidate-heading">
 									<div>
@@ -552,7 +569,7 @@ export default function Results({
 												timeZone: "UTC",
 											}).format(new Date(`${expandedDateKey}T00:00:00Z`))}
 										</strong>
-										<span>{expandedCandidates.length}件の候補</span>
+										<span>{expandedIntervals.length}件の時間帯</span>
 									</div>
 									<button
 										type="button"
@@ -561,126 +578,47 @@ export default function Results({
 										閉じる
 									</button>
 								</div>
-								<div className="daily-candidate-list">
-									{expandedCandidates.length === 0 ? (
+								<div className="daily-interval-list">
+									{expandedIntervals.length === 0 ? (
 										<p className="daily-candidate-empty">
-											この日の候補はありません
+											この日に集まれる時間帯はありません
 										</p>
 									) : (
-										expandedCandidates.map((candidate) => {
-											const key = `${candidate.start_at}-${candidate.end_at}`;
-											return (
-												<button
-													className={
-														selectedCandidateKey === key ? "selected" : ""
-													}
-													key={key}
-													type="button"
-													onClick={() => setSelectedCandidateKey(key)}
-												>
+										expandedIntervals.map((interval) => (
+											<div
+												className={`daily-interval-row ${candidateAvailabilityLevel(interval)}`}
+												key={`${interval.start_at}-${interval.end_at}-${interval.available_participant_ids.join("-")}`}
+											>
+												<i />
+												<div>
 													<strong>
-														{timeLabel(candidate.start_at, event.time_zone)}〜
-														{timeLabel(candidate.end_at, event.time_zone)}
+														{timeLabel(interval.start_at, event.time_zone)}〜
+														{timeLabel(interval.end_at, event.time_zone)}
 													</strong>
-													<span>
-														{candidate.available_participant_count} /{" "}
-														{candidate.total_participant_count}人
-													</span>
-												</button>
-											);
-										})
+													<small>
+														{interval.available_participant_ids
+															.map((id) => participantById.get(id))
+															.filter(Boolean)
+															.join("、") || "該当する参加者はいません"}
+													</small>
+												</div>
+												<b>
+													{interval.available_participant_count} /{" "}
+													{interval.total_participant_count}人
+												</b>
+											</div>
+										))
 									)}
 								</div>
-							</div>
-						)}
-						{selectedCandidate ? (
-							<div
-								className={`selected-schedule-detail ${candidateAvailabilityLevel(selectedCandidate)}`}
-							>
-								<div className="selected-schedule-date">
-									<small>
-										{selectedCandidate.start_at === confirmedStart &&
-										selectedCandidate.end_at === confirmedEnd
-											? "確定した候補"
-											: "選択中の候補"}
-									</small>
-									<strong>
-										{formatDateRange(
-											selectedCandidate.start_at,
-											selectedCandidate.end_at,
-											event.time_zone,
-										)}
-									</strong>
-								</div>
-								<div className="selected-schedule-people">
-									<b>{selectedCandidate.available_participant_count}</b>
-									<span>
-										/ {selectedCandidate.total_participant_count}人が参加可能
-									</span>
-									<small>
-										{selectedCandidate.available_participant_ids
-											.map((id) => participantById.get(id))
-											.filter(Boolean)
-											.join("、") || "該当する参加者はいません"}
-									</small>
-								</div>
-								{isOrganizer && (
-									<Form method="post" className="confirm-candidate-form">
-										<input
-											type="hidden"
-											name="group_id"
-											value={activeGroup?.id ?? ""}
-										/>
-										{confirmedStart ? (
-											<button
-												className="button button-ghost cancel-confirmation-button"
-												type="submit"
-												name="intent"
-												value="unconfirm"
-												disabled={submitting}
-											>
-												{submitting ? "取り消しています…" : "確定を取り消す"}
-											</button>
-										) : (
-											<>
-												<input
-													type="hidden"
-													name="start_at"
-													value={selectedCandidate.start_at}
-												/>
-												<input
-													type="hidden"
-													name="end_at"
-													value={selectedCandidate.end_at}
-												/>
-												<button
-													className="button button-primary"
-													type="submit"
-													name="intent"
-													value="confirm"
-													disabled={submitting || event.status === "cancelled"}
-												>
-													{submitting ? "確定しています…" : "この候補で確定"}
-												</button>
-											</>
-										)}
-									</Form>
-								)}
 							</div>
 						) : (
 							<div className="empty-state compact calendar-empty-state">
 								<Icon name="clock" size={28} />
-								<h3>
-									{activeGroup && activeGroup.members.length === 0
-										? "このグループにはメンバーがいません"
-										: expandedDateKey
-											? "この日の共通候補はありません"
-											: "この月の共通候補はまだありません"}
-								</h3>
+								<h3>カレンダーから日付を選択</h3>
 								<p>
 									{activeGroup && activeGroup.members.length === 0
-										? "候補を集計するには、グループへ参加者を割り当ててください。"
-										: "参加者の回答が増えると、カレンダーに候補が表示されます。"}
+										? "時間帯を集計するには、グループへ参加者を割り当ててください。"
+										: "選択した日の、参加者が集まれる時間帯を表示します。"}
 								</p>
 								{isOrganizer &&
 									activeGroup &&
@@ -692,6 +630,113 @@ export default function Results({
 											メンバーを割り当てる
 										</Link>
 									)}
+							</div>
+						)}
+						{isOrganizer && (
+							<div className="manual-confirmation-panel">
+								<div className="manual-confirmation-heading">
+									<span className="page-eyebrow">FINAL SCHEDULE</span>
+									<h2>最終時刻を入力</h2>
+									<p>
+										日付は左のカレンダーから反映されます。開始時刻だけを入力してください。
+									</p>
+								</div>
+								{confirmedStart && confirmedEnd ? (
+									<div className="manual-confirmation-current">
+										<strong>
+											{formatDateRange(
+												confirmedStart,
+												confirmedEnd,
+												event.time_zone,
+											)}
+										</strong>
+										<Form method="post">
+											<input
+												type="hidden"
+												name="group_id"
+												value={activeGroup?.id ?? ""}
+											/>
+											<button
+												className="button button-ghost cancel-confirmation-button"
+												type="submit"
+												name="intent"
+												value="unconfirm"
+												disabled={submitting}
+											>
+												{submitting ? "取り消しています…" : "確定を取り消す"}
+											</button>
+										</Form>
+									</div>
+								) : (
+									<Form
+										key={expandedDateKey ?? "no-date"}
+										method="post"
+										className="manual-confirmation-form"
+									>
+										<input
+											type="hidden"
+											name="group_id"
+											value={activeGroup?.id ?? ""}
+										/>
+										<input
+											type="hidden"
+											name="duration_minutes"
+											value={
+												activeGroup?.duration_minutes ?? event.duration_minutes
+											}
+										/>
+										<input
+											type="hidden"
+											name="confirmation_date"
+											value={expandedDateKey ?? ""}
+										/>
+										<div className="manual-confirmation-date">
+											<span>開催日</span>
+											<strong>
+												{expandedDateKey
+													? new Intl.DateTimeFormat("ja-JP", {
+															year: "numeric",
+															month: "long",
+															day: "numeric",
+															weekday: "short",
+															timeZone: "UTC",
+														}).format(new Date(`${expandedDateKey}T00:00:00Z`))
+													: "カレンダーから日付を選択"}
+											</strong>
+										</div>
+										<label htmlFor="confirmation-time">開始時刻</label>
+										<input
+											id="confirmation-time"
+											className="manual-confirmation-time"
+											name="confirmation_time"
+											type="text"
+											inputMode="numeric"
+											placeholder="例：19:00"
+											pattern="(?:[01]\\d|2[0-3]):[0-5]\\d"
+											autoComplete="off"
+											required
+										/>
+										<small>
+											必要時間：
+											{minutesLabel(
+												activeGroup?.duration_minutes ?? event.duration_minutes,
+											)}
+										</small>
+										<button
+											className="button button-primary"
+											type="submit"
+											name="intent"
+											value="confirm"
+											disabled={
+												submitting ||
+												event.status === "cancelled" ||
+												!expandedDateKey
+											}
+										>
+											{submitting ? "確定しています…" : "この日時で確定"}
+										</button>
+									</Form>
+								)}
 							</div>
 						)}
 					</section>
@@ -783,35 +828,6 @@ export default function Results({
 					<Icon name="check" size={18} />
 					<strong>{actionData.success}</strong>
 				</div>
-			)}
-			{isOrganizer && confirmedStart && (
-				<section className="result-confirmation-panel result-confirmation-footer">
-					<div>
-						<span className="page-eyebrow">CONFIRM</span>
-						<h2>{activeGroup ? `${activeGroup.name}の日程` : "開催日時"}</h2>
-						<p>
-							{confirmedStart && confirmedEnd
-								? formatDateRange(confirmedStart, confirmedEnd, event.time_zone)
-								: "候補を選択して開催日時を確定してください。"}
-						</p>
-					</div>
-					<Form method="post">
-						<input
-							type="hidden"
-							name="group_id"
-							value={activeGroup?.id ?? ""}
-						/>
-						<button
-							className="button button-ghost"
-							type="submit"
-							name="intent"
-							value="unconfirm"
-							disabled={submitting}
-						>
-							{submitting ? "取り消しています…" : "確定を取り消す"}
-						</button>
-					</Form>
-				</section>
 			)}
 		</PageShell>
 	);

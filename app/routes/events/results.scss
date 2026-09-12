@@ -724,21 +724,105 @@
 	border-bottom: 1px solid currentColor;
 }
 .candidate-options-panel .selected-schedule-people {
-	grid-column: 1;
+	grid-column: 1 / -1;
 	min-width: 0;
 	padding: 0;
 	border-top: 0;
 	border-left: 0;
 }
-.candidate-options-panel .confirm-candidate-form {
-	grid-column: 2;
-	grid-row: 2;
-	align-self: center;
+.manual-confirmation-panel {
+	display: grid;
+	gap: 16px;
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid var(--line);
+}
+.manual-confirmation-heading h2 {
+	margin: 5px 0 6px;
+	font-size: 21px;
+}
+.manual-confirmation-heading p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.65;
+}
+.manual-confirmation-form {
+	display: grid;
+	gap: 10px;
+}
+.manual-confirmation-form > label {
+	font-size: 15px;
+	font-weight: 800;
+}
+.manual-confirmation-date {
+	display: grid;
+	gap: 3px;
+	padding: 12px 14px;
+	border: 1px solid #cfe6de;
+	border-radius: 10px;
+	background: #f7fcfa;
+}
+.manual-confirmation-date span {
+	color: var(--muted);
+	font-size: 12px;
+	font-weight: 800;
+}
+.manual-confirmation-date strong {
+	color: var(--ink);
+	font-size: 17px;
+	line-height: 1.45;
+}
+.manual-confirmation-time {
+	width: 100%;
+	height: 54px;
+	padding: 0 15px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: #fff;
+	color: var(--ink);
+	font-size: 21px;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	outline: none;
+}
+.manual-confirmation-time:focus {
+	border-color: var(--mint);
+	box-shadow: 0 0 0 3px var(--mint-soft);
+}
+.manual-confirmation-time::placeholder {
+	color: #9aa5a1;
+	font-size: 16px;
+	font-weight: 600;
+	letter-spacing: 0;
+}
+.manual-confirmation-form > small {
+	color: var(--muted);
+	font-size: 13px;
+	font-weight: 700;
+}
+.manual-confirmation-form > .button {
+	width: 100%;
+	min-height: 48px;
+	margin-top: 4px;
+}
+.manual-confirmation-current {
+	display: grid;
+	gap: 12px;
+}
+.manual-confirmation-current > strong {
+	padding: 14px;
+	border: 1px solid #bfe8db;
+	border-radius: 10px;
+	background: var(--primary-soft);
+	color: var(--primary-dark);
+	font-size: 17px;
+	line-height: 1.5;
+}
+.manual-confirmation-current .button {
+	width: 100%;
 }
 @media (min-width: 1051px) {
-	.results-right-column .daily-candidate-list {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
 	.candidate-calendar-panel .section-title-row {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
@@ -778,18 +862,9 @@
 		grid-template-columns: minmax(0, 1fr);
 	}
 	.candidate-options-panel .selected-schedule-date,
-	.candidate-options-panel .selected-schedule-people,
-	.candidate-options-panel .confirm-candidate-form {
+	.candidate-options-panel .selected-schedule-people {
 		grid-column: 1;
 		grid-row: auto;
-	}
-	.candidate-options-panel .confirm-candidate-form {
-		justify-self: stretch;
-		width: 100%;
-		padding-left: 0;
-	}
-	.candidate-options-panel .confirm-candidate-form .button {
-		width: 100%;
 	}
 }
 .availability-board .availability-list {
@@ -1107,6 +1182,36 @@
 .schedule-day-candidates button {
 	pointer-events: auto;
 }
+.schedule-gathering-interval {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 3px;
+	min-width: 0;
+	padding: 3px 2px 3px 6px;
+	border-left: 3px solid currentColor;
+}
+.schedule-gathering-interval strong {
+	overflow: hidden;
+	font-size: 12px;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.schedule-gathering-interval span {
+	font-size: 11px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+.schedule-gathering-interval.all {
+	color: #1f7b63;
+}
+.schedule-gathering-interval.high {
+	color: #99700f;
+}
+.schedule-gathering-interval.partial {
+	color: #b24f42;
+}
 .schedule-candidate {
 	width: 100%;
 	min-width: 0;
@@ -1357,45 +1462,67 @@
 	cursor: pointer;
 	text-decoration: underline;
 }
-.daily-candidate-list {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 6px;
+.daily-interval-list {
+	display: flex;
+	flex-direction: column;
 }
 .daily-candidate-empty {
-	grid-column: 1 / -1;
 	margin: 0;
 	padding: 16px;
 	border: 1px dashed #c7ddd5;
-	border-radius: 10px;
+	border-radius: 8px;
 	background: #fff;
 	color: var(--muted);
 	font-size: 14px;
 	font-weight: 700;
 	text-align: center;
 }
-.daily-candidate-list button {
-	padding: 9px;
-	border: 1px solid var(--line);
-	border-radius: 7px;
-	background: white;
+.daily-interval-row {
+	display: grid;
+	grid-template-columns: 5px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 11px;
+	padding: 13px 2px;
+	border-bottom: 1px solid var(--line);
+}
+.daily-interval-row:last-child {
+	border-bottom: 0;
+}
+.daily-interval-row > i {
+	align-self: stretch;
+	min-height: 42px;
+	border-radius: 999px;
+	background: currentColor;
+}
+.daily-interval-row > div {
 	display: flex;
+	min-width: 0;
 	flex-direction: column;
-	gap: 2px;
-	text-align: left;
-	cursor: pointer;
+	gap: 3px;
 }
-.daily-candidate-list button.selected {
-	border-color: var(--mint);
-	box-shadow: 0 0 0 2px var(--mint-soft);
+.daily-interval-row strong {
+	color: var(--ink);
+	font-size: 17px;
 }
-.daily-candidate-list strong {
-	font:
-		800 15px / 1.3 var(--font-gothic);
-}
-.daily-candidate-list span {
+.daily-interval-row small {
+	overflow: hidden;
 	color: var(--muted);
-	font-size: 15px;
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.daily-interval-row > b {
+	font-size: 14px;
+	white-space: nowrap;
+}
+.daily-interval-row.all {
+	color: #22876b;
+}
+.daily-interval-row.high {
+	color: #b38318;
+}
+.daily-interval-row.partial {
+	color: #bd5a4c;
 }
 .candidate-cards {
 	display: grid;

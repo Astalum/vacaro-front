@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Event, SchedulingGroup, User } from "../../lib/api";
-import { clientAction, clientLoader } from "./results";
+import type { Candidate, Event, SchedulingGroup, User } from "../../lib/api";
+import { clientAction, clientLoader, mergeCandidateIntervals } from "./results";
 
 function response(data: unknown) {
 	return Promise.resolve(
@@ -10,6 +10,57 @@ function response(data: unknown) {
 		}),
 	);
 }
+
+describe("mergeCandidateIntervals", () => {
+	it("merges overlapping candidates with the same participants into a time range", () => {
+		const base = {
+			available_participant_count: 2,
+			total_participant_count: 3,
+			available_participant_ids: ["participant-1", "participant-2"],
+		} satisfies Omit<Candidate, "start_at" | "end_at">;
+		const intervals = mergeCandidateIntervals([
+			{
+				...base,
+				start_at: "2026-09-10T01:30:00Z",
+				end_at: "2026-09-10T03:30:00Z",
+			},
+			{
+				...base,
+				start_at: "2026-09-10T01:00:00Z",
+				end_at: "2026-09-10T03:00:00Z",
+			},
+		]);
+
+		expect(intervals).toEqual([
+			{
+				...base,
+				start_at: "2026-09-10T01:00:00Z",
+				end_at: "2026-09-10T03:30:00Z",
+			},
+		]);
+	});
+
+	it("keeps ranges separate when the available participants differ", () => {
+		const intervals = mergeCandidateIntervals([
+			{
+				start_at: "2026-09-10T01:00:00Z",
+				end_at: "2026-09-10T03:00:00Z",
+				available_participant_count: 1,
+				total_participant_count: 2,
+				available_participant_ids: ["participant-1"],
+			},
+			{
+				start_at: "2026-09-10T01:30:00Z",
+				end_at: "2026-09-10T03:30:00Z",
+				available_participant_count: 1,
+				total_participant_count: 2,
+				available_participant_ids: ["participant-2"],
+			},
+		]);
+
+		expect(intervals).toHaveLength(2);
+	});
+});
 
 describe("results clientLoader", () => {
 	afterEach(() => vi.restoreAllMocks());
@@ -194,8 +245,9 @@ describe("results clientAction", () => {
 		const formData = new FormData();
 		formData.set("intent", "confirm");
 		formData.set("group_id", "");
-		formData.set("start_at", "2026-09-10T01:00:00Z");
-		formData.set("end_at", "2026-09-10T02:00:00Z");
+		formData.set("confirmation_date", "2026-09-10");
+		formData.set("confirmation_time", "10:00");
+		formData.set("duration_minutes", "60");
 
 		const result = await clientAction({
 			params: { eventId: "event-1" },
@@ -208,7 +260,44 @@ describe("results clientAction", () => {
 		expect(result).toEqual({ success: "開催日時を確定しました" });
 		expect(fetchMock).toHaveBeenCalledWith(
 			"/api/v1/events/event-1/confirmation",
-			expect.objectContaining({ method: "PUT" }),
+			expect.objectContaining({
+				method: "PUT",
+				body: JSON.stringify({
+					start_at: "2026-09-10T01:00:00.000Z",
+					end_at: "2026-09-10T02:00:00.000Z",
+				}),
+			}),
+		);
+	});
+
+	it("confirms a group from a manually entered start time", async () => {
+		const fetchMock = vi.fn(() => response({ status: "confirmed" }));
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "confirm");
+		formData.set("group_id", "group-1");
+		formData.set("confirmation_date", "2026-09-10");
+		formData.set("confirmation_time", "19:00");
+		formData.set("duration_minutes", "45");
+
+		const result = await clientAction({
+			params: { eventId: "event-1" },
+			request: new Request("https://vacaro.test/events/event-1/results", {
+				method: "POST",
+				body: formData,
+			}),
+		} as Parameters<typeof clientAction>[0]);
+
+		expect(result).toEqual({ success: "開催日時を確定しました" });
+		expect(fetchMock).toHaveBeenCalledWith(
+			"/api/v1/events/event-1/groups/group-1/confirmation",
+			expect.objectContaining({
+				method: "PUT",
+				body: JSON.stringify({
+					start_at: "2026-09-10T10:00:00.000Z",
+					end_at: "2026-09-10T10:45:00.000Z",
+				}),
+			}),
 		);
 	});
 
