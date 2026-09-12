@@ -65,6 +65,7 @@
 	.hero-copy {
 		position: relative;
 		z-index: 2;
+		transform: none;
 	}
 	.eyebrow,
 	.hero-actions,
@@ -155,12 +156,6 @@
 	}
 	.page-intro h1 {
 		font-size: 33px;
-	}
-	.progress-steps li span {
-		display: none;
-	}
-	.progress-steps li:not(:last-child)::after {
-		margin-right: 12px;
 	}
 	.form-section,
 	.respond-panel {
@@ -353,15 +348,23 @@
 		flex-wrap: wrap;
 	}
 	.selected-schedule-detail {
-		grid-template-columns: auto 1fr;
+		grid-template-columns: 1fr;
 		align-items: start;
 	}
 	.selected-schedule-people {
-		grid-column: 2;
+		grid-column: 1;
 		min-width: 0;
 		padding: 10px 0 0;
 		border-top: 1px solid #bfe0d6;
 		border-left: 0;
+	}
+	.confirm-candidate-form {
+		justify-self: stretch;
+		width: 100%;
+		padding: 4px 0 0;
+	}
+	.confirm-candidate-form .button {
+		width: 100%;
 	}
 	.daily-candidate-list {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -477,6 +480,16 @@
 	.page-main {
 		padding-bottom: 64px;
 	}
+	.persistent-invite-dock {
+		width: 100%;
+		padding: 9px 10px;
+	}
+	.persistent-invite-dock-icon {
+		display: none;
+	}
+	.persistent-invite-dock button {
+		padding-inline: 9px;
+	}
 	.manage-actions,
 	.form-actions.horizontal {
 		flex-wrap: wrap;
@@ -589,6 +602,13 @@
 	.share-event {
 		align-items: flex-start;
 	}
+	.created-event-meta {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.created-event-meta > span {
+		width: 100%;
+	}
 	.date-tile {
 		width: 50px;
 		height: 55px;
@@ -601,6 +621,8 @@
 	.copy-field span {
 		width: 100%;
 		padding: 12px;
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 	.copy-field button {
 		min-height: 44px;
@@ -685,4 +707,3 @@
 		width: 100%;
 	}
 }
-

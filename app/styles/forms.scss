@@ -17,47 +17,6 @@
 	line-height: 1.7;
 	font-size: 19px;
 }
-.progress-steps {
-	list-style: none;
-	padding: 0;
-	margin: 0 auto 38px;
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	max-width: 530px;
-	counter-reset: step;
-}
-.progress-steps li {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	color: #a7a9af;
-	font-size: 16px;
-	position: relative;
-}
-.progress-steps li:not(:last-child)::after {
-	content: "";
-	height: 1px;
-	background: #dedbd4;
-	flex: 1;
-	margin: 0 9px;
-}
-.progress-steps b {
-	width: 24px;
-	height: 24px;
-	border-radius: 50%;
-	background: #e8e6e0;
-	display: grid;
-	place-items: center;
-	color: white;
-	font-size: 15px;
-}
-.progress-steps li.active {
-	color: var(--ink);
-	font-weight: 600;
-}
-.progress-steps li.active b {
-	background: var(--coral);
-}
 .form-stack {
 	display: flex;
 	flex-direction: column;
@@ -89,7 +48,7 @@
 	border-radius: 50%;
 	background: var(--coral-soft);
 	color: var(--coral);
-	font: 700 16px "DM Sans";
+	font: 800 16px var(--font-gothic);
 }
 .form-section-title h2,
 .panel-heading h2 {
@@ -126,7 +85,7 @@
 }
 .field label small {
 	color: #989ba3;
-	font-weight: 500;
+	font-weight: 600;
 	margin-left: 5px;
 }
 .field input,
@@ -159,7 +118,7 @@
 }
 .two-cols {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 	gap: 18px;
 }
 .candidate-list {
@@ -187,7 +146,7 @@
 	color: white;
 	display: grid;
 	place-items: center;
-	font: 700 15px "DM Sans";
+	font: 800 15px var(--font-gothic);
 	flex: 0 0 auto;
 	margin-bottom: 9px;
 }
@@ -275,4 +234,3 @@
 .compact-section {
 	padding-block: 27px;
 }
-

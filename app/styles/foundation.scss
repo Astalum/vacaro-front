@@ -1,20 +1,31 @@
 :root {
 	--page-gutter: 24px;
+	--font-gothic: "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+		"Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
 	--ink: #17243d;
 	--muted: #687188;
-	--line: #e7e4dd;
-	--paper: #fbfaf7;
+	--line: #dce9e4;
+	--paper: #f8fcfa;
 	--white: #ffffff;
-	--coral: #ff725e;
-	--coral-dark: #ed5c49;
-	--coral-soft: #fff0ec;
+	--primary: #2da982;
+	--primary-dark: #238c6d;
+	--primary-soft: #e8f8f3;
+	--button-emerald: #a8e6d2;
+	--button-emerald-hover: #8fdabd;
+	--button-emerald-foreground: #173d34;
+	/* Backward-compatible aliases for existing page styles. */
+	--coral: var(--primary);
+	--coral-dark: var(--primary-dark);
+	--coral-soft: var(--primary-soft);
+	--danger-soft: #fff0ec;
 	--yellow: #f6c854;
 	--yellow-soft: #fff8df;
 	--mint: #48b99a;
 	--mint-soft: #e8f8f3;
 	--navy: #17243d;
 	--shadow: 0 18px 50px rgba(23, 36, 61, 0.09);
-	font-family: "Noto Sans JP", sans-serif;
+	font-family: var(--font-gothic);
+	font-weight: 600;
 	color: var(--ink);
 	background: var(--paper);
 	font-synthesis: none;
@@ -31,11 +42,24 @@ body {
 	min-width: 320px;
 	background: var(--paper);
 	color: var(--ink);
+	font-family: var(--font-gothic);
+	font-weight: 600;
 }
 button,
 input,
-textarea {
+textarea,
+select {
 	font: inherit;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+strong,
+b {
+	font-weight: 800;
 }
 button,
 a {
@@ -66,10 +90,74 @@ button {
 	flex: 0 0 auto;
 }
 
+.persistent-invite-dock {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 12px;
+	width: 100%;
+	margin: 24px 0 0;
+	padding: 14px 16px;
+	border: 1px solid #cfe6de;
+	border-radius: 14px;
+	background: #fff;
+	box-shadow: none;
+}
+.persistent-invite-dock-icon {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 9px;
+	background: var(--button-emerald);
+	color: var(--button-emerald-foreground);
+}
+.persistent-invite-dock > div {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.persistent-invite-dock strong {
+	font-size: 12px;
+	line-height: 1.3;
+	color: var(--primary-dark);
+}
+.persistent-invite-dock a {
+	overflow: hidden;
+	color: var(--ink);
+	font-size: 13px;
+	line-height: 1.4;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.persistent-invite-dock a:hover {
+	color: var(--primary-dark);
+	text-decoration: underline;
+}
+.persistent-invite-dock button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	min-height: 42px;
+	padding: 0 16px;
+	border: 0;
+	border-radius: 9px;
+	background: var(--button-emerald);
+	color: var(--button-emerald-foreground);
+	font-size: 14px;
+	font-weight: 800;
+	cursor: pointer;
+}
+.persistent-invite-dock button:hover {
+	background: var(--button-emerald-hover);
+}
+
 .app-header {
 	height: 76px;
 	border-bottom: 1px solid rgba(23, 36, 61, 0.08);
-	background: rgba(251, 250, 247, 0.87);
+	background: rgba(248, 252, 250, 0.87);
 	backdrop-filter: blur(15px);
 	position: relative;
 	z-index: 20;
@@ -88,8 +176,7 @@ button {
 	align-items: center;
 	gap: 10px;
 	font:
-		700 29px / 1 "DM Sans",
-		sans-serif;
+		800 29px / 1 var(--font-gothic);
 	letter-spacing: -0.8px;
 }
 .brand-mark {
@@ -150,8 +237,7 @@ button {
 	display: inline-grid;
 	place-items: center;
 	font:
-		700 17px / 1 "DM Sans",
-		sans-serif;
+		800 17px / 1 var(--font-gothic);
 	flex: 0 0 auto;
 }
 .account-avatar {
@@ -163,8 +249,7 @@ button {
 	background: var(--coral-soft);
 	color: var(--coral);
 	font:
-		700 17px / 1 "DM Sans",
-		sans-serif;
+		800 17px / 1 var(--font-gothic);
 }
 
 .button {
@@ -188,13 +273,13 @@ button {
 	transform: translateY(-1px);
 }
 .button-primary {
-	background: var(--coral);
-	color: white;
-	box-shadow: 0 8px 20px rgba(255, 114, 94, 0.23);
+	background: var(--button-emerald);
+	color: var(--button-emerald-foreground);
+	box-shadow: 0 8px 20px rgba(82, 179, 148, 0.18);
 }
 .button-primary:hover {
-	background: var(--coral-dark);
-	box-shadow: 0 10px 25px rgba(255, 114, 94, 0.3);
+	background: var(--button-emerald-hover);
+	box-shadow: 0 10px 24px rgba(70, 166, 135, 0.22);
 }
 .button-dark {
 	background: var(--ink);
@@ -207,6 +292,16 @@ button {
 	background: white;
 	color: var(--ink);
 	border: 1px solid var(--line);
+}
+.event-create-button {
+	background: var(--button-emerald);
+	color: var(--button-emerald-foreground);
+	box-shadow: 0 8px 20px rgba(82, 179, 148, 0.18);
+}
+.event-create-button:hover {
+	background: var(--button-emerald-hover);
+	color: var(--button-emerald-foreground);
+	box-shadow: 0 10px 24px rgba(70, 166, 135, 0.22);
 }
 .button-small {
 	min-height: 38px;
@@ -243,4 +338,3 @@ button {
 	font-weight: 600;
 	margin-bottom: 25px;
 }
-

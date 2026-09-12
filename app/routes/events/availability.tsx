@@ -1,6 +1,6 @@
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { data, Form, Link, useNavigation } from "react-router";
-import { Icon, PageShell } from "../../components/ui";
+import { Icon, PageShell, PersistentInviteUrl } from "../../components/ui";
 import {
 	ApiError,
 	type AvailabilityInterval,
@@ -248,7 +248,7 @@ function pointerMinutes(clientY: number, target: HTMLElement) {
 
 export function HydrateFallback() {
 	return (
-		<PageShell fullScreen>
+		<PageShell fullScreen showPersistentInviteUrl={false}>
 			<div className="schedule-loading">回答内容を読み込んでいます…</div>
 		</PageShell>
 	);
@@ -406,7 +406,7 @@ export default function AvailabilityPage({
 	const submittingIntent = navigation.formData?.get("intent");
 
 	return (
-		<PageShell fullScreen>
+		<PageShell fullScreen showPersistentInviteUrl={false}>
 			<Form method="post" className="schedule-page">
 				<input type="hidden" name="intervals" value={JSON.stringify(ranges)} />
 				<input
@@ -657,6 +657,7 @@ export default function AvailabilityPage({
 					{actionData?.kind === "error" && (
 						<p className="schedule-message error">{actionData.error.message}</p>
 					)}
+					<PersistentInviteUrl />
 					<footer className="schedule-submit">
 						<button
 							type="submit"

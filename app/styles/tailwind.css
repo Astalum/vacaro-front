@@ -1,1 +1,53 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	--shadcn-background: #f8fcfa;
+	--shadcn-foreground: #17243d;
+	--shadcn-card: #ffffff;
+	--shadcn-card-foreground: #17243d;
+	--shadcn-primary: #2da982;
+	--shadcn-primary-foreground: #ffffff;
+	--shadcn-secondary: #e8f8f3;
+	--shadcn-secondary-foreground: #126b58;
+	--shadcn-muted: #f3f6f4;
+	--shadcn-muted-foreground: #687188;
+	--shadcn-accent: #e8f8f3;
+	--shadcn-accent-foreground: #126b58;
+	--shadcn-destructive: #ef6254;
+	--shadcn-border: #dce9e4;
+	--shadcn-input: #cfe3dc;
+	--shadcn-ring: #2da982;
+	--shadcn-radius: 0.875rem;
+}
+
+@theme inline {
+	--color-background: var(--shadcn-background);
+	--color-foreground: var(--shadcn-foreground);
+	--color-card: var(--shadcn-card);
+	--color-card-foreground: var(--shadcn-card-foreground);
+	--color-primary: var(--shadcn-primary);
+	--color-primary-foreground: var(--shadcn-primary-foreground);
+	--color-secondary: var(--shadcn-secondary);
+	--color-secondary-foreground: var(--shadcn-secondary-foreground);
+	--color-muted: var(--shadcn-muted);
+	--color-muted-foreground: var(--shadcn-muted-foreground);
+	--color-accent: var(--shadcn-accent);
+	--color-accent-foreground: var(--shadcn-accent-foreground);
+	--color-destructive: var(--shadcn-destructive);
+	--color-border: var(--shadcn-border);
+	--color-input: var(--shadcn-input);
+	--color-ring: var(--shadcn-ring);
+	--radius-sm: calc(var(--shadcn-radius) - 4px);
+	--radius-md: calc(var(--shadcn-radius) - 2px);
+	--radius-lg: var(--shadcn-radius);
+	--radius-xl: calc(var(--shadcn-radius) + 4px);
+	--font-sans: var(--font-gothic);
+}
+
+@layer base {
+	button:not(:disabled) {
+		cursor: pointer;
+	}
+}

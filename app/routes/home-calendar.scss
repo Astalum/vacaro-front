@@ -22,11 +22,7 @@
 	height: 9px;
 	position: relative;
 	margin-right: 12px;
-	background: repeating-linear-gradient(
-		90deg,
-		#f0eee9 0 1px,
-		transparent 1px 25%
-	);
+	background: #f0eee9;
 }
 .mock-free-grid > div > span i {
 	position: absolute;

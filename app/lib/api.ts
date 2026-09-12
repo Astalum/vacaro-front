@@ -1,5 +1,6 @@
 export type AccountType = "guest" | "registered";
 export type EventStatus = "open" | "confirmed" | "cancelled";
+export type SchedulingMode = "whole_event" | "groups";
 export type ParticipantRole = "organizer" | "member";
 export type ResponseStatus = "pending" | "submitted";
 export type AvailabilitySource = "manual" | "google_calendar";
@@ -23,6 +24,7 @@ export interface Event {
 	window_start_at: string;
 	window_end_at: string;
 	duration_minutes: number;
+	scheduling_mode: SchedulingMode;
 	status: EventStatus;
 	confirmed_start_at: string | null;
 	confirmed_end_at: string | null;
@@ -47,6 +49,19 @@ export interface Participant {
 	updated_at: string;
 }
 
+export interface SchedulingGroup {
+	id: string;
+	event_id: string;
+	name: string;
+	duration_minutes: number;
+	confirmed_start_at: string | null;
+	confirmed_end_at: string | null;
+	member_count: number;
+	members: Participant[];
+	created_at: string;
+	updated_at: string;
+}
+
 export interface AvailabilityInterval {
 	id?: string;
 	participant_id?: string;
@@ -66,6 +81,111 @@ export interface GoogleCalendar {
 }
 
 export const CALENDAR_SELECTION_STORAGE_KEY = "vacaro.calendar-selection";
+export const CALENDAR_AVAILABILITY_WINDOW_STORAGE_KEY =
+	"vacaro.calendar-availability-window";
+export const EVENT_INVITE_URLS_STORAGE_KEY = "vacaro.event-invite-urls";
+export const EVENT_INVITE_URL_UPDATED_EVENT = "vacaro:invite-url-updated";
+
+export function savedEventInviteUrl(eventID: string) {
+	try {
+		const stored = window.localStorage.getItem(EVENT_INVITE_URLS_STORAGE_KEY);
+		const urls = stored ? (JSON.parse(stored) as unknown) : null;
+		if (
+			urls &&
+			typeof urls === "object" &&
+			eventID in urls &&
+			typeof (urls as Record<string, unknown>)[eventID] === "string"
+		) {
+			return (urls as Record<string, string>)[eventID];
+		}
+	} catch {
+		// Storage may be unavailable in privacy-focused browser modes.
+	}
+	return null;
+}
+
+export function saveEventInviteUrl(eventID: string, inviteUrl: string) {
+	try {
+		const stored = window.localStorage.getItem(EVENT_INVITE_URLS_STORAGE_KEY);
+		const parsed = stored ? (JSON.parse(stored) as unknown) : null;
+		const urls =
+			parsed && typeof parsed === "object"
+				? (parsed as Record<string, string>)
+				: {};
+		urls[eventID] = inviteUrl;
+		window.localStorage.setItem(
+			EVENT_INVITE_URLS_STORAGE_KEY,
+			JSON.stringify(urls),
+		);
+	} catch {
+		// The URL remains visible for the current navigation when storage is blocked.
+	}
+	window.dispatchEvent(
+		new CustomEvent(EVENT_INVITE_URL_UPDATED_EVENT, {
+			detail: { eventID, inviteUrl },
+		}),
+	);
+	return inviteUrl;
+}
+
+export interface CalendarAvailabilityWindow {
+	start: string;
+	end: string;
+}
+
+export const DEFAULT_CALENDAR_AVAILABILITY_WINDOW: CalendarAvailabilityWindow =
+	{
+		start: "09:00",
+		end: "18:00",
+	};
+
+function isTimeValue(value: unknown): value is string {
+	return typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+export function savedCalendarAvailabilityWindow(): CalendarAvailabilityWindow {
+	try {
+		const value = window.localStorage.getItem(
+			CALENDAR_AVAILABILITY_WINDOW_STORAGE_KEY,
+		);
+		const saved = value ? (JSON.parse(value) as unknown) : null;
+		if (
+			saved &&
+			typeof saved === "object" &&
+			"start" in saved &&
+			"end" in saved &&
+			isTimeValue(saved.start) &&
+			isTimeValue(saved.end) &&
+			saved.start < saved.end
+		) {
+			return { start: saved.start, end: saved.end };
+		}
+	} catch {
+		// Storage may be unavailable in privacy-focused browser modes.
+	}
+	return { ...DEFAULT_CALENDAR_AVAILABILITY_WINDOW };
+}
+
+export function saveCalendarAvailabilityWindow(
+	range: CalendarAvailabilityWindow,
+) {
+	if (
+		!isTimeValue(range.start) ||
+		!isTimeValue(range.end) ||
+		range.start >= range.end
+	) {
+		return false;
+	}
+	try {
+		window.localStorage.setItem(
+			CALENDAR_AVAILABILITY_WINDOW_STORAGE_KEY,
+			JSON.stringify(range),
+		);
+		return true;
+	} catch {
+		return false;
+	}
+}
 
 export function savedCalendarIDs(calendars: GoogleCalendar[]) {
 	const availableIDs = new Set(calendars.map((calendar) => calendar.id));

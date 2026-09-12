@@ -25,6 +25,7 @@ import {
 	apiRequest,
 	type EventWithInvite,
 	localDateTimeToIso,
+	saveEventInviteUrl,
 	type User,
 } from "../../lib/api";
 import type { Route } from "./+types/new";
@@ -62,11 +63,15 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 				window_start_at: localDateTimeToIso(formData.get("window_start_at")),
 				window_end_at: localDateTimeToIso(formData.get("window_end_at")),
 				duration_minutes: Number(formData.get("duration_minutes")),
+				scheduling_mode: String(
+					formData.get("scheduling_mode") ?? "whole_event",
+				),
 				response_deadline_at: localDateTimeToIso(
 					formData.get("response_deadline_at"),
 				),
 			}),
 		});
+		saveEventInviteUrl(created.id, created.invite_url);
 		return redirect(
 			`/events/${created.id}/created?invite_url=${encodeURIComponent(created.invite_url)}`,
 		);
@@ -216,6 +221,25 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 											<SelectItem value="90">1時間30分</SelectItem>
 											<SelectItem value="120">2時間</SelectItem>
 											<SelectItem value="180">3時間</SelectItem>
+										</SelectContent>
+									</Select>
+								</Field>
+
+								<Field>
+									<FieldLabel htmlFor="scheduling-mode">
+										調整単位 <Badge variant="destructive">必須</Badge>
+									</FieldLabel>
+									<Select name="scheduling_mode" defaultValue="whole_event">
+										<SelectTrigger id="scheduling-mode">
+											<SelectValue placeholder="調整単位を選択" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="whole_event">
+												イベント全体で日程調整
+											</SelectItem>
+											<SelectItem value="groups">
+												小グループごとに日程調整
+											</SelectItem>
 										</SelectContent>
 									</Select>
 								</Field>

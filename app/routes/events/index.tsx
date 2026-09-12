@@ -38,9 +38,11 @@ export function HydrateFallback() {
 function EventList({
 	events,
 	showAnswerLink = false,
+	showManageLink = false,
 }: {
 	events: Event[];
 	showAnswerLink?: boolean;
+	showManageLink?: boolean;
 }) {
 	return (
 		<div className="event-list">
@@ -75,6 +77,14 @@ function EventList({
 								to={`/events/${event.id}/availability`}
 							>
 								回答ページへ <Icon name="arrow" size={15} />
+							</Link>
+						)}
+						{showManageLink && (
+							<Link
+								className="button button-ghost"
+								to={`/events/${event.id}/manage`}
+							>
+								管理画面へ <Icon name="users" size={15} />
 							</Link>
 						)}
 						<Link
@@ -127,7 +137,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							<b>{createdEvents.length}件</b>
 						</header>
 						{createdEvents.length > 0 ? (
-							<EventList events={createdEvents} showAnswerLink />
+							<EventList events={createdEvents} showAnswerLink showManageLink />
 						) : (
 							<p className="event-section-empty">
 								作成したイベントはまだありません。

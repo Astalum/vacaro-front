@@ -8,7 +8,7 @@
 }
 .not-found > span {
 	color: #e2ded5;
-	font: 700 60px / 1 "DM Sans";
+	font: 800 60px / 1 var(--font-gothic);
 }
 .empty-calendar {
 	width: 84px;
@@ -30,4 +30,3 @@
 	font-size: 17px;
 	margin-bottom: 25px;
 }
-

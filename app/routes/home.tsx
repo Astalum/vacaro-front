@@ -1,5 +1,6 @@
-import { Link, useSearchParams } from "react-router";
+import { Link, redirect, useSearchParams } from "react-router";
 import { AppHeader, Icon } from "../components/ui";
+import type { Route } from "./+types/home";
 
 export function meta() {
 	return [
@@ -8,16 +9,22 @@ export function meta() {
 	];
 }
 
+export function loader({ request }: Route.LoaderArgs) {
+	const url = new URL(request.url);
+	if (url.searchParams.get("google_calendar") === "connected") {
+		return redirect("/account?google_calendar=connected");
+	}
+	return null;
+}
+
 export default function Home() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const notice =
 		searchParams.get("google_login") === "success"
 			? "Googleログインが完了しました。現在のイベントと回答を引き継いでいます。"
-			: searchParams.get("google_calendar") === "connected"
-				? "Googleカレンダーを接続しました。参加可能時間の入力画面から空き時間を取り込めます。"
-				: searchParams.get("logout") === "success"
-					? "ログアウトしました。"
-					: null;
+			: searchParams.get("logout") === "success"
+				? "ログアウトしました。"
+				: null;
 	return (
 		<div className="site-shell landing-shell">
 			<AppHeader />
@@ -52,7 +59,7 @@ export default function Home() {
 						</p>
 						<div className="hero-actions">
 							<Link
-								className="button button-primary button-large"
+								className="button button-primary event-create-button button-large"
 								to="/events/new"
 							>
 								イベントを作る <Icon name="arrow" size={18} />
@@ -63,10 +70,12 @@ export default function Home() {
 						</div>
 						<div>
 							<p className="hero-note">
-								<Icon name="check" size={14} /> アカウント登録なし・無料で使えます！
+								<Icon name="check" size={14} />{" "}
+								アカウント登録なし・無料で使えます！
 							</p>
 							<p className="hero-note">
-								<Icon name="check" size={14} /> アカウント登録でGoogleカレンダー連携も！
+								<Icon name="check" size={14} />{" "}
+								アカウント登録でGoogleカレンダー連携も！
 							</p>
 						</div>
 					</div>
