@@ -13,7 +13,7 @@ function response(data: unknown) {
 describe("manage clientAction", () => {
 	afterEach(() => vi.restoreAllMocks());
 
-	it("enables group scheduling and creates the first group with members", async () => {
+	it("migrates a legacy event and creates its first small group", async () => {
 		const requests: Array<{ path: string; method: string; body: unknown }> = [];
 		vi.stubGlobal(
 			"fetch",
@@ -59,7 +59,7 @@ describe("manage clientAction", () => {
 			},
 		]);
 		expect(result).toEqual({
-			success: "小グループ方式へ切り替えて作成しました",
+			success: "小グループを作成しました",
 		});
 	});
 });

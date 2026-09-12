@@ -124,6 +124,65 @@ describe("results clientLoader", () => {
 		);
 		expect(requestedPaths).toContain("/api/v1/events/event-1/availability");
 	});
+
+	it("treats the whole group as the default when small groups exist", async () => {
+		const event = {
+			id: "event-1",
+			created_by_user_id: "user-1",
+			title: "グループ調整",
+			description: null,
+			time_zone: "Asia/Tokyo",
+			window_start_at: "2026-09-10T00:00:00Z",
+			window_end_at: "2026-09-12T00:00:00Z",
+			duration_minutes: 60,
+			scheduling_mode: "groups",
+			status: "open",
+			confirmed_start_at: null,
+			confirmed_end_at: null,
+			response_deadline_at: null,
+			created_at: "2026-09-01T00:00:00Z",
+			updated_at: "2026-09-01T00:00:00Z",
+		} satisfies Event;
+		const groups = [
+			{
+				id: "group-1",
+				event_id: event.id,
+				name: "A",
+				duration_minutes: 60,
+				confirmed_start_at: null,
+				confirmed_end_at: null,
+				member_count: 0,
+				members: [],
+				created_at: "2026-09-01T00:00:00Z",
+				updated_at: "2026-09-01T00:00:00Z",
+			},
+		] satisfies SchedulingGroup[];
+		const requestedPaths: string[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((input: string | URL | Request) => {
+				const path = String(input);
+				requestedPaths.push(path);
+				if (path.endsWith("/events/event-1")) return response(event);
+				if (path.endsWith("/me")) return response({ id: "user-1" });
+				if (path.endsWith("/events/event-1/groups")) return response(groups);
+				return response([]);
+			}),
+		);
+
+		const loaded = await clientLoader({
+			params: { eventId: event.id },
+			request: new Request("https://vacaro.test/events/event-1/results"),
+		} as Parameters<typeof clientLoader>[0]);
+
+		expect(loaded).not.toBeInstanceOf(Response);
+		if (loaded instanceof Response) throw new Error("unexpected redirect");
+		expect(loaded.activeGroup).toBeNull();
+		expect(requestedPaths).toContain(
+			"/api/v1/events/event-1/candidates?limit=100",
+		);
+		expect(requestedPaths).toContain("/api/v1/events/event-1/availability");
+	});
 });
 
 describe("results clientAction", () => {

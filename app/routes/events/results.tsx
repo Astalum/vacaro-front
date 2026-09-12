@@ -41,6 +41,7 @@ export async function clientLoader({
 	const showWholeEvent =
 		event.scheduling_mode === "whole_event" ||
 		searchParams.get("scope") === "whole" ||
+		!requestedGroupID ||
 		groups.length === 0;
 	const activeGroup =
 		(showWholeEvent
@@ -307,11 +308,9 @@ export default function Results({
 				</div>
 				<div className="result-head-main">
 					<div className="event-summary">
-						{event.scheduling_mode === "groups" && (
-							<strong className="active-group-name">
-								{activeGroup?.name ?? "全体"}
-							</strong>
-						)}
+						<strong className="active-group-name">
+							{activeGroup?.name ?? "全体"}
+						</strong>
 						<h2>{event.title}</h2>
 						<div className="event-meta">
 							<span>
@@ -353,51 +352,34 @@ export default function Results({
 					</nav>
 				</div>
 			</section>
-			{event.scheduling_mode === "groups" && (
-				<section className="result-group-selector">
-					<div className="result-group-title">
-						<strong>グループを選択</strong>
-						<span>{groups.length}件のグループ</span>
-					</div>
-					<nav className="result-group-tabs" aria-label="小グループを切り替え">
+			<section className="result-group-selector">
+				<div className="result-group-title">
+					<strong>グループを選択</strong>
+					<span>{groups.length + 1}件のグループ</span>
+				</div>
+				<nav className="result-group-tabs" aria-label="小グループを切り替え">
+					<Link
+						className={activeGroup === null ? "active" : ""}
+						to="?scope=whole"
+					>
+						<span>全体</span>
+						<small>全参加者</small>
+					</Link>
+					{groups.map((group) => (
 						<Link
-							className={activeGroup === null ? "active" : ""}
-							to="?scope=whole"
+							key={group.id}
+							className={activeGroup?.id === group.id ? "active" : ""}
+							to={`?group_id=${group.id}`}
 						>
-							<span>全体</span>
-							<small>全参加者</small>
+							<span>{group.name}</span>
+							<small>{group.members.length}人</small>
+							{group.confirmed_start_at && <Icon name="check" size={14} />}
 						</Link>
-						{groups.map((group) => (
-							<Link
-								key={group.id}
-								className={activeGroup?.id === group.id ? "active" : ""}
-								to={`?group_id=${group.id}`}
-							>
-								<span>{group.name}</span>
-								<small>{group.members.length}人</small>
-								{group.confirmed_start_at && <Icon name="check" size={14} />}
-							</Link>
-						))}
-					</nav>
-				</section>
-			)}
+					))}
+				</nav>
+			</section>
 			<div className="results-two-column">
 				<div className="results-left-column">
-					{event.scheduling_mode === "groups" &&
-						groups.length === 0 &&
-						isOrganizer && (
-							<div className="empty-state results-group-empty">
-								<Icon name="users" size={34} />
-								<h2>小グループを作成してください</h2>
-								<p>結果を集計するには、グループとメンバーの設定が必要です。</p>
-								<Link
-									className="button button-primary"
-									to={`/events/${event.id}/manage`}
-								>
-									グループを管理
-								</Link>
-							</div>
-						)}
 					<section className="candidate-summary candidate-calendar-panel">
 						<div className="section-title-row">
 							<div>

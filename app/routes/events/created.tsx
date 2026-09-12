@@ -111,9 +111,7 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 					自分の空いている時間を回答 <Icon name="arrow" size={18} />
 				</Link>
 				<Link className="button button-ghost" to={`/events/${event.id}/manage`}>
-					{event.scheduling_mode === "groups"
-						? "小グループを設定"
-						: "イベント管理へ"}
+					グループを設定
 				</Link>
 			</div>
 		</PageShell>

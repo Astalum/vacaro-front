@@ -710,6 +710,27 @@
 	font-size: 14px;
 	font-weight: 800;
 }
+.whole-group-card {
+	background: #f4fbf8;
+}
+.whole-group-summary {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.whole-group-summary span {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 8px 10px;
+	border: 1px solid #d6ebe3;
+	border-radius: 8px;
+	background: white;
+	color: var(--muted);
+	font-size: 14px;
+	font-weight: 700;
+}
 .group-state {
 	flex: 0 0 auto;
 	padding: 4px 7px;

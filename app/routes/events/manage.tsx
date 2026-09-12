@@ -70,7 +70,7 @@ export async function clientAction({
 					body: JSON.stringify({ scheduling_mode: "groups" }),
 				});
 				await createGroup();
-				return { success: "小グループ方式へ切り替えて作成しました" };
+				return { success: "小グループを作成しました" };
 			case "create-group":
 				await createGroup();
 				return { success: "小グループを作成しました" };
@@ -203,11 +203,6 @@ function GroupCreationForm({
 				</fieldset>
 			)}
 			<div className="group-create-actions">
-				{firstGroup && (
-					<small>
-						作成すると、このイベントは小グループごとの日程調整へ切り替わります。
-					</small>
-				)}
 				<button
 					className="button button-primary"
 					type="submit"
@@ -216,7 +211,7 @@ function GroupCreationForm({
 					disabled={busy || event.status !== "open"}
 				>
 					<Icon name="plus" size={16} />
-					{firstGroup ? "最初のグループを作成" : "グループを作成"}
+					グループを作成
 				</button>
 			</div>
 		</Form>
@@ -230,6 +225,9 @@ export default function ManageEvent({
 	const { event, participants, groups, inviteUrl } = loaderData;
 	const navigation = useNavigation();
 	const busy = navigation.state === "submitting";
+	const submittedParticipants = participants.filter(
+		(participant) => participant.response_status === "submitted",
+	).length;
 	const groupedIDs = new Set(
 		groups.flatMap((group) => group.members.map((member) => member.id)),
 	);
@@ -261,8 +259,7 @@ export default function ManageEvent({
 							event.window_start_at,
 							event.window_end_at,
 							event.time_zone,
-						)}{" "}
-						・ {groupsMode ? "小グループごとに調整" : "イベント全体で調整"}
+						)}
 					</p>
 				</div>
 				<div className="manage-actions">
@@ -306,28 +303,24 @@ export default function ManageEvent({
 						<b>{minutesLabel(event.duration_minutes)}</b>
 					</div>
 				</article>
-				{groupsMode && (
-					<>
-						<article>
-							<span className="stat-icon yellow">
-								<Icon name="users" />
-							</span>
-							<div>
-								<small>小グループ</small>
-								<b>{groups.length}</b>
-							</div>
-						</article>
-						<article>
-							<span className="stat-icon coral">
-								<Icon name="info" />
-							</span>
-							<div>
-								<small>未所属の参加者</small>
-								<b>{unassigned.length}</b>
-							</div>
-						</article>
-					</>
-				)}
+				<article>
+					<span className="stat-icon yellow">
+						<Icon name="users" />
+					</span>
+					<div>
+						<small>グループ</small>
+						<b>{groups.length + 1}</b>
+					</div>
+				</article>
+				<article>
+					<span className="stat-icon coral">
+						<Icon name="info" />
+					</span>
+					<div>
+						<small>小グループ未所属</small>
+						<b>{unassigned.length}</b>
+					</div>
+				</article>
 			</div>
 
 			{groupsMode ? (
@@ -335,8 +328,8 @@ export default function ManageEvent({
 					<header className="group-management-heading">
 						<div>
 							<span className="page-eyebrow">SMALL GROUPS</span>
-							<h2>小グループを管理</h2>
-							<p>参加者は複数のグループに所属できます。</p>
+							<h2>グループを管理</h2>
+							<p>全参加者の「全体」に加えて、小グループを追加できます。</p>
 						</div>
 					</header>
 					<GroupCreationForm
@@ -345,137 +338,155 @@ export default function ManageEvent({
 						busy={busy}
 					/>
 
-					{groups.length === 0 ? (
-						<div className="empty-state compact group-empty-state">
-							<Icon name="users" size={30} />
-							<h3>小グループはまだありません</h3>
-							<p>グループを作成してから参加者を割り当ててください。</p>
-						</div>
-					) : (
-						<div className="group-card-grid">
-							{groups.map((group) => {
-								const confirmed = Boolean(group.confirmed_start_at);
-								const memberIDs = new Set(
-									group.members.map((member) => member.id),
-								);
-								return (
-									<article className="group-card" key={group.id}>
-										<header>
-											<div>
-												<span
-													className={`group-state ${confirmed ? "confirmed" : "open"}`}
-												>
-													{confirmed ? "日程確定" : "調整中"}
-												</span>
-												<strong>{group.name}</strong>
-												<small>
-													{
-														group.members.filter(
-															(member) =>
-																member.response_status === "submitted",
-														).length
-													}{" "}
-													/ {group.members.length}人回答
-												</small>
-											</div>
-											<Link
-												to={`/events/${event.id}/results?group_id=${group.id}`}
+					<div className="group-card-grid">
+						<article className="group-card whole-group-card">
+							<header>
+								<div>
+									<span
+										className={`group-state ${event.confirmed_start_at ? "confirmed" : "open"}`}
+									>
+										{event.confirmed_start_at ? "日程確定" : "調整中"}
+									</span>
+									<strong>全体</strong>
+									<small>
+										{submittedParticipants} / {participants.length}人回答
+									</small>
+								</div>
+								<Link to={`/events/${event.id}/results?scope=whole`}>
+									日程を調整 <Icon name="arrow" size={15} />
+								</Link>
+							</header>
+							<div className="whole-group-summary">
+								<span>
+									<Icon name="users" size={16} /> 全参加者
+								</span>
+								<span>
+									<Icon name="clock" size={16} />{" "}
+									{minutesLabel(event.duration_minutes)}
+								</span>
+							</div>
+						</article>
+						{groups.map((group) => {
+							const confirmed = Boolean(group.confirmed_start_at);
+							const memberIDs = new Set(
+								group.members.map((member) => member.id),
+							);
+							return (
+								<article className="group-card" key={group.id}>
+									<header>
+										<div>
+											<span
+												className={`group-state ${confirmed ? "confirmed" : "open"}`}
 											>
-												日程を調整 <Icon name="arrow" size={15} />
-											</Link>
-										</header>
-										<Form method="post" className="group-edit-form">
-											<input type="hidden" name="group_id" value={group.id} />
-											<div className="group-fields">
-												<label>
-													<span>グループ名</span>
-													<input
-														name="name"
-														defaultValue={group.name}
-														maxLength={100}
-														required
-													/>
-												</label>
-												<label>
-													<span>必要時間（分）</span>
-													<input
-														name="duration_minutes"
-														type="number"
-														min={5}
-														max={1440}
-														step={5}
-														defaultValue={group.duration_minutes}
-														disabled={confirmed}
-														required
-													/>
-												</label>
-											</div>
-											<fieldset disabled={confirmed || event.status !== "open"}>
-												<legend>メンバー（{group.members.length}人）</legend>
-												<div className="group-member-list">
-													{participants.map((participant) => (
-														<label key={participant.id}>
-															<input
-																type="checkbox"
-																name="participant_ids"
-																value={participant.id}
-																defaultChecked={memberIDs.has(participant.id)}
-															/>
-															<span className="avatar navy">
-																{participant.display_name.slice(0, 1)}
-															</span>
-															<strong>{participant.display_name}</strong>
-															<small>
-																{participant.response_status === "submitted"
-																	? "回答済み"
-																	: "未回答"}
-															</small>
-														</label>
-													))}
-												</div>
-											</fieldset>
-											<button
-												className="button button-primary"
-												type="submit"
-												name="intent"
-												value="save-group"
-												disabled={busy || confirmed || event.status !== "open"}
-											>
-												変更を保存
-											</button>
-										</Form>
-										<Form
-											method="post"
-											className="group-delete-form"
-											onSubmit={(submitEvent) => {
-												if (
-													!window.confirm(`「${group.name}」を削除しますか？`)
-												) {
-													submitEvent.preventDefault();
-												}
-											}}
+												{confirmed ? "日程確定" : "調整中"}
+											</span>
+											<strong>{group.name}</strong>
+											<small>
+												{
+													group.members.filter(
+														(member) => member.response_status === "submitted",
+													).length
+												}{" "}
+												/ {group.members.length}人回答
+											</small>
+										</div>
+										<Link
+											to={`/events/${event.id}/results?group_id=${group.id}`}
 										>
-											<input type="hidden" name="group_id" value={group.id} />
-											<button
-												type="submit"
-												name="intent"
-												value="delete-group"
-												disabled={busy || confirmed || event.status !== "open"}
-											>
-												<Icon name="trash" size={15} /> グループを削除
-											</button>
-										</Form>
-										{confirmed && (
-											<p className="group-locked-note">
-												<Icon name="lock" size={14} />{" "}
-												確定解除後に編成を変更できます。
-											</p>
-										)}
-									</article>
-								);
-							})}
-						</div>
-					)}
+											日程を調整 <Icon name="arrow" size={15} />
+										</Link>
+									</header>
+									<Form method="post" className="group-edit-form">
+										<input type="hidden" name="group_id" value={group.id} />
+										<div className="group-fields">
+											<label>
+												<span>グループ名</span>
+												<input
+													name="name"
+													defaultValue={group.name}
+													maxLength={100}
+													required
+												/>
+											</label>
+											<label>
+												<span>必要時間（分）</span>
+												<input
+													name="duration_minutes"
+													type="number"
+													min={5}
+													max={1440}
+													step={5}
+													defaultValue={group.duration_minutes}
+													disabled={confirmed}
+													required
+												/>
+											</label>
+										</div>
+										<fieldset disabled={confirmed || event.status !== "open"}>
+											<legend>メンバー（{group.members.length}人）</legend>
+											<div className="group-member-list">
+												{participants.map((participant) => (
+													<label key={participant.id}>
+														<input
+															type="checkbox"
+															name="participant_ids"
+															value={participant.id}
+															defaultChecked={memberIDs.has(participant.id)}
+														/>
+														<span className="avatar navy">
+															{participant.display_name.slice(0, 1)}
+														</span>
+														<strong>{participant.display_name}</strong>
+														<small>
+															{participant.response_status === "submitted"
+																? "回答済み"
+																: "未回答"}
+														</small>
+													</label>
+												))}
+											</div>
+										</fieldset>
+										<button
+											className="button button-primary"
+											type="submit"
+											name="intent"
+											value="save-group"
+											disabled={busy || confirmed || event.status !== "open"}
+										>
+											変更を保存
+										</button>
+									</Form>
+									<Form
+										method="post"
+										className="group-delete-form"
+										onSubmit={(submitEvent) => {
+											if (
+												!window.confirm(`「${group.name}」を削除しますか？`)
+											) {
+												submitEvent.preventDefault();
+											}
+										}}
+									>
+										<input type="hidden" name="group_id" value={group.id} />
+										<button
+											type="submit"
+											name="intent"
+											value="delete-group"
+											disabled={busy || confirmed || event.status !== "open"}
+										>
+											<Icon name="trash" size={15} /> グループを削除
+										</button>
+									</Form>
+									{confirmed && (
+										<p className="group-locked-note">
+											<Icon name="lock" size={14} />{" "}
+											確定解除後に編成を変更できます。
+										</p>
+									)}
+								</article>
+							);
+						})}
+					</div>
 					{unassigned.length > 0 && (
 						<div className="unassigned-participants">
 							<strong>未所属の参加者</strong>
@@ -495,14 +506,16 @@ export default function ManageEvent({
 						</span>
 						<div>
 							<span className="page-eyebrow">SMALL GROUPS</span>
-							<h2>小グループを作成</h2>
-							<p>参加者をチームに分けて、グループごとに日程を調整できます。</p>
+							<h2>グループを追加</h2>
+							<p>
+								「全体」はそのまま利用でき、必要に応じて小グループを追加できます。
+							</p>
 						</div>
 						<Link
 							className="whole-event-results-link"
 							to={`/events/${event.id}/results`}
 						>
-							現在の全体結果を見る <Icon name="arrow" size={14} />
+							全体の結果を見る <Icon name="arrow" size={14} />
 						</Link>
 					</header>
 					<GroupCreationForm
