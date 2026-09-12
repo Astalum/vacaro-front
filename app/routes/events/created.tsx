@@ -4,8 +4,11 @@ import { Icon, PageShell } from "../../components/ui";
 import {
 	apiRequest,
 	type Event,
+	type EventWithInvite,
 	formatDateRange,
 	minutesLabel,
+	savedEventInviteUrl,
+	saveEventInviteUrl,
 } from "../../lib/api";
 import type { Route } from "./+types/created";
 
@@ -18,7 +21,17 @@ export async function clientLoader({
 	request,
 }: Route.ClientLoaderArgs) {
 	const event = await apiRequest<Event>(`/events/${params.eventId}`);
-	const inviteUrl = new URL(request.url).searchParams.get("invite_url");
+	let inviteUrl =
+		new URL(request.url).searchParams.get("invite_url") ??
+		savedEventInviteUrl(event.id);
+	if (!inviteUrl) {
+		const invitedEvent = await apiRequest<EventWithInvite>(
+			`/events/${event.id}/invite-token`,
+			{ method: "POST" },
+		);
+		inviteUrl = invitedEvent.invite_url;
+	}
+	saveEventInviteUrl(event.id, inviteUrl);
 	return { event, inviteUrl };
 }
 clientLoader.hydrate = true as const;
@@ -35,13 +48,12 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 	const { event, inviteUrl } = loaderData;
 	const [copied, setCopied] = useState(false);
 	const copy = async () => {
-		if (!inviteUrl) return;
 		await navigator.clipboard.writeText(inviteUrl);
 		setCopied(true);
 		window.setTimeout(() => setCopied(false), 1800);
 	};
 	return (
-		<PageShell>
+		<PageShell showPersistentInviteUrl={false}>
 			<div className="success-hero">
 				<div className="success-badge">
 					<Icon name="check" size={32} />
@@ -50,63 +62,47 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 				<h1>イベントを作成しました！</h1>
 				<p>招待URLを参加者に送って、空いている時間を回答してもらいましょう。</p>
 			</div>
-			<section className="share-panel">
-				<div className="share-event">
-					<span className="date-tile">
-						<b>{new Date(event.window_start_at).getDate()}</b>
-						<small>START</small>
-					</span>
-					<div>
-						<small>日程調整</small>
-						<h2>{event.title}</h2>
+			<div className="created-content-grid">
+				<section className="share-panel">
+					<div className="share-event">
+						<div>
+							<small>日程調整</small>
+							<h2>{event.title}</h2>
+							<div className="created-event-meta">
+								<span>
+									<Icon name="calendar" size={17} />
+									<strong>
+										{formatDateRange(
+											event.window_start_at,
+											event.window_end_at,
+											event.time_zone,
+										)}
+									</strong>
+								</span>
+								<span>
+									<Icon name="clock" size={17} />
+									必要時間{" "}
+									<strong>{minutesLabel(event.duration_minutes)}</strong>
+								</span>
+							</div>
+						</div>
+					</div>
+					<div className="share-block">
+						<span className="field-label">参加者用の招待URL</span>
+						<div className="copy-field">
+							<span title={inviteUrl}>{inviteUrl}</span>
+							<button type="button" onClick={copy}>
+								<Icon name={copied ? "check" : "copy"} size={18} />
+								{copied ? "コピーしました" : "コピー"}
+							</button>
+						</div>
 						<p>
-							{formatDateRange(
-								event.window_start_at,
-								event.window_end_at,
-								event.time_zone,
-							)}{" "}
-							・ 必要時間 {minutesLabel(event.duration_minutes)}
+							<Icon name="info" size={15} />{" "}
+							このURLを知っている人がイベントへ参加できます。
 						</p>
 					</div>
-				</div>
-				<div className="share-block">
-					<span className="field-label">参加者用の招待URL</span>
-					{inviteUrl ? (
-						<>
-							<div className="copy-field">
-								<span>{inviteUrl}</span>
-								<button type="button" onClick={copy}>
-									<Icon name={copied ? "check" : "copy"} size={18} />
-									{copied ? "コピーしました" : "コピー"}
-								</button>
-							</div>
-							<p>
-								<Icon name="info" size={15} />{" "}
-								このURLを知っている人がイベントへ参加できます。
-							</p>
-						</>
-					) : (
-						<div className="form-error">
-							<Icon name="info" size={17} />
-							<span>
-								<strong>招待URLを再表示できません</strong>
-								招待URLは作成時だけ表示されます。管理画面から再発行してください。
-							</span>
-						</div>
-					)}
-				</div>
-			</section>
-			<section className="admin-url">
-				<div className="admin-icon">
-					<Icon name="lock" />
-				</div>
-				<div>
-					<h3>このブラウザからイベントを管理できます</h3>
-					<p>
-						ゲストセッションは7日間有効です。継続して管理する場合はGoogleアカウント連携をご利用ください。
-					</p>
-				</div>
-			</section>
+				</section>
+			</div>
 			<div className="created-actions">
 				<Link
 					className="button button-primary button-large"
@@ -117,11 +113,6 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 				<Link className="button button-ghost" to={`/events/${event.id}/manage`}>
 					イベント管理へ
 				</Link>
-				{inviteUrl && (
-					<Link className="text-link" to={new URL(inviteUrl).pathname}>
-						参加者画面をプレビュー <Icon name="external" size={15} />
-					</Link>
-				)}
 			</div>
 		</PageShell>
 	);
