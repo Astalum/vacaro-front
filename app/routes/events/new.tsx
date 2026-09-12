@@ -8,9 +8,16 @@ import {
 	CardHeader,
 	CardTitle,
 } from "../../components/ui/card";
+import { DateTimePicker } from "../../components/ui/date-time-picker";
 import { Field, FieldGroup, FieldLabel } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
-import { NativeSelect } from "../../components/ui/native-select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
 import {
 	ApiError,
@@ -94,7 +101,7 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 						</span>
 					</div>
 				)}
-				<div className="grid items-stretch gap-6 xl:grid-cols-2">
+				<div className="new-event-card-grid">
 					<Card className="new-event-card h-full overflow-hidden">
 						<CardHeader className="border-b border-border pb-6">
 							<div className="flex items-center gap-3">
@@ -139,13 +146,16 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 										<FieldLabel htmlFor="timezone">
 											タイムゾーン <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<NativeSelect
-											id="timezone"
-											name="time_zone"
-											defaultValue="Asia/Tokyo"
-										>
-											<option value="Asia/Tokyo">日本時間（Asia/Tokyo）</option>
-										</NativeSelect>
+										<Select name="time_zone" defaultValue="Asia/Tokyo">
+											<SelectTrigger id="timezone">
+												<SelectValue placeholder="タイムゾーンを選択" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="Asia/Tokyo">
+													日本時間（Asia/Tokyo）
+												</SelectItem>
+											</SelectContent>
+										</Select>
 									</Field>
 								</div>
 							</FieldGroup>
@@ -168,10 +178,9 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 										<FieldLabel htmlFor="window-start">
 											期間の開始 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Input
+										<DateTimePicker
 											id="window-start"
 											name="window_start_at"
-											type="datetime-local"
 											defaultValue="2026-06-14T09:00"
 											required
 										/>
@@ -183,10 +192,9 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 										<FieldLabel htmlFor="window-end">
 											期間の終了 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Input
+										<DateTimePicker
 											id="window-end"
 											name="window_end_at"
-											type="datetime-local"
 											defaultValue="2026-06-21T22:00"
 											required
 										/>
@@ -198,27 +206,27 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 										イベントに必要な時間
 										<Badge variant="destructive">必須</Badge>
 									</FieldLabel>
-									<NativeSelect
-										id="duration"
-										name="duration_minutes"
-										defaultValue="60"
-									>
-										<option value="30">30分</option>
-										<option value="60">1時間</option>
-										<option value="90">1時間30分</option>
-										<option value="120">2時間</option>
-										<option value="180">3時間</option>
-									</NativeSelect>
+									<Select name="duration_minutes" defaultValue="60">
+										<SelectTrigger id="duration">
+											<SelectValue placeholder="所要時間を選択" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="30">30分</SelectItem>
+											<SelectItem value="60">1時間</SelectItem>
+											<SelectItem value="90">1時間30分</SelectItem>
+											<SelectItem value="120">2時間</SelectItem>
+											<SelectItem value="180">3時間</SelectItem>
+										</SelectContent>
+									</Select>
 								</Field>
 
 								<Field>
 									<FieldLabel htmlFor="deadline">
 										回答期限 <Badge variant="outline">任意</Badge>
 									</FieldLabel>
-									<Input
+									<DateTimePicker
 										id="deadline"
 										name="response_deadline_at"
-										type="datetime-local"
 										defaultValue="2026-06-12T23:59"
 									/>
 								</Field>

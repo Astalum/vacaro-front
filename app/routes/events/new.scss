@@ -48,6 +48,16 @@
 		0 14px 36px rgba(23, 36, 61, 0.055);
 }
 
+.new-event-card-grid {
+	display: grid;
+	grid-template-columns: repeat(
+		auto-fit,
+		minmax(min(100%, 32rem), 1fr)
+	);
+	align-items: stretch;
+	gap: clamp(18px, 2vw, 28px);
+}
+
 @media (max-width: 1180px) {
 	.page-main:has(> .new-event-form) {
 		max-width: 900px;
