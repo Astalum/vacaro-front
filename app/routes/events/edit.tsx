@@ -1,11 +1,27 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageIntro, PageShell } from "../../components/ui";
+import {
+	Icon,
+	PageIntro,
+	PageShell,
+	PersistentInviteUrl,
+} from "../../components/ui";
+import { DateTimePicker } from "../../components/ui/date-time-picker";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../components/ui/select";
 import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
 	type Event,
+	type EventWithInvite,
 	localDateTimeToIso,
+	savedEventInviteUrl,
+	saveEventInviteUrl,
 } from "../../lib/api";
 import type { Route } from "./+types/edit";
 
@@ -13,13 +29,22 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `編集 — ${loaderData.title} | vacaro`
+				? `編集 — ${loaderData.event.title} | vacaro`
 				: "イベントを編集 | vacaro",
 		},
 	];
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	return apiRequest<Event>(`/events/${params.eventId}`);
+	const event = await apiRequest<Event>(`/events/${params.eventId}`);
+	let inviteUrl = savedEventInviteUrl(event.id);
+	if (!inviteUrl && event.status === "open") {
+		const invited = await apiRequest<EventWithInvite>(
+			`/events/${event.id}/invite-token`,
+			{ method: "POST" },
+		);
+		inviteUrl = saveEventInviteUrl(event.id, invited.invite_url);
+	}
+	return { event, inviteUrl };
 }
 clientLoader.hydrate = true as const;
 export async function clientAction({
@@ -77,13 +102,13 @@ export function HydrateFallback() {
 }
 
 export default function EditEvent({
-	loaderData: event,
+	loaderData: { event, inviteUrl },
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const saving = navigation.state === "submitting";
 	return (
-		<PageShell>
+		<PageShell showPersistentInviteUrl={false}>
 			<PageIntro
 				eyebrow="EDIT EVENT"
 				title="イベントを編集"
@@ -91,6 +116,13 @@ export default function EditEvent({
 				backTo={`/events/${event.id}/manage`}
 				backLabel="管理画面へ戻る"
 			/>
+			<div className="change-warning">
+				<Icon name="info" size={17} />
+				<span>
+					<strong>調整期間を変更するときはご注意ください</strong>
+					登録済みの参加可能時間を除外する変更はAPIによって拒否されます。
+				</span>
+			</div>
 			<Form className="form-stack" method="post">
 				{actionData?.error && (
 					<div className="form-error">
@@ -127,23 +159,25 @@ export default function EditEvent({
 					</div>
 					<div className="two-cols">
 						<div className="field">
-							<label htmlFor="edit-timezone">タイムゾーン</label>
-							<select
-								id="edit-timezone"
-								name="time_zone"
-								defaultValue={event.time_zone}
-							>
-								<option value="Asia/Tokyo">日本時間（Asia/Tokyo）</option>
-							</select>
-						</div>
-						<div className="field">
 							<label htmlFor="edit-deadline">回答期限</label>
-							<input
+							<DateTimePicker
 								id="edit-deadline"
 								name="response_deadline_at"
-								type="datetime-local"
 								defaultValue={inputDateTime(event.response_deadline_at)}
 							/>
+						</div>
+						<div className="field">
+							<label htmlFor="edit-timezone">タイムゾーン</label>
+							<Select name="time_zone" defaultValue={event.time_zone}>
+								<SelectTrigger id="edit-timezone">
+									<SelectValue placeholder="タイムゾーンを選択" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="Asia/Tokyo">
+										日本時間（Asia/Tokyo）
+									</SelectItem>
+								</SelectContent>
+							</Select>
 						</div>
 					</div>
 				</section>
@@ -158,21 +192,21 @@ export default function EditEvent({
 					<div className="window-fields">
 						<div className="field">
 							<label htmlFor="edit-window-start">期間の開始</label>
-							<input
+							<DateTimePicker
 								id="edit-window-start"
 								name="window_start_at"
-								type="datetime-local"
 								defaultValue={inputDateTime(event.window_start_at)}
+								required
 							/>
 						</div>
 						<span className="window-arrow">→</span>
 						<div className="field">
 							<label htmlFor="edit-window-end">期間の終了</label>
-							<input
+							<DateTimePicker
 								id="edit-window-end"
 								name="window_end_at"
-								type="datetime-local"
 								defaultValue={inputDateTime(event.window_end_at)}
+								required
 							/>
 						</div>
 					</div>
@@ -187,13 +221,6 @@ export default function EditEvent({
 							step={5}
 							defaultValue={event.duration_minutes}
 						/>
-					</div>
-					<div className="change-warning">
-						<Icon name="info" size={17} />
-						<span>
-							<strong>調整期間を変更するときはご注意ください</strong>
-							登録済みの参加可能時間を除外する変更はAPIによって拒否されます。
-						</span>
 					</div>
 				</section>
 				<div className="form-actions horizontal">

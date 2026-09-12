@@ -5,6 +5,7 @@ import {
 	type Event,
 	formatDateRange,
 	minutesLabel,
+	type SchedulingGroup,
 } from "../../lib/api";
 import type { Route } from "./+types/confirmed";
 
@@ -12,13 +13,18 @@ export function meta({ loaderData }: Route.MetaArgs) {
 	return [
 		{
 			title: loaderData
-				? `日程が決まりました — ${loaderData.title} | vacaro`
+				? `日程が決まりました — ${loaderData.event.title} | vacaro`
 				: "確定した日程 | vacaro",
 		},
 	];
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	return apiRequest<Event>(`/events/${params.eventId}`);
+	const event = await apiRequest<Event>(`/events/${params.eventId}`);
+	const groups =
+		event.scheduling_mode === "groups"
+			? await apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
+			: [];
+	return { event, groups };
 }
 clientLoader.hydrate = true as const;
 export function HydrateFallback() {
@@ -29,7 +35,110 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Confirmed({ loaderData: event }: Route.ComponentProps) {
+export default function Confirmed({ loaderData }: Route.ComponentProps) {
+	const { event, groups } = loaderData;
+	if (event.scheduling_mode === "groups") {
+		const allConfirmed =
+			Boolean(event.confirmed_start_at) &&
+			groups.every((group) => group.confirmed_start_at);
+		return (
+			<PageShell>
+				<div className="confirmed-hero">
+					<div className="success-badge">
+						<Icon name="check" size={32} />
+					</div>
+					<span className="page-eyebrow">GROUP DATES</span>
+					<h1>
+						{allConfirmed
+							? "全グループの日程が決まりました！"
+							: "グループごとの確定日程"}
+					</h1>
+					<p>{event.title}</p>
+				</div>
+				<div className="confirmed-group-grid">
+					<article
+						className={event.confirmed_start_at ? "confirmed" : "pending"}
+					>
+						<header>
+							<span
+								className={`group-state ${event.confirmed_start_at ? "confirmed" : "open"}`}
+							>
+								{event.confirmed_start_at ? "確定済み" : "調整中"}
+							</span>
+							<h2>全体</h2>
+						</header>
+						{event.confirmed_start_at && event.confirmed_end_at ? (
+							<strong>
+								{formatDateRange(
+									event.confirmed_start_at,
+									event.confirmed_end_at,
+									event.time_zone,
+								)}
+							</strong>
+						) : (
+							<p>日程はまだ確定していません。</p>
+						)}
+						<div>
+							<span>
+								<Icon name="clock" size={15} />{" "}
+								{minutesLabel(event.duration_minutes)}
+							</span>
+							<span>
+								<Icon name="users" size={15} /> 全参加者
+							</span>
+						</div>
+						<Link
+							className="button button-ghost"
+							to={`/events/${event.id}/results?scope=whole`}
+						>
+							結果を見る
+						</Link>
+					</article>
+					{groups.map((group) => (
+						<article
+							key={group.id}
+							className={group.confirmed_start_at ? "confirmed" : "pending"}
+						>
+							<header>
+								<span
+									className={`group-state ${group.confirmed_start_at ? "confirmed" : "open"}`}
+								>
+									{group.confirmed_start_at ? "確定済み" : "調整中"}
+								</span>
+								<h2>{group.name}</h2>
+							</header>
+							{group.confirmed_start_at && group.confirmed_end_at ? (
+								<strong>
+									{formatDateRange(
+										group.confirmed_start_at,
+										group.confirmed_end_at,
+										event.time_zone,
+									)}
+								</strong>
+							) : (
+								<p>日程はまだ確定していません。</p>
+							)}
+							<div>
+								<span>
+									<Icon name="clock" size={15} />{" "}
+									{minutesLabel(group.duration_minutes)}
+								</span>
+								<span>
+									<Icon name="users" size={15} /> {group.members.length}人
+								</span>
+							</div>
+							<Link
+								className="button button-ghost"
+								to={`/events/${event.id}/results?group_id=${group.id}`}
+							>
+								結果を見る
+							</Link>
+						</article>
+					))}
+				</div>
+			</PageShell>
+		);
+	}
 	const confirmed = event.confirmed_start_at && event.confirmed_end_at;
 	if (!confirmed)
 		return (

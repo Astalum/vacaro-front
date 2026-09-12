@@ -842,20 +842,6 @@
 	color: var(--muted);
 	font-size: 12px;
 }
-.unassigned-participants {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	margin-top: 14px;
-	padding: 12px 14px;
-	border-radius: 9px;
-	background: var(--yellow-soft);
-	color: #715d26;
-	font-size: 14px;
-}
-.unassigned-participants span {
-	overflow-wrap: anywhere;
-}
 .group-empty-state {
 	margin: 0;
 }

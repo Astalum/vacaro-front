@@ -228,12 +228,6 @@ export default function ManageEvent({
 	const submittedParticipants = participants.filter(
 		(participant) => participant.response_status === "submitted",
 	).length;
-	const groupedIDs = new Set(
-		groups.flatMap((group) => group.members.map((member) => member.id)),
-	);
-	const unassigned = participants.filter(
-		(participant) => !groupedIDs.has(participant.id),
-	);
 	const groupsMode = event.scheduling_mode === "groups";
 
 	return (
@@ -310,15 +304,6 @@ export default function ManageEvent({
 					<div>
 						<small>グループ</small>
 						<b>{groups.length + 1}</b>
-					</div>
-				</article>
-				<article>
-					<span className="stat-icon coral">
-						<Icon name="info" />
-					</span>
-					<div>
-						<small>小グループ未所属</small>
-						<b>{unassigned.length}</b>
 					</div>
 				</article>
 			</div>
@@ -487,16 +472,6 @@ export default function ManageEvent({
 							);
 						})}
 					</div>
-					{unassigned.length > 0 && (
-						<div className="unassigned-participants">
-							<strong>未所属の参加者</strong>
-							<span>
-								{unassigned
-									.map((participant) => participant.display_name)
-									.join("、")}
-							</span>
-						</div>
-					)}
 				</section>
 			) : (
 				<section className="whole-event-management group-onboarding">

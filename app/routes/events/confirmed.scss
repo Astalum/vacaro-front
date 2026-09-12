@@ -52,12 +52,12 @@
 	flex-direction: column;
 }
 .confirmed-date > div:first-child small {
-	font: 700 15px "DM Sans";
+	font: 800 15px var(--font-gothic);
 	color: var(--coral);
 	letter-spacing: 0.15em;
 }
 .confirmed-date > div:first-child strong {
-	font: 700 48px / 1 "DM Sans";
+	font: 800 48px / 1 var(--font-gothic);
 }
 .confirmed-date > span {
 	height: 55px;
@@ -139,4 +139,89 @@
 .simple-date-list strong {
 	flex: 1;
 	font-size: 17px;
+}
+.confirmed-group-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+	gap: 14px;
+}
+.confirmed-group-grid article {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 20px;
+	border: 1px solid var(--line);
+	border-radius: 13px;
+	background: white;
+	box-shadow: var(--shadow);
+}
+.confirmed-group-grid article.confirmed {
+	border-color: #bfe8db;
+}
+.confirmed-group-grid article.pending {
+	background: #fafbf9;
+}
+.confirmed-group-grid header {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+}
+.confirmed-group-grid h2,
+.confirmed-group-grid p {
+	margin: 0;
+}
+.confirmed-group-grid h2 {
+	font-size: 20px;
+}
+.confirmed-group-grid > article > strong {
+	font-size: 17px;
+	line-height: 1.6;
+}
+.confirmed-group-grid > article > div {
+	display: flex;
+	gap: 14px;
+	color: var(--muted);
+	font-size: 14px;
+}
+.confirmed-group-grid > article > div span {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+.confirmed-group-grid .button {
+	align-self: flex-start;
+}
+
+@media (min-width: 760px) {
+	.confirmed-card {
+		display: grid;
+		grid-template-columns: minmax(300px, 1.15fr) minmax(240px, 0.85fr);
+		grid-template-areas:
+			"label label"
+			"date details"
+			"message message";
+		align-items: center;
+		column-gap: clamp(28px, 5vw, 64px);
+	}
+	.confirmed-label {
+		grid-area: label;
+	}
+	.confirmed-date {
+		grid-area: date;
+		margin-bottom: 0;
+	}
+	.confirmed-details {
+		grid-area: details;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+		padding: 16px 0 16px clamp(24px, 4vw, 48px);
+		border-top: 0;
+		border-right: 0;
+		border-bottom: 0;
+		border-left: 1px solid var(--line);
+	}
+	.host-message {
+		grid-area: message;
+	}
 }

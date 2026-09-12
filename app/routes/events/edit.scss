@@ -1,0 +1,63 @@
+/* Event editing page */
+/* Shared by the event creation and editing pages. */
+.window-fields {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	align-items: stretch;
+	gap: 14px;
+	margin-bottom: 30px;
+}
+.window-fields > .field {
+	margin-bottom: 0;
+}
+.window-arrow {
+	align-self: end;
+	min-height: 60px;
+	display: grid;
+	place-items: center;
+	color: var(--coral);
+	font-weight: 700;
+}
+.duration-box {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	align-items: center;
+	gap: 15px;
+	background: var(--coral-soft);
+	border-radius: 10px;
+	padding: 17px;
+	margin-bottom: 22px;
+}
+.duration-box .field {
+	margin: 0;
+}
+.duration-icon {
+	width: 42px;
+	height: 42px;
+	border-radius: 10px;
+	background: white;
+	color: var(--coral);
+	display: grid;
+	place-items: center;
+}
+.change-warning {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 22px;
+	background: var(--yellow-soft);
+	color: #856812;
+	border-radius: 8px;
+	padding: 14px;
+	font-size: 15px;
+	line-height: 1.6;
+}
+.change-warning span {
+	display: flex;
+	flex-direction: column;
+}
+.change-warning strong {
+	color: var(--ink);
+}
+.edit-invite-section {
+	margin-top: 22px;
+}

@@ -1,6 +1,6 @@
 /* Event creation page */
 .page-main:has(> .new-event-form) {
-	max-width: 1360px;
+	max-width: 1480px;
 	padding-top: 28px;
 }
 
@@ -50,10 +50,7 @@
 
 .new-event-card-grid {
 	display: grid;
-	grid-template-columns: repeat(
-		auto-fit,
-		minmax(min(100%, 32rem), 1fr)
-	);
+	grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
 	align-items: stretch;
 	gap: clamp(18px, 2vw, 28px);
 }
@@ -61,6 +58,10 @@
 @media (max-width: 1180px) {
 	.page-main:has(> .new-event-form) {
 		max-width: 900px;
+	}
+
+	.new-event-card-grid {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
