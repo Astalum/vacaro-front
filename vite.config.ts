@@ -4,6 +4,16 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
 	cacheDir: ".react-router/vite",
+	optimizeDeps: {
+		include: [
+			"@radix-ui/react-popover",
+			"@radix-ui/react-select",
+			"date-fns",
+			"date-fns/locale",
+			"lucide-react",
+			"react-day-picker",
+		],
+	},
 	plugins: [tailwindcss(), reactRouter()],
 	server: {
 		port: 3000,
@@ -15,6 +25,7 @@ export default defineConfig({
 		},
 	},
 	resolve: {
+		dedupe: ["react", "react-dom"],
 		tsconfigPaths: true,
 	},
 });

@@ -1,6 +1,13 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Link } from "react-router";
-import { ApiError, apiRequest, type User } from "../lib/api";
+import { Link, useLocation } from "react-router";
+import {
+	ApiError,
+	apiRequest,
+	EVENT_INVITE_URL_UPDATED_EVENT,
+	EVENT_INVITE_URLS_STORAGE_KEY,
+	savedEventInviteUrl,
+	type User,
+} from "../lib/api";
 
 type IconName =
 	| "arrow"
@@ -226,12 +233,79 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
 	);
 }
 
+type InviteUrlUpdatedDetail = {
+	eventID: string;
+	inviteUrl: string;
+};
+
+export function PersistentInviteUrl() {
+	const { pathname } = useLocation();
+	const eventID = pathname.match(/^\/events\/([^/]+)(?:\/|$)/)?.[1] ?? null;
+	const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+	const [copied, setCopied] = useState(false);
+
+	useEffect(() => {
+		setCopied(false);
+		setInviteUrl(eventID ? savedEventInviteUrl(eventID) : null);
+		if (!eventID) return;
+
+		const syncFromStorage = (event: StorageEvent) => {
+			if (event.key === EVENT_INVITE_URLS_STORAGE_KEY) {
+				setInviteUrl(savedEventInviteUrl(eventID));
+			}
+		};
+		const syncFromUpdate = (event: Event) => {
+			const { detail } = event as CustomEvent<InviteUrlUpdatedDetail>;
+			if (detail.eventID === eventID) setInviteUrl(detail.inviteUrl);
+		};
+
+		window.addEventListener("storage", syncFromStorage);
+		window.addEventListener(EVENT_INVITE_URL_UPDATED_EVENT, syncFromUpdate);
+		return () => {
+			window.removeEventListener("storage", syncFromStorage);
+			window.removeEventListener(
+				EVENT_INVITE_URL_UPDATED_EVENT,
+				syncFromUpdate,
+			);
+		};
+	}, [eventID]);
+
+	if (!inviteUrl) return null;
+
+	return (
+		<section className="persistent-invite-dock" aria-label="参加者用の招待URL">
+			<span className="persistent-invite-dock-icon">
+				<Icon name="link" size={18} />
+			</span>
+			<div>
+				<strong>参加者用の招待URL</strong>
+				<a href={inviteUrl} target="_blank" rel="noreferrer" title={inviteUrl}>
+					{inviteUrl}
+				</a>
+			</div>
+			<button
+				type="button"
+				onClick={async () => {
+					await navigator.clipboard.writeText(inviteUrl);
+					setCopied(true);
+					window.setTimeout(() => setCopied(false), 1800);
+				}}
+			>
+				<Icon name={copied ? "check" : "copy"} size={16} />
+				{copied ? "コピー済み" : "コピー"}
+			</button>
+		</section>
+	);
+}
+
 export function PageShell({
 	children,
 	fullScreen = false,
+	showPersistentInviteUrl = true,
 }: {
 	children: ReactNode;
 	fullScreen?: boolean;
+	showPersistentInviteUrl?: boolean;
 }) {
 	return (
 		<div
@@ -240,6 +314,7 @@ export function PageShell({
 			{!fullScreen && <AppHeader compact />}
 			<main className={`page-main wrap ${fullScreen ? "fullscreen-main" : ""}`}>
 				{children}
+				{showPersistentInviteUrl && <PersistentInviteUrl />}
 			</main>
 		</div>
 	);
