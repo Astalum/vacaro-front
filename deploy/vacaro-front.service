@@ -1,0 +1,21 @@
+[Unit]
+Description=Vacaro React Router server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=astalum
+Group=astalum
+WorkingDirectory=/home/astalum/project/vacaro/vacaro-front
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=PATH=/home/astalum/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/home/astalum/project/vacaro/vacaro-front/.env
+ExecStart=/usr/bin/env pnpm start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
