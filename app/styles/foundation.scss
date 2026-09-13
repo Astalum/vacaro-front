@@ -169,39 +169,18 @@ button {
 .brand {
 	display: inline-flex;
 	align-items: center;
-	gap: 10px;
+	gap: 9px;
+	color: var(--navy);
 	font:
-		800 29px / 1 var(--font-gothic);
-	letter-spacing: -0.8px;
+		800 32px / 1 var(--font-gothic);
+	letter-spacing: -1.2px;
 }
 .brand-mark {
-	width: 29px;
-	height: 27px;
-	position: relative;
-	display: inline-block;
-}
-.brand-mark i {
-	position: absolute;
+	width: 34px;
+	height: 34px;
+	flex: 0 0 34px;
 	display: block;
-	width: 11px;
-	height: 11px;
-	border-radius: 3px;
-	transform: rotate(8deg);
-}
-.brand-mark i:nth-child(1) {
-	background: var(--coral);
-	left: 1px;
-	top: 1px;
-}
-.brand-mark i:nth-child(2) {
-	background: var(--yellow);
-	right: 1px;
-	top: 3px;
-}
-.brand-mark i:nth-child(3) {
-	background: var(--mint);
-	left: 9px;
-	bottom: 1px;
+	object-fit: contain;
 }
 .app-header nav {
 	display: flex;

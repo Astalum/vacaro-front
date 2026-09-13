@@ -1,5 +1,5 @@
 import { Link, redirect, useSearchParams } from "react-router";
-import { AppHeader, Icon } from "../components/ui";
+import { AppHeader, Brand, Icon } from "../components/ui";
 import type { Route } from "./+types/home";
 
 export function meta() {
@@ -183,14 +183,7 @@ export default function Home() {
 				</section>
 			</main>
 			<footer className="footer wrap">
-				<Link className="brand" to="/">
-					<span className="brand-mark">
-						<i />
-						<i />
-						<i />
-					</span>
-					vacaro
-				</Link>
+				<Brand />
 				<span>© 2026 vacaro</span>
 			</footer>
 		</div>

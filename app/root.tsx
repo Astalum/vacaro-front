@@ -13,6 +13,13 @@ import "./app.scss";
 import { ApiError } from "./lib/api";
 
 export const links: Route.LinksFunction = () => [
+	{
+		rel: "icon",
+		type: "image/png",
+		sizes: "1254x1254",
+		href: "/vacaro_favicon.png?v=3",
+	},
+	{ rel: "apple-touch-icon", href: "/vacaro_favicon.png?v=3" },
 	{ rel: "preconnect", href: "https://fonts.googleapis.com" },
 	{
 		rel: "preconnect",

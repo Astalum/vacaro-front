@@ -136,11 +136,12 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 export function Brand() {
 	return (
 		<Link className="brand" to="/">
-			<span className="brand-mark">
-				<i />
-				<i />
-				<i />
-			</span>
+			<img
+				className="brand-mark"
+				src="/vacaro_favicon.png?v=3"
+				alt=""
+				aria-hidden="true"
+			/>
 			vacaro
 		</Link>
 	);
