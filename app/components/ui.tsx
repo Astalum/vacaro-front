@@ -147,6 +147,19 @@ export function Brand() {
 	);
 }
 
+export function SiteFooter() {
+	return (
+		<footer className="footer wrap">
+			<Brand />
+			<nav className="footer-links" aria-label="ポリシー">
+				<Link to="/privacy">プライバシーポリシー</Link>
+				<Link to="/terms">利用規約</Link>
+			</nav>
+			<span>© 2026 vacaro</span>
+		</footer>
+	);
+}
+
 function AccountNavigation() {
 	const [user, setUser] = useState<User | null>();
 
@@ -316,6 +329,7 @@ export function PageShell({
 				{children}
 				{showPersistentInviteUrl && <PersistentInviteUrl />}
 			</main>
+			{!fullScreen && <SiteFooter />}
 		</div>
 	);
 }

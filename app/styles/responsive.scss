@@ -512,6 +512,13 @@
 	.footer {
 		height: auto;
 		padding-block: 28px;
+		flex-wrap: wrap;
+		gap: 18px 24px;
+	}
+	.footer-links {
+		order: 3;
+		width: 100%;
+		justify-content: flex-start;
 	}
 	.schedule-calendar-scroll,
 	.table-scroll {

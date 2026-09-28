@@ -1,5 +1,5 @@
 import { Link, redirect, useSearchParams } from "react-router";
-import { AppHeader, Brand, Icon } from "../components/ui";
+import { AppHeader, Icon, SiteFooter } from "../components/ui";
 import type { Route } from "./+types/home";
 
 export function meta() {
@@ -182,10 +182,7 @@ export default function Home() {
 					</div>
 				</section>
 			</main>
-			<footer className="footer wrap">
-				<Brand />
-				<span>© 2026 vacaro</span>
-			</footer>
+			<SiteFooter />
 		</div>
 	);
 }

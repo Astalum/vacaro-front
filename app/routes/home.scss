@@ -351,3 +351,18 @@
 .footer .brand {
 	color: var(--ink);
 }
+.footer-links {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 22px;
+}
+.footer-links a {
+	color: var(--muted);
+	font-size: 14px;
+	font-weight: 700;
+}
+.footer-links a:hover {
+	color: var(--primary-dark);
+	text-decoration: underline;
+}
