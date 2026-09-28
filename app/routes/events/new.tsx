@@ -1,3 +1,4 @@
+import { type FormEvent, useState } from "react";
 import { data, Form, redirect, useNavigation } from "react-router";
 import { Icon, PageIntro, PageShell } from "../../components/ui";
 import { Badge } from "../../components/ui/badge";
@@ -28,15 +29,56 @@ import {
 	saveEventInviteUrl,
 	type User,
 } from "../../lib/api";
+import { getNewEventDefaults } from "../../lib/new-event-defaults";
 import type { Route } from "./+types/new";
 
 export function meta() {
 	return [{ title: "イベントを作る | vacaro" }];
 }
 
+export function loader() {
+	return getNewEventDefaults();
+}
+
+type RequiredFieldName = "title" | "display_name";
+type FieldErrors = Partial<Record<RequiredFieldName, string>>;
+
+const requiredFields: Array<{
+	name: RequiredFieldName;
+	message: string;
+}> = [
+	{ name: "title", message: "イベント名を入力してください" },
+	{ name: "display_name", message: "主催者名を入力してください" },
+];
+
 export async function clientAction({ request }: Route.ClientActionArgs) {
 	const formData = await request.formData();
 	const displayName = String(formData.get("display_name") ?? "").trim();
+	const windowStartDate = String(formData.get("window_start_date") ?? "");
+	const windowEndDate = String(formData.get("window_end_date") ?? "");
+	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
+	const dailyEndTime = String(formData.get("daily_end_time") ?? "");
+	if (
+		!windowStartDate ||
+		!windowEndDate ||
+		windowStartDate > windowEndDate ||
+		!dailyStartTime ||
+		!dailyEndTime ||
+		dailyStartTime >= dailyEndTime
+	) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message: "回答を集める期間と時間帯を確認してください",
+					fields: null,
+				},
+			},
+			{ status: 422 },
+		);
+	}
+	const windowStartAt = `${windowStartDate}T${dailyStartTime}`;
+	const windowEndAt = `${windowEndDate}T${dailyEndTime}`;
 	try {
 		try {
 			const me = await apiRequest<User>("/me");
@@ -60,8 +102,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 				title: String(formData.get("title") ?? ""),
 				description: String(formData.get("description") ?? "") || null,
 				time_zone: String(formData.get("time_zone") ?? "Asia/Tokyo"),
-				window_start_at: localDateTimeToIso(formData.get("window_start_at")),
-				window_end_at: localDateTimeToIso(formData.get("window_end_at")),
+				window_start_at: localDateTimeToIso(windowStartAt),
+				window_end_at: localDateTimeToIso(windowEndAt),
 				duration_minutes: Number(formData.get("duration_minutes")),
 				scheduling_mode: "groups",
 				response_deadline_at: localDateTimeToIso(
@@ -81,9 +123,77 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 	}
 }
 
-export default function NewEvent({ actionData }: Route.ComponentProps) {
+export default function NewEvent({
+	actionData,
+	loaderData,
+}: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const submitting = navigation.state === "submitting";
+	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+	const [scheduleError, setScheduleError] = useState<string | null>(null);
+	const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		const form = event.currentTarget;
+		const nextErrors: FieldErrors = {};
+
+		for (const field of requiredFields) {
+			const input = form.elements.namedItem(field.name);
+			if (input instanceof HTMLInputElement && !input.value.trim()) {
+				nextErrors[field.name] = field.message;
+			}
+		}
+
+		const startDate = form.elements.namedItem("window_start_date");
+		const endDate = form.elements.namedItem("window_end_date");
+		const startTime = form.elements.namedItem("daily_start_time");
+		const endTime = form.elements.namedItem("daily_end_time");
+		let nextScheduleError: string | null = null;
+		if (
+			!(startDate instanceof HTMLInputElement) ||
+			!(endDate instanceof HTMLInputElement) ||
+			!startDate.value ||
+			!endDate.value ||
+			startDate.value > endDate.value
+		) {
+			nextScheduleError = "終了日は開始日以降にしてください";
+		} else if (
+			!(startTime instanceof HTMLInputElement) ||
+			!(endTime instanceof HTMLInputElement) ||
+			!startTime.value ||
+			!endTime.value ||
+			startTime.value >= endTime.value
+		) {
+			nextScheduleError = "毎日の終了時刻は開始時刻より後にしてください";
+		}
+
+		const firstInvalidField = requiredFields.find(
+			(field) => nextErrors[field.name],
+		);
+		if (!firstInvalidField && !nextScheduleError) {
+			setFieldErrors({});
+			setScheduleError(null);
+			return;
+		}
+
+		event.preventDefault();
+		setFieldErrors(nextErrors);
+		setScheduleError(nextScheduleError);
+		const input = form.elements.namedItem(
+			firstInvalidField?.name ?? "window_start_date",
+		);
+		if (input instanceof HTMLElement) input.focus();
+	}
+
+	function clearFieldError(name: RequiredFieldName) {
+		setFieldErrors((current) => {
+			if (!current[name]) return current;
+			const next = { ...current };
+			delete next[name];
+			return next;
+		});
+	}
+
 	return (
 		<PageShell>
 			<PageIntro
@@ -93,7 +203,12 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 				backTo="/"
 				backLabel="トップへ戻る"
 			/>
-			<Form className="new-event-form space-y-6" method="post">
+			<Form
+				className="new-event-form space-y-6"
+				method="post"
+				noValidate
+				onSubmit={handleSubmit}
+			>
 				{actionData?.error && (
 					<div className="flex items-start gap-3 rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
 						<Icon name="info" size={20} />
@@ -101,6 +216,24 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 							<strong>{actionData.error.message}</strong>
 							{actionData.error.fields &&
 								Object.values(actionData.error.fields).join(" / ")}
+						</span>
+					</div>
+				)}
+				{hasFieldErrors && (
+					<div
+						role="alert"
+						className="flex items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3.5 text-destructive shadow-[0_10px_30px_rgba(176,69,53,0.08)]"
+					>
+						<span className="grid size-9 shrink-0 place-items-center rounded-xl bg-destructive text-white shadow-sm">
+							<Icon name="info" size={19} />
+						</span>
+						<span className="grid gap-0.5">
+							<strong className="text-sm font-extrabold text-foreground">
+								入力内容を確認してください
+							</strong>
+							<span className="text-sm font-semibold">
+								未入力の項目が{Object.keys(fieldErrors).length}件あります
+							</span>
 						</span>
 					</div>
 				)}
@@ -123,9 +256,24 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 									<Input
 										id="title"
 										name="title"
-										defaultValue="プロジェクト打ち上げ 🎉"
 										required
+										aria-invalid={Boolean(fieldErrors.title)}
+										aria-describedby={
+											fieldErrors.title ? "title-error" : undefined
+										}
+										onChange={() => clearFieldError("title")}
 									/>
+									{fieldErrors.title && (
+										<p
+											id="title-error"
+											className="flex items-center gap-2 text-sm font-bold text-destructive"
+										>
+											<span className="grid size-5 place-items-center rounded-full bg-destructive text-xs text-white">
+												!
+											</span>
+											{fieldErrors.title}
+										</p>
+									)}
 								</Field>
 								<Field>
 									<FieldLabel htmlFor="description">
@@ -141,9 +289,24 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 										<Input
 											id="owner"
 											name="display_name"
-											defaultValue="山田 太郎"
 											required
+											aria-invalid={Boolean(fieldErrors.display_name)}
+											aria-describedby={
+												fieldErrors.display_name ? "owner-error" : undefined
+											}
+											onChange={() => clearFieldError("display_name")}
 										/>
+										{fieldErrors.display_name && (
+											<p
+												id="owner-error"
+												className="flex items-center gap-2 text-sm font-bold text-destructive"
+											>
+												<span className="grid size-5 place-items-center rounded-full bg-destructive text-xs text-white">
+													!
+												</span>
+												{fieldErrors.display_name}
+											</p>
+										)}
 									</Field>
 									<Field>
 										<FieldLabel htmlFor="timezone">
@@ -178,13 +341,14 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 							<FieldGroup>
 								<div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
 									<Field>
-										<FieldLabel htmlFor="window-start">
-											期間の開始 <Badge variant="destructive">必須</Badge>
+										<FieldLabel htmlFor="window-start-date">
+											開始日 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<DateTimePicker
-											id="window-start"
-											name="window_start_at"
-											defaultValue="2026-06-14T09:00"
+										<Input
+											id="window-start-date"
+											name="window_start_date"
+											type="date"
+											defaultValue={loaderData.windowStartAt.slice(0, 10)}
 											required
 										/>
 									</Field>
@@ -192,17 +356,62 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 										→
 									</span>
 									<Field>
-										<FieldLabel htmlFor="window-end">
-											期間の終了 <Badge variant="destructive">必須</Badge>
+										<FieldLabel htmlFor="window-end-date">
+											終了日 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<DateTimePicker
-											id="window-end"
-											name="window_end_at"
-											defaultValue="2026-06-21T22:00"
+										<Input
+											id="window-end-date"
+											name="window_end_date"
+											type="date"
+											defaultValue={loaderData.windowEndAt.slice(0, 10)}
 											required
 										/>
 									</Field>
 								</div>
+
+								<div className="grid gap-4 rounded-xl border border-primary/20 bg-secondary/45 p-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+									<Field>
+										<FieldLabel htmlFor="daily-start-time">
+											毎日の受付開始 <Badge variant="destructive">必須</Badge>
+										</FieldLabel>
+										<Input
+											id="daily-start-time"
+											name="daily_start_time"
+											type="time"
+											step={1800}
+											defaultValue={loaderData.windowStartAt.slice(11, 16)}
+											required
+										/>
+									</Field>
+									<span className="hidden h-14 items-center justify-center px-1 text-lg font-extrabold text-primary md:flex">
+										〜
+									</span>
+									<Field>
+										<FieldLabel htmlFor="daily-end-time">
+											毎日の受付終了 <Badge variant="destructive">必須</Badge>
+										</FieldLabel>
+										<Input
+											id="daily-end-time"
+											name="daily_end_time"
+											type="time"
+											step={1800}
+											defaultValue={loaderData.windowEndAt.slice(11, 16)}
+											required
+										/>
+									</Field>
+								</div>
+								<p className="text-sm font-semibold text-muted-foreground">
+									参加者は期間中の各日、この時間帯の中で回答できます。
+								</p>
+								{scheduleError && (
+									<p
+										className="flex items-center gap-2 text-sm font-bold text-destructive"
+										role="alert"
+									>
+										<Icon name="info" size={17} />
+										{scheduleError}
+									</p>
+								)}
 
 								<Field>
 									<FieldLabel htmlFor="duration">
@@ -230,7 +439,7 @@ export default function NewEvent({ actionData }: Route.ComponentProps) {
 									<DateTimePicker
 										id="deadline"
 										name="response_deadline_at"
-										defaultValue="2026-06-12T23:59"
+										defaultValue={loaderData.responseDeadlineAt}
 									/>
 								</Field>
 							</FieldGroup>

@@ -1,6 +1,6 @@
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { data, Form, Link, useNavigation } from "react-router";
-import { Icon, PageShell, PersistentInviteUrl } from "../../components/ui";
+import { type PointerEvent, useEffect, useMemo, useState } from "react";
+import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { Icon, PageShell, WeekendText } from "../../components/ui";
 import {
 	ApiError,
 	type AvailabilityInterval,
@@ -17,6 +17,7 @@ import {
 import type { Route } from "./+types/availability";
 
 type TimeRange = { id: string; start: string; end: string };
+type EntryMode = "available" | "unavailable";
 type DragState = {
 	date: string;
 	pointerId: number;
@@ -27,6 +28,12 @@ type DragState = {
 
 const DAY_MINUTES = 24 * 60;
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+
+function weekendClassName(day: number) {
+	if (day === 0) return "weekday-sunday";
+	if (day === 6) return "weekday-saturday";
+	return undefined;
+}
 
 export function meta({ loaderData }: Route.MetaArgs) {
 	return [
@@ -86,7 +93,7 @@ export async function clientAction({
 				: (JSON.parse(
 						String(formData.get("intervals") ?? "[]"),
 					) as TimeRange[]);
-		const result = await apiRequest<{
+		await apiRequest<{
 			response_status: string;
 			intervals: AvailabilityInterval[];
 		}>(`/events/${params.eventId}/my-availability`, {
@@ -98,7 +105,7 @@ export async function clientAction({
 				})),
 			}),
 		});
-		return { kind: "saved" as const, count: result.intervals.length };
+		return redirect("/events");
 	} catch (error) {
 		return data(
 			{ kind: "error" as const, error: apiErrorData(error) },
@@ -185,6 +192,53 @@ function segmentOnDate(range: TimeRange, key: string) {
 	return end > start ? { start, end } : null;
 }
 
+export function invertRangesForWindow(
+	ranges: TimeRange[],
+	firstDate: string,
+	lastDate: string,
+	dailyStartMinute: number,
+	dailyEndMinute: number,
+) {
+	const inverted: TimeRange[] = [];
+	let key = firstDate;
+
+	while (key <= lastDate) {
+		const segments = ranges
+			.map((range) => segmentOnDate(range, key))
+			.filter((segment): segment is { start: number; end: number } =>
+				Boolean(segment),
+			)
+			.map((segment) => ({
+				start: Math.max(segment.start, dailyStartMinute),
+				end: Math.min(segment.end, dailyEndMinute),
+			}))
+			.filter((segment) => segment.end > segment.start)
+			.sort((a, b) => a.start - b.start);
+		let cursor = dailyStartMinute;
+
+		for (const segment of segments) {
+			if (segment.start > cursor) {
+				inverted.push({
+					id: `inverse-${key}-${cursor}-${segment.start}`,
+					start: dateTimeAtMinute(key, cursor),
+					end: dateTimeAtMinute(key, segment.start),
+				});
+			}
+			cursor = Math.max(cursor, segment.end);
+		}
+
+		if (cursor < dailyEndMinute) {
+			inverted.push({
+				id: `inverse-${key}-${cursor}-${dailyEndMinute}`,
+				start: dateTimeAtMinute(key, cursor),
+				end: dateTimeAtMinute(key, dailyEndMinute),
+			});
+		}
+		key = addDays(key, 1);
+	}
+
+	return inverted;
+}
 function mergeRanges(ranges: TimeRange[], added: TimeRange) {
 	let merged = added;
 	let pending = ranges;
@@ -240,15 +294,36 @@ function clipCalendarIntervals(
 	return clipped.sort((a, b) => a.start.localeCompare(b.start));
 }
 
-function pointerMinutes(clientY: number, target: HTMLElement) {
+function pointerMinutes(
+	clientY: number,
+	target: HTMLElement,
+	visibleStart: number,
+	visibleEnd: number,
+) {
 	const bounds = target.getBoundingClientRect();
-	const value = ((clientY - bounds.top) / bounds.height) * DAY_MINUTES;
-	return Math.max(0, Math.min(DAY_MINUTES - 30, Math.floor(value / 30) * 30));
+	const visibleMinutes = visibleEnd - visibleStart;
+	const value =
+		visibleStart + ((clientY - bounds.top) / bounds.height) * visibleMinutes;
+	return Math.max(
+		visibleStart,
+		Math.min(visibleEnd - 30, Math.floor(value / 30) * 30),
+	);
+}
+
+function timeAxisMarks(start: number, end: number) {
+	const marks = [start];
+	let cursor = (Math.floor(start / 60) + 1) * 60;
+	while (cursor < end) {
+		marks.push(cursor);
+		cursor += 60;
+	}
+	if (marks.at(-1) !== end) marks.push(end);
+	return marks;
 }
 
 export function HydrateFallback() {
 	return (
-		<PageShell fullScreen showPersistentInviteUrl={false}>
+		<PageShell fullScreen showHeader showPersistentInviteUrl={false}>
 			<div className="schedule-loading">回答内容を読み込んでいます…</div>
 		</PageShell>
 	);
@@ -267,6 +342,23 @@ export default function AvailabilityPage({
 	);
 	const windowStart = localDateTime(event.window_start_at, event.time_zone);
 	const windowEnd = localDateTime(event.window_end_at, event.time_zone);
+	const dailyStartMinute = minutes(windowStart);
+	const dailyEndMinute = windowEnd.endsWith("T00:00")
+		? DAY_MINUTES
+		: minutes(windowEnd);
+	const dailyStartTime = time(dailyStartMinute);
+	const dailyEndTime = time(dailyEndMinute);
+	const importWindow = useMemo(
+		() => ({
+			start:
+				calendarWindow.start > dailyStartTime
+					? calendarWindow.start
+					: dailyStartTime,
+			end:
+				calendarWindow.end < dailyEndTime ? calendarWindow.end : dailyEndTime,
+		}),
+		[calendarWindow.end, calendarWindow.start, dailyEndTime, dailyStartTime],
+	);
 	const firstDate = windowStart.slice(0, 10);
 	const rawLastDate = windowEnd.slice(0, 10);
 	const lastDate = windowEnd.endsWith("T00:00")
@@ -279,6 +371,7 @@ export default function AvailabilityPage({
 			end: localDateTime(interval.end_at, event.time_zone),
 		})),
 	);
+	const [entryMode, setEntryMode] = useState<EntryMode>("available");
 	const [selectedDate, setSelectedDate] = useState(
 		() => ranges[0]?.start.slice(0, 10) ?? firstDate,
 	);
@@ -290,28 +383,37 @@ export default function AvailabilityPage({
 		Math.max(0, weekOptions.indexOf(weekStart(selectedDate))),
 	);
 	const [drag, setDrag] = useState<DragState | null>(null);
-	const scrollRef = useRef<HTMLDivElement>(null);
 	const activeWeek = weekOptions[weekIndex] ?? weekStart(firstDate);
 	const days = useMemo(
 		() => Array.from({ length: 7 }, (_, index) => addDays(activeWeek, index)),
 		[activeWeek],
 	);
+	const eventDates = useMemo(() => {
+		const result: string[] = [];
+		let cursor = firstDate;
+		while (cursor <= lastDate) {
+			result.push(cursor);
+			cursor = addDays(cursor, 1);
+		}
+		return result;
+	}, [firstDate, lastDate]);
 	const importedRanges = useMemo(
 		() =>
 			actionData?.kind === "preview"
 				? clipCalendarIntervals(
 						actionData.intervals,
 						event.time_zone,
-						calendarWindow,
+						importWindow,
 						windowStart,
 						windowEnd,
 					)
 				: [],
-		[actionData, calendarWindow, event.time_zone, windowEnd, windowStart],
+		[actionData, event.time_zone, importWindow, windowEnd, windowStart],
 	);
 
 	useEffect(() => {
 		if (actionData?.kind !== "preview") return;
+		setEntryMode("available");
 		setRanges(importedRanges);
 		if (importedRanges[0]) {
 			const importedDate = importedRanges[0].start.slice(0, 10);
@@ -320,30 +422,46 @@ export default function AvailabilityPage({
 		}
 	}, [actionData, importedRanges, weekOptions]);
 
-	useEffect(() => {
-		const scroller = scrollRef.current;
-		if (!scroller) return;
-		const startMinute = days.includes(firstDate)
-			? Math.max(
-					minutes(windowStart),
-					minutes(`2000-01-01T${calendarWindow.start}`),
-				)
-			: minutes(`2000-01-01T${calendarWindow.start}`);
-		scroller.scrollTop = (startMinute / DAY_MINUTES) * 1248;
-	}, [calendarWindow.start, days, firstDate, windowStart]);
+	const submissionRanges = useMemo(
+		() =>
+			entryMode === "available"
+				? ranges
+				: invertRangesForWindow(
+						ranges,
+						firstDate,
+						lastDate,
+						dailyStartMinute,
+						dailyEndMinute,
+					),
+		[dailyEndMinute, dailyStartMinute, entryMode, firstDate, lastDate, ranges],
+	);
+	const changeEntryMode = (nextMode: EntryMode) => {
+		if (nextMode === entryMode) return;
+		setRanges((current) =>
+			invertRangesForWindow(
+				current,
+				firstDate,
+				lastDate,
+				dailyStartMinute,
+				dailyEndMinute,
+			),
+		);
+		setEntryMode(nextMode);
+		setDrag(null);
+	};
 
-	const allowedRange = (key: string) => ({
-		start: key === firstDate ? minutes(windowStart) : 0,
-		end:
-			key === lastDate
-				? windowEnd.endsWith("T00:00")
-					? DAY_MINUTES
-					: minutes(windowEnd)
-				: DAY_MINUTES,
+	const allowedRange = (_key: string) => ({
+		start: dailyStartMinute,
+		end: dailyEndMinute,
 	});
 	const beginDrag = (pointer: PointerEvent<HTMLButtonElement>, key: string) => {
 		if (pointer.button !== 0 || key < firstDate || key > lastDate) return;
-		const value = pointerMinutes(pointer.clientY, pointer.currentTarget);
+		const value = pointerMinutes(
+			pointer.clientY,
+			pointer.currentTarget,
+			dailyStartMinute,
+			dailyEndMinute,
+		);
 		const allowed = allowedRange(key);
 		if (value < allowed.start || value >= allowed.end) return;
 		pointer.preventDefault();
@@ -359,7 +477,12 @@ export default function AvailabilityPage({
 	};
 	const moveDrag = (pointer: PointerEvent<HTMLButtonElement>) => {
 		if (!drag || drag.pointerId !== pointer.pointerId) return;
-		const value = pointerMinutes(pointer.clientY, pointer.currentTarget);
+		const value = pointerMinutes(
+			pointer.clientY,
+			pointer.currentTarget,
+			dailyStartMinute,
+			dailyEndMinute,
+		);
 		const allowed = allowedRange(drag.date);
 		setDrag((current) =>
 			current
@@ -389,13 +512,39 @@ export default function AvailabilityPage({
 	) =>
 		setRanges((current) =>
 			current.map((range) =>
-				range.id === id ? { ...range, [field]: `${key}T${value}` } : range,
+				range.id === id
+					? {
+							...range,
+							[field]:
+								field === "end" && value === "00:00"
+									? `${addDays(key, 1)}T00:00`
+									: `${key}T${value}`,
+						}
+					: range,
 			),
 		);
 
+	const addDailyRange = () => {
+		const allowed = allowedRange(selectedDate);
+		const start = allowed.start;
+		const end = allowed.end;
+		if (end <= start) return;
+
+		setRanges((current) =>
+			mergeRanges(current, {
+				id: crypto.randomUUID(),
+				start: dateTimeAtMinute(selectedDate, start),
+				end: dateTimeAtMinute(selectedDate, end),
+			}),
+		);
+	};
 	const selectedRanges = ranges.filter((range) =>
 		segmentOnDate(range, selectedDate),
 	);
+	const visibleMinutes = Math.max(30, dailyEndMinute - dailyStartMinute);
+	const scheduleGridHeight = Math.max(260, (visibleMinutes / 60) * 52);
+	const mobileGridHeight = Math.max(360, (visibleMinutes / 60) * 42);
+	const axisMarks = timeAxisMarks(dailyStartMinute, dailyEndMinute);
 	const weekTitle = `${new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric" }).format(dateFromKey(days[0]))} — ${new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric" }).format(dateFromKey(days[6]))}`;
 	const selectedTitle = new Intl.DateTimeFormat("ja-JP", {
 		month: "numeric",
@@ -406,19 +555,75 @@ export default function AvailabilityPage({
 	const submittingIntent = navigation.formData?.get("intent");
 
 	return (
-		<PageShell fullScreen showPersistentInviteUrl={false}>
+		<PageShell fullScreen showHeader showPersistentInviteUrl={false}>
 			<Form method="post" className="schedule-page">
-				<input type="hidden" name="intervals" value={JSON.stringify(ranges)} />
+				<input
+					type="hidden"
+					name="intervals"
+					value={JSON.stringify(submissionRanges)}
+				/>
 				<input
 					type="hidden"
 					name="calendar_ids"
 					value={JSON.stringify(selectedCalendarIDs)}
 				/>
-				<section className="schedule-main">
-					<div className="schedule-guide">
-						<span>
-							カレンダーをドラッグして、空いている時間を追加してください
-						</span>
+
+				<div className="schedule-mobile">
+					<section className="schedule-mobile-event">
+						<div className="schedule-mobile-event-heading">
+							<span>日程調整</span>
+							<h1>{event.title}</h1>
+						</div>
+						{event.description && <p>{event.description}</p>}
+						<div className="schedule-mobile-summary">
+							<div className="is-wide">
+								<Icon name="calendar" size={17} />
+								<span>調整期間</span>
+								<strong>
+									<WeekendText>
+										{formatDateRange(
+											event.window_start_at,
+											event.window_end_at,
+											event.time_zone,
+										)}
+									</WeekendText>
+								</strong>
+							</div>
+							<div>
+								<Icon name="clock" size={17} />
+								<span>回答受付</span>
+								<strong>
+									{dailyStartTime}〜{dailyEndTime}
+								</strong>
+							</div>
+							<div>
+								<span>所要時間</span>
+								<strong>{minutesLabel(event.duration_minutes)}</strong>
+							</div>
+						</div>
+					</section>
+
+					<section className="schedule-mobile-controls">
+						<fieldset
+							className="schedule-entry-mode"
+							aria-label="回答する時間の選び方"
+						>
+							<button
+								type="button"
+								aria-pressed={entryMode === "available"}
+								onClick={() => changeEntryMode("available")}
+							>
+								都合がいい時間
+							</button>
+							<button
+								type="button"
+								className="is-unavailable"
+								aria-pressed={entryMode === "unavailable"}
+								onClick={() => changeEntryMode("unavailable")}
+							>
+								都合が悪い時間
+							</button>
+						</fieldset>
 						{calendarOptions.calendars.length > 0 ? (
 							<button
 								type="submit"
@@ -426,12 +631,11 @@ export default function AvailabilityPage({
 								value="calendar-preview"
 								className="schedule-import"
 								disabled={submitting}
-								title="現在の入力を、Googleカレンダーから読み取った空き時間で置き換えます"
 							>
 								<Icon name="calendar" size={16} />
 								{submittingIntent === "calendar-preview"
-									? "読み取り中…"
-									: `${calendarWindow.start}〜${calendarWindow.end}を取り込む`}
+									? "読込中…"
+									: "予定取込"}
 							</button>
 						) : (
 							<Link
@@ -441,7 +645,269 @@ export default function AvailabilityPage({
 								カレンダー設定
 							</Link>
 						)}
+					</section>
+
+					<nav className="schedule-mobile-dates" aria-label="回答する日付">
+						{eventDates.map((key) => {
+							const date = dateFromKey(key);
+							return (
+								<button
+									key={key}
+									type="button"
+									className={
+										selectedDate === key
+											? "schedule-mobile-date is-selected"
+											: "schedule-mobile-date"
+									}
+									aria-pressed={selectedDate === key}
+									onClick={() => {
+										setSelectedDate(key);
+										setWeekIndex(
+											Math.max(0, weekOptions.indexOf(weekStart(key))),
+										);
+									}}
+								>
+									<small className={weekendClassName(date.getDay())}>
+										{WEEKDAYS[date.getDay()]}
+									</small>
+									<strong>{date.getDate()}</strong>
+								</button>
+							);
+						})}
+					</nav>
+
+					<div className="schedule-mobile-answer-grid">
+						<section className="schedule-mobile-timeline">
+							<header>
+								<div>
+									<span>
+										{entryMode === "available"
+											? "都合がいい時間"
+											: "都合が悪い時間"}
+										を選択
+									</span>
+								</div>
+								<small>タップまたはドラッグ</small>
+							</header>
+							<div
+								className="schedule-mobile-grid"
+								style={{ height: mobileGridHeight }}
+							>
+								<div
+									className="schedule-time-axis schedule-mobile-axis"
+									aria-hidden="true"
+								>
+									{axisMarks.map((mark) => (
+										<span
+											key={mark}
+											style={{
+												top:
+													((mark - dailyStartMinute) / visibleMinutes) * 100 +
+													"%",
+											}}
+										>
+											{time(mark)}
+										</span>
+									))}
+								</div>
+								<button
+									type="button"
+									className="schedule-day-column schedule-mobile-day"
+									aria-label={
+										selectedDate +
+										"の" +
+										(entryMode === "available" ? "都合がいい" : "都合が悪い") +
+										"時間を選択"
+									}
+									onPointerDown={(pointerEvent) =>
+										beginDrag(pointerEvent, selectedDate)
+									}
+									onPointerMove={moveDrag}
+									onPointerUp={finishDrag}
+									onPointerCancel={() => setDrag(null)}
+								>
+									{ranges.map((range) => {
+										const segment = segmentOnDate(range, selectedDate);
+										if (!segment) return null;
+										const visibleStart = Math.max(
+											segment.start,
+											dailyStartMinute,
+										);
+										const visibleEnd = Math.min(segment.end, dailyEndMinute);
+										if (visibleEnd <= visibleStart) return null;
+										return (
+											<i
+												key={range.id}
+												className={
+													entryMode === "unavailable"
+														? "schedule-range is-unavailable"
+														: "schedule-range"
+												}
+												style={{
+													top:
+														((visibleStart - dailyStartMinute) /
+															visibleMinutes) *
+															100 +
+														"%",
+													height:
+														((visibleEnd - visibleStart) / visibleMinutes) *
+															100 +
+														"%",
+												}}
+											/>
+										);
+									})}
+									{drag?.date === selectedDate && (
+										<i
+											className={
+												entryMode === "unavailable"
+													? "schedule-range preview is-unavailable"
+													: "schedule-range preview"
+											}
+											style={{
+												top:
+													((drag.start - dailyStartMinute) / visibleMinutes) *
+														100 +
+													"%",
+												height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
+											}}
+										/>
+									)}
+								</button>
+							</div>
+						</section>
+
+						<section className="schedule-mobile-editor">
+							<div className="schedule-editor-heading">
+								<div>
+									<span>選択中の日付</span>
+									<h2>
+										<WeekendText>{selectedTitle}</WeekendText>
+									</h2>
+								</div>
+								{selectedRanges.length === 0 && (
+									<button type="button" onClick={addDailyRange}>
+										<Icon name="plus" size={15} />
+										時間を設定
+									</button>
+								)}
+							</div>
+							{selectedRanges.length === 0 && (
+								<p>
+									この日の
+									{entryMode === "available"
+										? "都合がいい時間"
+										: "都合が悪い時間"}
+									を設定してください
+								</p>
+							)}
+							{selectedRanges.map((range) => (
+								<div className="schedule-time-row" key={range.id}>
+									<input
+										type="time"
+										aria-label="開始時刻"
+										min={dailyStartTime}
+										max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
+										step={1800}
+										value={range.start.slice(11, 16)}
+										onChange={(inputEvent) =>
+											updateTime(
+												range.id,
+												"start",
+												inputEvent.target.value,
+												selectedDate,
+											)
+										}
+									/>
+									<span>〜</span>
+									<div
+										className={
+											endsAtDayBoundary(range, selectedDate)
+												? "schedule-time-input is-end-of-day"
+												: "schedule-time-input"
+										}
+									>
+										<input
+											type="time"
+											aria-label={
+												endsAtDayBoundary(range, selectedDate)
+													? "終了時刻 24:00"
+													: "終了時刻"
+											}
+											min={dailyStartTime}
+											max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
+											step={1800}
+											value={
+												endsAtDayBoundary(range, selectedDate)
+													? "00:00"
+													: range.end.slice(11, 16)
+											}
+											onChange={(inputEvent) =>
+												updateTime(
+													range.id,
+													"end",
+													inputEvent.target.value,
+													selectedDate,
+												)
+											}
+										/>
+										{endsAtDayBoundary(range, selectedDate) && (
+											<span aria-hidden="true">24:00</span>
+										)}
+									</div>
+									<button
+										type="button"
+										aria-label="削除"
+										onClick={() =>
+											setRanges((current) =>
+												current.filter((item) => item.id !== range.id),
+											)
+										}
+									>
+										<Icon name="trash" size={19} />
+									</button>
+								</div>
+							))}
+						</section>
 					</div>
+
+					{actionData?.kind === "preview" && (
+						<p className="schedule-message success">
+							予定から{importedRanges.length}件を取り込みました
+						</p>
+					)}
+					{actionData?.kind === "error" && (
+						<p className="schedule-message error">{actionData.error.message}</p>
+					)}
+
+					<footer className="schedule-submit schedule-mobile-submit">
+						<button
+							type="submit"
+							name="intent"
+							value="save"
+							className="schedule-save"
+							disabled={submitting || event.status !== "open"}
+						>
+							{submittingIntent === "save"
+								? "保存しています…"
+								: availability.response_status === "submitted"
+									? "回答を更新"
+									: "回答を保存"}
+							<Icon name="arrow" size={13} />
+						</button>
+						<button
+							type="submit"
+							name="intent"
+							value="none"
+							className="schedule-none"
+							disabled={submitting}
+						>
+							空き時間なしで回答
+						</button>
+					</footer>
+				</div>
+
+				<section className="schedule-main">
 					<div className="schedule-calendar">
 						<header className="schedule-toolbar">
 							<button
@@ -474,74 +940,74 @@ export default function AvailabilityPage({
 										disabled={!enabled}
 										onClick={() => setSelectedDate(key)}
 									>
-										<span>{WEEKDAYS[index]}</span>
+										<span className={weekendClassName(index)}>
+											{WEEKDAYS[index]}
+										</span>
 										<strong>{dateFromKey(key).getDate()}</strong>
 									</button>
 								);
 							})}
 						</div>
-						<div className="schedule-scroll" ref={scrollRef}>
-							<div className="schedule-grid">
+						<div className="schedule-scroll">
+							<div
+								className="schedule-grid"
+								style={{ height: `${scheduleGridHeight}px` }}
+							>
 								<div className="schedule-time-axis" aria-hidden="true">
-									{Array.from({ length: 24 }, (_, hour) => (
+									{axisMarks.map((mark) => (
 										<span
-											key={time(hour * 60)}
-											style={{ top: `${(hour / 24) * 100}%` }}
+											key={mark}
+											style={{
+												top: `${((mark - dailyStartMinute) / visibleMinutes) * 100}%`,
+											}}
 										>
-											{time(hour * 60)}
+											{time(mark)}
 										</span>
 									))}
 								</div>
 								{days.map((key) => {
 									const enabled = key >= firstDate && key <= lastDate;
-									const allowed = allowedRange(key);
 									return (
 										<button
 											key={key}
 											type="button"
 											className="schedule-day-column"
 											disabled={!enabled}
-											aria-label={`${key}の空き時間を選択`}
+											aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
 											onPointerDown={(event) => beginDrag(event, key)}
 											onPointerMove={moveDrag}
 											onPointerUp={finishDrag}
 											onPointerCancel={() => setDrag(null)}
 										>
-											{enabled && allowed.start > 0 && (
-												<i
-													className="schedule-mask top"
-													style={{
-														height: `${(allowed.start / DAY_MINUTES) * 100}%`,
-													}}
-												/>
-											)}
-											{enabled && allowed.end < DAY_MINUTES && (
-												<i
-													className="schedule-mask bottom"
-													style={{
-														height: `${((DAY_MINUTES - allowed.end) / DAY_MINUTES) * 100}%`,
-													}}
-												/>
-											)}
 											{ranges.map((range) => {
 												const segment = segmentOnDate(range, key);
-												return segment ? (
+												if (!segment) return null;
+												const visibleStart = Math.max(
+													segment.start,
+													dailyStartMinute,
+												);
+												const visibleEnd = Math.min(
+													segment.end,
+													dailyEndMinute,
+												);
+												if (visibleEnd <= visibleStart) return null;
+												return (
 													<i
 														key={range.id}
-														className="schedule-range"
+														className={`schedule-range${entryMode === "unavailable" ? " is-unavailable" : ""}`}
 														style={{
-															top: `${(segment.start / DAY_MINUTES) * 100}%`,
-															height: `${((segment.end - segment.start) / DAY_MINUTES) * 100}%`,
+															top: `${((visibleStart - dailyStartMinute) / visibleMinutes) * 100}%`,
+															height: `${((visibleEnd - visibleStart) / visibleMinutes) * 100}%`,
 														}}
 													/>
-												) : null;
+												);
 											})}
 											{drag?.date === key && (
 												<i
-													className="schedule-range preview"
+													className={`schedule-range preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
 													style={{
-														top: `${(drag.start / DAY_MINUTES) * 100}%`,
-														height: `${((drag.end - drag.start) / DAY_MINUTES) * 100}%`,
+														top: `${((drag.start - dailyStartMinute) / visibleMinutes) * 100}%`,
+														height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
 													}}
 												/>
 											)}
@@ -563,31 +1029,111 @@ export default function AvailabilityPage({
 								<span>調整期間</span>
 							</div>
 							<strong>
-								{formatDateRange(
-									event.window_start_at,
-									event.window_end_at,
-									event.time_zone,
-								)}
+								<WeekendText>
+									{formatDateRange(
+										event.window_start_at,
+										event.window_end_at,
+										event.time_zone,
+									)}
+								</WeekendText>
 							</strong>
 						</div>
-						<div className="schedule-meta">
-							<div className="schedule-meta-label">
-								<Icon name="clock" size={18} />
-								<span>所要時間</span>
+						<div className="schedule-meta-pair">
+							<div className="schedule-meta">
+								<div className="schedule-meta-label">
+									<Icon name="clock" size={18} />
+									<span>回答受付</span>
+								</div>
+								<strong>
+									{dailyStartTime}〜{dailyEndTime}
+								</strong>
 							</div>
-							<strong className="schedule-duration-value">
-								{minutesLabel(event.duration_minutes)}
-							</strong>
+							<div className="schedule-meta schedule-meta-duration">
+								<div className="schedule-meta-label">
+									<span>所要時間</span>
+								</div>
+								<strong className="schedule-duration-value">
+									{minutesLabel(event.duration_minutes)}
+								</strong>
+							</div>
 						</div>
 					</section>
+					<div className="schedule-guide">
+						<fieldset
+							className="schedule-entry-mode"
+							aria-label="回答する時間の選び方"
+						>
+							<button
+								type="button"
+								aria-pressed={entryMode === "available"}
+								onClick={() => changeEntryMode("available")}
+							>
+								都合がいい時間
+							</button>
+							<button
+								type="button"
+								className="is-unavailable"
+								aria-pressed={entryMode === "unavailable"}
+								onClick={() => changeEntryMode("unavailable")}
+							>
+								都合が悪い時間
+							</button>
+						</fieldset>
+						{calendarOptions.calendars.length > 0 ? (
+							<button
+								type="submit"
+								name="intent"
+								value="calendar-preview"
+								className="schedule-import"
+								disabled={submitting}
+								title="現在の入力を、Googleカレンダーから読み取った空き時間で置き換えます"
+							>
+								<Icon name="calendar" size={16} />
+								{submittingIntent === "calendar-preview"
+									? "読み取り中…"
+									: "予定を取り込む"}
+							</button>
+						) : (
+							<Link
+								className="schedule-settings-link"
+								to="/account#calendar-settings"
+							>
+								カレンダー設定
+							</Link>
+						)}
+					</div>
 					<section className="schedule-editor">
-						<h2>{selectedTitle}</h2>
-						{selectedRanges.length === 0 && <p>この日の空き時間はありません</p>}
+						<div className="schedule-editor-heading">
+							<h2>
+								<WeekendText>{selectedTitle}</WeekendText>
+							</h2>
+							{selectedRanges.length === 0 && (
+								<button type="button" onClick={addDailyRange}>
+									<Icon name="plus" size={15} />
+									{entryMode === "available"
+										? "都合がいい時間"
+										: "都合が悪い時間"}
+									を設定
+								</button>
+							)}
+						</div>
+						{selectedRanges.length === 0 && (
+							<p>
+								この日の
+								{entryMode === "available"
+									? "都合がいい時間"
+									: "都合が悪い時間"}
+								を設定してください
+							</p>
+						)}
 						{selectedRanges.map((range) => (
 							<div className="schedule-time-row" key={range.id}>
 								<input
 									type="time"
 									aria-label="開始時刻"
+									min={dailyStartTime}
+									max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
+									step={1800}
 									value={range.start.slice(11, 16)}
 									onChange={(event) =>
 										updateTime(
@@ -613,6 +1159,9 @@ export default function AvailabilityPage({
 												? "終了時刻 24:00"
 												: "終了時刻"
 										}
+										min={dailyStartTime}
+										max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
+										step={1800}
 										value={
 											endsAtDayBoundary(range, selectedDate)
 												? "00:00"
@@ -645,9 +1194,7 @@ export default function AvailabilityPage({
 							</div>
 						))}
 					</section>
-					{actionData?.kind === "saved" && (
-						<p className="schedule-message success">回答を保存しました</p>
-					)}
+
 					{actionData?.kind === "preview" && (
 						<p className="schedule-message success">
 							{calendarWindow.start}〜{calendarWindow.end}の範囲から
@@ -657,7 +1204,6 @@ export default function AvailabilityPage({
 					{actionData?.kind === "error" && (
 						<p className="schedule-message error">{actionData.error.message}</p>
 					)}
-					<PersistentInviteUrl />
 					<footer className="schedule-submit">
 						<button
 							type="submit"

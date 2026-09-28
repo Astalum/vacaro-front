@@ -202,10 +202,20 @@
 	font-size: 15px;
 	font-weight: 700;
 }
+.status-pill.status-open {
+	color: #218a70;
+	background: var(--mint-soft);
+}
+.status-pill.status-confirmed,
+.status-pill.status-expired,
+.status-pill.status-cancelled {
+	color: var(--muted);
+	background: #eef1f4;
+}
 .status-pill i {
 	width: 6px;
 	height: 6px;
-	background: var(--mint);
+	background: currentColor;
 	border-radius: 50%;
 }
 .manage-actions {

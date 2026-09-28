@@ -89,6 +89,18 @@ button {
 .icon {
 	flex: 0 0 auto;
 }
+.weekday-sunday {
+	color: #d64545 !important;
+}
+.weekday-saturday {
+	color: #2f6fda !important;
+}
+.calendar-weekday:first-child {
+	color: #d64545 !important;
+}
+.calendar-weekday:last-child {
+	color: #2f6fda !important;
+}
 
 .persistent-invite-dock {
 	display: grid;

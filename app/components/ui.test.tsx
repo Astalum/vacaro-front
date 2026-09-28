@@ -4,7 +4,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { EVENT_INVITE_URLS_STORAGE_KEY, saveEventInviteUrl } from "../lib/api";
-import { PageShell } from "./ui";
+import { PageShell, WeekendText } from "./ui";
 
 describe("PageShell invite URL", () => {
 	beforeEach(() => {
@@ -39,5 +39,21 @@ describe("PageShell invite URL", () => {
 				screen.getByRole("link", { name: regeneratedUrl }).getAttribute("href"),
 			).toBe(regeneratedUrl);
 		});
+	});
+});
+
+describe("WeekendText", () => {
+	it("colors only Saturday and Sunday labels", () => {
+		const { container } = render(
+			<WeekendText>10月3日(土) 〜 10月4日(日)</WeekendText>,
+		);
+
+		expect(container.querySelector(".weekday-saturday")?.textContent).toBe(
+			"(土)",
+		);
+		expect(container.querySelector(".weekday-sunday")?.textContent).toBe(
+			"(日)",
+		);
+		expect(container.textContent).toBe("10月3日(土) 〜 10月4日(日)");
 	});
 });

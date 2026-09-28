@@ -1,10 +1,11 @@
 import { data, Form, redirect, useNavigation } from "react-router";
-import { Icon, PageShell } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "../../components/ui";
 import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
 	type Event,
+	eventDisplayStatus,
 	formatDateRange,
 	minutesLabel,
 	type Participant,
@@ -81,6 +82,7 @@ export default function JoinEvent({
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const joining = navigation.state === "submitting";
+	const displayStatus = eventDisplayStatus(event);
 	return (
 		<PageShell>
 			<div className="invite-heading">
@@ -92,8 +94,13 @@ export default function JoinEvent({
 			</div>
 			<section className="invite-card">
 				<div className="invite-card-main">
-					<span className="status-pill">
-						<i /> {event.status === "open" ? "回答受付中" : "受付終了"}
+					<span className={`status-pill status-${displayStatus}`}>
+						<i />{" "}
+						{displayStatus === "open"
+							? "回答受付中"
+							: displayStatus === "expired"
+								? "回答期限超過"
+								: "受付終了"}
 					</span>
 					<h2>{event.title}</h2>
 					{event.description && <p>{event.description}</p>}
@@ -105,11 +112,13 @@ export default function JoinEvent({
 							調整する期間
 						</dt>
 						<dd>
-							{formatDateRange(
-								event.window_start_at,
-								event.window_end_at,
-								event.time_zone,
-							)}
+							<WeekendText>
+								{formatDateRange(
+									event.window_start_at,
+									event.window_end_at,
+									event.time_zone,
+								)}
+							</WeekendText>
 						</dd>
 					</div>
 					<div>
@@ -125,13 +134,15 @@ export default function JoinEvent({
 							回答期限
 						</dt>
 						<dd>
-							{event.response_deadline_at
-								? formatDateRange(
-										event.response_deadline_at,
-										event.response_deadline_at,
-										event.time_zone,
-									).split(" 〜 ")[0]
-								: "指定なし"}
+							<WeekendText>
+								{event.response_deadline_at
+									? formatDateRange(
+											event.response_deadline_at,
+											event.response_deadline_at,
+											event.time_zone,
+										).split(" 〜 ")[0]
+									: "指定なし"}
+							</WeekendText>
 						</dd>
 					</div>
 				</dl>
@@ -163,7 +174,7 @@ export default function JoinEvent({
 				<button
 					className="button button-primary full"
 					type="submit"
-					disabled={joining || event.status !== "open"}
+					disabled={joining || displayStatus !== "open"}
 				>
 					{joining ? "参加しています…" : "参加して回答へ進む"}
 					<Icon name="arrow" size={17} />

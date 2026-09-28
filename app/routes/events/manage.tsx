@@ -1,11 +1,17 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageShell, PersistentInviteUrl } from "../../components/ui";
+import {
+	Icon,
+	PageShell,
+	PersistentInviteUrl,
+	WeekendText,
+} from "../../components/ui";
 import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
 	type Event,
 	type EventWithInvite,
+	eventDisplayStatus,
 	formatDateRange,
 	minutesLabel,
 	type Participant,
@@ -229,6 +235,7 @@ export default function ManageEvent({
 		(participant) => participant.response_status === "submitted",
 	).length;
 	const groupsMode = event.scheduling_mode === "groups";
+	const displayStatus = eventDisplayStatus(event);
 
 	return (
 		<PageShell showPersistentInviteUrl={false}>
@@ -238,22 +245,26 @@ export default function ManageEvent({
 						<Icon name="back" size={17} /> イベント一覧へ
 					</Link>
 					<div className="manage-title">
-						<span className="status-pill">
+						<span className={`status-pill status-${displayStatus}`}>
 							<i />{" "}
-							{event.status === "open"
+							{displayStatus === "open"
 								? "回答受付中"
-								: event.status === "confirmed"
+								: displayStatus === "confirmed"
 									? "日程確定"
-									: "取消済み"}
+									: displayStatus === "expired"
+										? "回答期限超過"
+										: "取消済み"}
 						</span>
 						<h1>{event.title}</h1>
 					</div>
 					<p>
-						{formatDateRange(
-							event.window_start_at,
-							event.window_end_at,
-							event.time_zone,
-						)}
+						<WeekendText>
+							{formatDateRange(
+								event.window_start_at,
+								event.window_end_at,
+								event.time_zone,
+							)}
+						</WeekendText>
 					</p>
 				</div>
 				<div className="manage-actions">

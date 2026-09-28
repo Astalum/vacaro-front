@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Icon, PageShell } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "../../components/ui";
 import {
 	apiRequest,
 	type Event,
@@ -72,11 +72,13 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 								<span>
 									<Icon name="calendar" size={17} />
 									<strong>
-										{formatDateRange(
-											event.window_start_at,
-											event.window_end_at,
-											event.time_zone,
-										)}
+										<WeekendText>
+											{formatDateRange(
+												event.window_start_at,
+												event.window_end_at,
+												event.time_zone,
+											)}
+										</WeekendText>
 									</strong>
 								</span>
 								<span>

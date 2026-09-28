@@ -99,17 +99,28 @@
 .event-list-actions .button {
 	width: 100%;
 }
+.event-action-label-compact {
+	display: none;
+}
 .event-list-body h2 {
 	margin: 5px 0;
 	font-size: 22px;
 }
-.event-list-body p {
+.event-list-meta {
 	display: flex;
 	align-items: center;
 	gap: 5px;
 	margin: 0;
 	color: var(--muted);
 	font-size: 15px;
+}
+.event-list-period,
+.event-list-period-text,
+.event-list-period-end,
+.event-list-duration {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
 }
 .event-list-progress {
 	text-align: center;
@@ -132,10 +143,91 @@
 }
 
 @media (max-width: 680px) {
+	.page-main:has(> .event-sections),
+	.page-main:has(> .empty-state) {
+		padding-bottom: max(16px, env(safe-area-inset-bottom));
+	}
+	.event-section {
+		padding: 10px;
+		border-radius: 14px;
+	}
+	.event-list article {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 88px;
+		align-items: stretch;
+		gap: 10px;
+		padding: 14px;
+	}
+	.event-list-body {
+		display: block;
+	}
+	.event-list-body h2 {
+		margin: 0;
+		overflow: visible;
+		font-size: 18px;
+		white-space: normal;
+		text-overflow: clip;
+		overflow-wrap: anywhere;
+	}
+	.event-list-meta {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 7px;
+		margin-top: 8px;
+		font-size: 12px;
+		line-height: 1.45;
+	}
+	.event-list-period {
+		align-items: flex-start;
+	}
+	.event-list-period > .icon {
+		margin-top: 3px;
+	}
+	.event-list-period-text {
+		min-width: 0;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 1px;
+	}
+	.event-list-period-text > span,
+	.event-list-period-end {
+		white-space: nowrap;
+	}
+	.event-list-period-end {
+		gap: 4px;
+	}
+	.event-list-duration {
+		margin-left: 0;
+	}
+	.event-list-meta-separator {
+		display: none;
+	}
 	.event-list-actions {
-		width: 100%;
+		width: auto;
+		align-self: stretch;
+		padding-left: 10px;
+		border-left: 1px solid var(--line);
+		justify-content: flex-start;
+		gap: 6px;
+	}
+	.event-list-actions .status-pill {
+		align-self: center;
+		padding: 4px 5px;
+		gap: 3px;
+		font-size: 10px;
+		white-space: nowrap;
 	}
 	.event-list-actions .button {
-		flex: 1;
+		min-height: 38px;
+		padding: 7px 5px;
+		gap: 4px;
+		font-size: 13px;
+		white-space: nowrap;
+	}
+	.event-action-label-full {
+		display: none;
+	}
+	.event-action-label-compact {
+		display: inline;
 	}
 }
