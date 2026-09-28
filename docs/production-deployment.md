@@ -139,6 +139,8 @@ cd /opt/vacaro
 3. `docker compose up -d`
 4. ローカルURLと公開URLのヘルスチェック
 
+公開APIはGoogle連携の有無に依存しない`/api/ready`で確認します。
+
 コンテナの状態を確認します。
 
 ```bash

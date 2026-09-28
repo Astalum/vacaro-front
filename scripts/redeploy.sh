@@ -15,7 +15,7 @@ readonly COMPOSE_OVERRIDE_FILE="${COMPOSE_OVERRIDE_FILE:-${DEPLOY_DIR}/compose.p
 readonly LOCAL_WEB_HEALTH_URL="${LOCAL_WEB_HEALTH_URL:-http://127.0.0.1:3000/}"
 readonly LOCAL_API_HEALTH_URL="${LOCAL_API_HEALTH_URL:-http://127.0.0.1:8080/ready}"
 readonly PUBLIC_WEB_HEALTH_URL="${PUBLIC_WEB_HEALTH_URL:-https://vacaro.astalum.dev/}"
-readonly PUBLIC_API_HEALTH_URL="${PUBLIC_API_HEALTH_URL:-https://vacaro.astalum.dev/api/v1/auth/google/start}"
+readonly PUBLIC_API_HEALTH_URL="${PUBLIC_API_HEALTH_URL:-https://vacaro.astalum.dev/api/ready}"
 readonly HEALTH_RETRIES="${HEALTH_RETRIES:-30}"
 readonly DEPLOY_LOCK="${DEPLOY_LOCK:-/tmp/vacaro-redeploy.lock}"
 
