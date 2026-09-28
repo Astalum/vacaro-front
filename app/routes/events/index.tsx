@@ -1,9 +1,10 @@
 import { Link } from "react-router";
-import { Icon, PageIntro, PageShell } from "../../components/ui";
+import { Icon, PageIntro, PageShell, WeekendText } from "../../components/ui";
 import {
 	apiRequest,
 	type Event,
-	formatDateRange,
+	eventDisplayStatus,
+	formatDateTime,
 	minutesLabel,
 	type User,
 } from "../../lib/api";
@@ -17,14 +18,7 @@ export async function clientLoader() {
 		apiRequest<Event[]>("/events"),
 		apiRequest<User>("/me"),
 	]);
-	return {
-		createdEvents: events.filter(
-			(event) => event.created_by_user_id === user.id,
-		),
-		joinedEvents: events.filter(
-			(event) => event.created_by_user_id !== user.id,
-		),
-	};
+	return { events, currentUserId: user.id };
 }
 clientLoader.hydrate = true as const;
 export function HydrateFallback() {
@@ -37,83 +31,97 @@ export function HydrateFallback() {
 
 function EventList({
 	events,
-	showAnswerLink = false,
-	showManageLink = false,
+	currentUserId,
 }: {
 	events: Event[];
-	showAnswerLink?: boolean;
-	showManageLink?: boolean;
+	currentUserId: string;
 }) {
 	return (
 		<div className="event-list">
-			{events.map((event) => (
-				<article key={event.id}>
-					<div className="event-list-body">
-						<span className="status-pill">
-							<i />{" "}
-							{event.status === "open"
-								? "回答受付中"
-								: event.status === "confirmed"
-									? "日程確定"
-									: "取消済み"}
-						</span>
-						<h2>{event.title}</h2>
-						<p>
-							<Icon name="calendar" size={15} />{" "}
-							{formatDateRange(
-								event.window_start_at,
-								event.window_end_at,
-								event.time_zone,
+			{events.map((event) => {
+				const displayStatus = eventDisplayStatus(event);
+				const canManage = event.created_by_user_id === currentUserId;
+				return (
+					<article key={event.id}>
+						<div className="event-list-body">
+							<h2>{event.title}</h2>
+							<div className="event-list-meta">
+								<span className="event-list-period">
+									<Icon name="calendar" size={15} />
+									<span className="event-list-period-text">
+										<span>
+											<WeekendText>
+												{formatDateTime(event.window_start_at, event.time_zone)}
+											</WeekendText>
+										</span>
+										<span className="event-list-period-end">
+											<span>〜</span>
+											<WeekendText>
+												{formatDateTime(event.window_end_at, event.time_zone)}
+											</WeekendText>
+										</span>
+									</span>
+								</span>
+								<span className="event-list-meta-separator" aria-hidden="true">
+									・
+								</span>
+								<span className="event-list-duration">
+									<Icon name="clock" size={15} />
+									{minutesLabel(event.duration_minutes)}
+								</span>
+							</div>
+						</div>
+						<div className="event-list-actions">
+							<span className={`status-pill status-${displayStatus}`}>
+								<i />{" "}
+								{displayStatus === "open"
+									? "回答受付中"
+									: displayStatus === "confirmed"
+										? "日程確定"
+										: displayStatus === "expired"
+											? "回答期限超過"
+											: "取消済み"}
+							</span>
+							{displayStatus === "open" && (
+								<Link
+									className="button button-primary"
+									to={`/events/${event.id}/availability`}
+								>
+									<span className="event-action-label-full">回答ページへ</span>
+									<span className="event-action-label-compact">回答</span>
+									<Icon name="arrow" size={15} />
+								</Link>
 							)}
-							<span>・</span>
-							<Icon name="clock" size={15} />{" "}
-							{minutesLabel(event.duration_minutes)}
-						</p>
-					</div>
-					<div className="event-list-actions">
-						{showAnswerLink && event.status === "open" && (
-							<Link
-								className="button button-primary"
-								to={`/events/${event.id}/availability`}
-							>
-								回答ページへ <Icon name="arrow" size={15} />
-							</Link>
-						)}
-						{showManageLink && (
-							<Link
-								className="button button-ghost"
-								to={`/events/${event.id}/manage`}
-							>
-								管理画面へ <Icon name="users" size={15} />
-							</Link>
-						)}
-						<Link
-							className="button button-ghost"
-							to={
-								event.status === "confirmed"
-									? `/events/${event.id}/confirmed`
-									: `/events/${event.id}/results`
-							}
-						>
-							詳細を見る <Icon name="chevron" size={15} />
-						</Link>
-					</div>
-				</article>
-			))}
+							{canManage && (
+								<Link
+									className="button button-ghost"
+									to={`/events/${event.id}/manage`}
+								>
+									<span className="event-action-label-full">管理画面へ</span>
+									<span className="event-action-label-compact">管理</span>
+									<Icon name="users" size={15} />
+								</Link>
+							)}
+						</div>
+					</article>
+				);
+			})}
 		</div>
 	);
 }
 
 export default function EventsIndex({ loaderData }: Route.ComponentProps) {
-	const { createdEvents, joinedEvents } = loaderData;
-	const hasEvents = createdEvents.length + joinedEvents.length > 0;
+	const { events, currentUserId } = loaderData;
+	const acceptingEvents = events.filter(
+		(event) => eventDisplayStatus(event) === "open",
+	);
+	const closedEvents = events.filter(
+		(event) => eventDisplayStatus(event) !== "open",
+	);
+	const hasEvents = events.length > 0;
 	return (
 		<PageShell>
-			<PageIntro
-				eyebrow="MY EVENTS"
-				title="参加中のイベント"
-				description="作成したイベントと、招待されたイベントを確認できます。"
-			/>
+			<PageIntro eyebrow="MY EVENTS" title="参加中のイベント" />
 			{!hasEvents ? (
 				<div className="empty-state">
 					<Icon name="calendar" size={35} />
@@ -131,32 +139,35 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 					<section className="event-section">
 						<header className="event-section-heading">
 							<div>
-								<span>HOSTED BY ME</span>
-								<h2>自分が作成したイベント</h2>
+								<span>ACCEPTING RESPONSES</span>
+								<h2>回答受付中のイベント</h2>
 							</div>
-							<b>{createdEvents.length}件</b>
+							<b>{acceptingEvents.length}件</b>
 						</header>
-						{createdEvents.length > 0 ? (
-							<EventList events={createdEvents} showAnswerLink showManageLink />
+						{acceptingEvents.length > 0 ? (
+							<EventList
+								events={acceptingEvents}
+								currentUserId={currentUserId}
+							/>
 						) : (
 							<p className="event-section-empty">
-								作成したイベントはまだありません。
+								回答受付中のイベントはありません。
 							</p>
 						)}
 					</section>
 					<section className="event-section">
 						<header className="event-section-heading">
 							<div>
-								<span>JOINED EVENTS</span>
-								<h2>参加したイベント</h2>
+								<span>CLOSED RESPONSES</span>
+								<h2>回答受付終了のイベント</h2>
 							</div>
-							<b>{joinedEvents.length}件</b>
+							<b>{closedEvents.length}件</b>
 						</header>
-						{joinedEvents.length > 0 ? (
-							<EventList events={joinedEvents} showAnswerLink />
+						{closedEvents.length > 0 ? (
+							<EventList events={closedEvents} currentUserId={currentUserId} />
 						) : (
 							<p className="event-section-empty">
-								参加したイベントはまだありません。
+								回答受付終了のイベントはありません。
 							</p>
 						)}
 					</section>

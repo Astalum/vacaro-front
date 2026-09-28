@@ -1,10 +1,5 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import {
-	Icon,
-	PageIntro,
-	PageShell,
-	PersistentInviteUrl,
-} from "../../components/ui";
+import { Icon, PageIntro, PageShell } from "../../components/ui";
 import { DateTimePicker } from "../../components/ui/date-time-picker";
 import {
 	Select,
@@ -52,6 +47,31 @@ export async function clientAction({
 	request,
 }: Route.ClientActionArgs) {
 	const formData = await request.formData();
+	const windowStartDate = String(formData.get("window_start_date") ?? "");
+	const windowEndDate = String(formData.get("window_end_date") ?? "");
+	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
+	const dailyEndTime = String(formData.get("daily_end_time") ?? "");
+	if (
+		!windowStartDate ||
+		!windowEndDate ||
+		windowStartDate > windowEndDate ||
+		!dailyStartTime ||
+		!dailyEndTime ||
+		dailyStartTime >= dailyEndTime
+	) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message: "回答を集める期間と時間帯を確認してください",
+					fields: null,
+				},
+			},
+			{ status: 422 },
+		);
+	}
+	const windowStartAt = `${windowStartDate}T${dailyStartTime}`;
+	const windowEndAt = `${windowEndDate}T${dailyEndTime}`;
 	try {
 		await apiRequest<Event>(`/events/${params.eventId}`, {
 			method: "PATCH",
@@ -59,8 +79,8 @@ export async function clientAction({
 				title: String(formData.get("title") ?? ""),
 				description: String(formData.get("description") ?? "") || null,
 				time_zone: String(formData.get("time_zone") ?? "Asia/Tokyo"),
-				window_start_at: localDateTimeToIso(formData.get("window_start_at")),
-				window_end_at: localDateTimeToIso(formData.get("window_end_at")),
+				window_start_at: localDateTimeToIso(windowStartAt),
+				window_end_at: localDateTimeToIso(windowEndAt),
 				duration_minutes: Number(formData.get("duration_minutes")),
 				response_deadline_at: localDateTimeToIso(
 					formData.get("response_deadline_at"),
@@ -102,7 +122,7 @@ export function HydrateFallback() {
 }
 
 export default function EditEvent({
-	loaderData: { event, inviteUrl },
+	loaderData: { event },
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
@@ -191,23 +211,62 @@ export default function EditEvent({
 					</div>
 					<div className="window-fields">
 						<div className="field">
-							<label htmlFor="edit-window-start">期間の開始</label>
-							<DateTimePicker
-								id="edit-window-start"
-								name="window_start_at"
-								defaultValue={inputDateTime(event.window_start_at)}
+							<label htmlFor="edit-window-start-date">開始日</label>
+							<input
+								id="edit-window-start-date"
+								name="window_start_date"
+								type="date"
+								defaultValue={inputDateTime(event.window_start_at).slice(0, 10)}
 								required
 							/>
 						</div>
 						<span className="window-arrow">→</span>
 						<div className="field">
-							<label htmlFor="edit-window-end">期間の終了</label>
-							<DateTimePicker
-								id="edit-window-end"
-								name="window_end_at"
-								defaultValue={inputDateTime(event.window_end_at)}
+							<label htmlFor="edit-window-end-date">終了日</label>
+							<input
+								id="edit-window-end-date"
+								name="window_end_date"
+								type="date"
+								defaultValue={inputDateTime(event.window_end_at).slice(0, 10)}
 								required
 							/>
+						</div>
+					</div>
+					<div className="daily-window-settings">
+						<div>
+							<strong>毎日の回答受付時間</strong>
+							<p>参加者は各日、この時間帯の中で回答できます。</p>
+						</div>
+						<div className="daily-window-fields">
+							<div className="field">
+								<label htmlFor="edit-daily-start-time">受付開始</label>
+								<input
+									id="edit-daily-start-time"
+									name="daily_start_time"
+									type="time"
+									step={1800}
+									defaultValue={inputDateTime(event.window_start_at).slice(
+										11,
+										16,
+									)}
+									required
+								/>
+							</div>
+							<span>〜</span>
+							<div className="field">
+								<label htmlFor="edit-daily-end-time">受付終了</label>
+								<input
+									id="edit-daily-end-time"
+									name="daily_end_time"
+									type="time"
+									step={1800}
+									defaultValue={inputDateTime(event.window_end_at).slice(
+										11,
+										16,
+									)}
+									required
+								/>
+							</div>
 						</div>
 					</div>
 					<div className="field">

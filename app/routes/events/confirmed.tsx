@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Icon, PageShell } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "../../components/ui";
 import {
 	apiRequest,
 	type Event,
@@ -69,11 +69,13 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 						</header>
 						{event.confirmed_start_at && event.confirmed_end_at ? (
 							<strong>
-								{formatDateRange(
-									event.confirmed_start_at,
-									event.confirmed_end_at,
-									event.time_zone,
-								)}
+								<WeekendText>
+									{formatDateRange(
+										event.confirmed_start_at,
+										event.confirmed_end_at,
+										event.time_zone,
+									)}
+								</WeekendText>
 							</strong>
 						) : (
 							<p>日程はまだ確定していません。</p>
@@ -109,11 +111,13 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 							</header>
 							{group.confirmed_start_at && group.confirmed_end_at ? (
 								<strong>
-									{formatDateRange(
-										group.confirmed_start_at,
-										group.confirmed_end_at,
-										event.time_zone,
-									)}
+									<WeekendText>
+										{formatDateRange(
+											group.confirmed_start_at,
+											group.confirmed_end_at,
+											event.time_zone,
+										)}
+									</WeekendText>
 								</strong>
 							) : (
 								<p>日程はまだ確定していません。</p>
@@ -189,31 +193,37 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 					<span />
 					<div>
 						<b>
-							{new Intl.DateTimeFormat("ja-JP", {
-								timeZone: event.time_zone,
-								weekday: "long",
-							}).format(start)}
+							<WeekendText>
+								{new Intl.DateTimeFormat("ja-JP", {
+									timeZone: event.time_zone,
+									weekday: "long",
+								}).format(start)}
+							</WeekendText>
 						</b>
 						<strong>
-							{formatDateRange(
-								event.confirmed_start_at as string,
-								event.confirmed_end_at as string,
-								event.time_zone,
-							)
-								.split(" ")
-								.slice(-3)
-								.join(" ")}
+							<WeekendText>
+								{formatDateRange(
+									event.confirmed_start_at as string,
+									event.confirmed_end_at as string,
+									event.time_zone,
+								)
+									.split(" ")
+									.slice(-3)
+									.join(" ")}
+							</WeekendText>
 						</strong>
 					</div>
 				</div>
 				<div className="confirmed-details">
 					<p>
 						<Icon name="calendar" size={17} />{" "}
-						{formatDateRange(
-							event.confirmed_start_at as string,
-							event.confirmed_end_at as string,
-							event.time_zone,
-						)}
+						<WeekendText>
+							{formatDateRange(
+								event.confirmed_start_at as string,
+								event.confirmed_end_at as string,
+								event.time_zone,
+							)}
+						</WeekendText>
 					</p>
 					<p>
 						<Icon name="clock" size={17} /> 必要時間{" "}

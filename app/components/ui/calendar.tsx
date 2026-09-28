@@ -12,6 +12,8 @@ export function Calendar({
 	className,
 	classNames,
 	showOutsideDays = true,
+	modifiers,
+	modifiersClassNames,
 	...props
 }: React.ComponentProps<typeof DayPicker>) {
 	const defaultClassNames = getDefaultClassNames();
@@ -20,6 +22,16 @@ export function Calendar({
 		<DayPicker
 			showOutsideDays={showOutsideDays}
 			className={cn("p-3", className)}
+			modifiers={{
+				sunday: { dayOfWeek: [0] },
+				saturday: { dayOfWeek: [6] },
+				...modifiers,
+			}}
+			modifiersClassNames={{
+				sunday: "weekday-sunday",
+				saturday: "weekday-saturday",
+				...modifiersClassNames,
+			}}
 			classNames={{
 				root: cn("w-fit", defaultClassNames.root),
 				months: "relative flex flex-col gap-4 sm:flex-row",
@@ -32,8 +44,9 @@ export function Calendar({
 				button_next:
 					"grid size-9 place-items-center rounded-lg border border-border bg-white text-primary outline-none transition-colors hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/20 disabled:opacity-40",
 				month_grid: "w-full border-collapse",
-				weekdays: "flex",
-				weekday: "w-9 py-2 text-center text-sm font-bold text-muted-foreground",
+				weekdays: "calendar-weekdays flex",
+				weekday:
+					"calendar-weekday w-9 py-2 text-center text-sm font-bold text-muted-foreground",
 				week: "mt-1 flex w-full",
 				day: "relative size-9 p-0 text-center text-sm [&:has([aria-selected])]:rounded-lg [&:has([aria-selected])]:bg-primary [&:has([aria-selected])]:text-white",
 				day_button:

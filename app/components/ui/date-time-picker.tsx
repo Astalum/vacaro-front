@@ -3,6 +3,7 @@ import { ja } from "date-fns/locale";
 import { CalendarIcon, Clock3Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "~/lib/utils";
+import { WeekendText } from "../ui";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
@@ -70,9 +71,16 @@ export function DateTimePicker({
 							!date && "text-muted-foreground",
 						)}
 					>
-						{date
-							? `${format(date, "yyyy年M月d日(E)", { locale: ja })} ${time}`
-							: "日付と時刻を選択"}
+						{date ? (
+							<>
+								<WeekendText>
+									{format(date, "yyyy年M月d日(E)", { locale: ja })}
+								</WeekendText>{" "}
+								{time}
+							</>
+						) : (
+							"日付と時刻を選択"
+						)}
 					</span>
 				</button>
 			</PopoverTrigger>

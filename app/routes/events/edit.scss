@@ -61,3 +61,45 @@
 .edit-invite-section {
 	margin-top: 22px;
 }
+
+.daily-window-settings {
+	display: grid;
+	grid-template-columns: minmax(180px, 0.8fr) minmax(320px, 1.2fr);
+	align-items: center;
+	gap: 24px;
+	margin-bottom: 30px;
+	padding: 20px;
+	border: 1px solid #d5e9e1;
+	border-radius: 12px;
+	background: #f0faf6;
+}
+.daily-window-settings strong {
+	display: block;
+	margin-bottom: 5px;
+	font-size: 17px;
+}
+.daily-window-settings p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 14px;
+	line-height: 1.6;
+}
+.daily-window-fields {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	align-items: end;
+	gap: 10px;
+}
+.daily-window-fields > .field {
+	margin: 0;
+}
+.daily-window-fields > span {
+	padding-bottom: 14px;
+	color: var(--coral);
+	font-weight: 800;
+}
+@media (max-width: 720px) {
+	.daily-window-settings {
+		grid-template-columns: 1fr;
+	}
+}

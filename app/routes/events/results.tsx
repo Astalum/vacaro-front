@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageShell } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "../../components/ui";
 import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
 	type Candidate,
 	type Event,
+	eventDisplayStatus,
 	formatDateRange,
 	localDateTimeToIso,
 	minutesLabel,
@@ -267,13 +268,16 @@ export default function Results({
 	const confirmedEnd = activeGroup
 		? activeGroup.confirmed_end_at
 		: event.confirmed_end_at;
+	const displayStatus = eventDisplayStatus(event);
 	const resultStatus = activeGroup
 		? event.status === "cancelled"
 			? "cancelled"
 			: confirmedStart
 				? "confirmed"
-				: "open"
-		: event.status;
+				: event.status === "open"
+					? displayStatus
+					: "open"
+		: displayStatus;
 	const participantById = new Map(
 		availability.map((item) => [
 			item.participant.id,
@@ -353,7 +357,9 @@ export default function Results({
 								? "回答受付中"
 								: resultStatus === "confirmed"
 									? "日程確定"
-									: "中止"}
+									: resultStatus === "expired"
+										? "回答期限超過"
+										: "中止"}
 						</span>
 					</div>
 				</div>
@@ -367,11 +373,13 @@ export default function Results({
 							<span>
 								<Icon name="calendar" size={18} />
 								<strong>
-									{formatDateRange(
-										event.window_start_at,
-										event.window_end_at,
-										event.time_zone,
-									)}
+									<WeekendText>
+										{formatDateRange(
+											event.window_start_at,
+											event.window_end_at,
+											event.time_zone,
+										)}
+									</WeekendText>
 								</strong>
 							</span>
 							<span>
@@ -562,12 +570,14 @@ export default function Results({
 								<div className="daily-candidate-heading">
 									<div>
 										<strong>
-											{new Intl.DateTimeFormat("ja-JP", {
-												month: "long",
-												day: "numeric",
-												weekday: "short",
-												timeZone: "UTC",
-											}).format(new Date(`${expandedDateKey}T00:00:00Z`))}
+											<WeekendText>
+												{new Intl.DateTimeFormat("ja-JP", {
+													month: "long",
+													day: "numeric",
+													weekday: "short",
+													timeZone: "UTC",
+												}).format(new Date(`${expandedDateKey}T00:00:00Z`))}
+											</WeekendText>
 										</strong>
 										<span>{expandedIntervals.length}件の時間帯</span>
 									</div>
@@ -644,11 +654,13 @@ export default function Results({
 								{confirmedStart && confirmedEnd ? (
 									<div className="manual-confirmation-current">
 										<strong>
-											{formatDateRange(
-												confirmedStart,
-												confirmedEnd,
-												event.time_zone,
-											)}
+											<WeekendText>
+												{formatDateRange(
+													confirmedStart,
+													confirmedEnd,
+													event.time_zone,
+												)}
+											</WeekendText>
 										</strong>
 										<Form method="post">
 											<input
@@ -693,15 +705,19 @@ export default function Results({
 										<div className="manual-confirmation-date">
 											<span>開催日</span>
 											<strong>
-												{expandedDateKey
-													? new Intl.DateTimeFormat("ja-JP", {
-															year: "numeric",
-															month: "long",
-															day: "numeric",
-															weekday: "short",
-															timeZone: "UTC",
-														}).format(new Date(`${expandedDateKey}T00:00:00Z`))
-													: "カレンダーから日付を選択"}
+												<WeekendText>
+													{expandedDateKey
+														? new Intl.DateTimeFormat("ja-JP", {
+																year: "numeric",
+																month: "long",
+																day: "numeric",
+																weekday: "short",
+																timeZone: "UTC",
+															}).format(
+																new Date(`${expandedDateKey}T00:00:00Z`),
+															)
+														: "カレンダーから日付を選択"}
+												</WeekendText>
 											</strong>
 										</div>
 										<label htmlFor="confirmation-time">開始時刻</label>
@@ -787,11 +803,13 @@ export default function Results({
 														dateTime={interval.start_at}
 													>
 														<Icon name="clock" size={14} />
-														{formatDateRange(
-															interval.start_at,
-															interval.end_at,
-															event.time_zone,
-														)}
+														<WeekendText>
+															{formatDateRange(
+																interval.start_at,
+																interval.end_at,
+																event.time_zone,
+															)}
+														</WeekendText>
 													</time>
 												))
 											)}

@@ -133,6 +133,36 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 	);
 }
 
+export function WeekendText({ children }: { children: string }) {
+	let offset = 0;
+	const parts = children
+		.split(/(\(土\)|\(日\)|（土）|（日）|土曜日|日曜日)/g)
+		.filter(Boolean)
+		.map((text) => {
+			const start = offset;
+			offset += text.length;
+			return { start, text };
+		});
+	return (
+		<>
+			{parts.map(({ start, text }) => (
+				<span
+					key={`${start}-${text}`}
+					className={
+						/(?:\(土\)|（土）|土曜日)$/.test(text)
+							? "weekday-saturday"
+							: /^(?:\(日\)|（日）|日曜日)$/.test(text)
+								? "weekday-sunday"
+								: undefined
+					}
+				>
+					{text}
+				</span>
+			))}
+		</>
+	);
+}
+
 export function Brand() {
 	return (
 		<Link className="brand" to="/">
@@ -301,17 +331,19 @@ export function PersistentInviteUrl() {
 export function PageShell({
 	children,
 	fullScreen = false,
+	showHeader = !fullScreen,
 	showPersistentInviteUrl = true,
 }: {
 	children: ReactNode;
 	fullScreen?: boolean;
+	showHeader?: boolean;
 	showPersistentInviteUrl?: boolean;
 }) {
 	return (
 		<div
 			className={`site-shell page-shell ${fullScreen ? "fullscreen-shell" : ""}`}
 		>
-			{!fullScreen && <AppHeader compact />}
+			{showHeader && <AppHeader compact />}
 			<main className={`page-main wrap ${fullScreen ? "fullscreen-main" : ""}`}>
 				{children}
 				{showPersistentInviteUrl && <PersistentInviteUrl />}
