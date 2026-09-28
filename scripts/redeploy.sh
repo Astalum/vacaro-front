@@ -3,13 +3,15 @@
 set -Eeuo pipefail
 
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-readonly FRONTEND_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-readonly STACK_DIR="${STACK_DIR:-$(cd -- "${FRONTEND_DIR}/.." && pwd)}"
-readonly BACKEND_DIR="${BACKEND_DIR:-${STACK_DIR}/vacaro-back}"
-readonly ENV_FILE="${ENV_FILE:-${STACK_DIR}/.env}"
-readonly COMPOSE_FILE="${COMPOSE_FILE:-${STACK_DIR}/compose.prod.yaml}"
-readonly COMPOSE_OVERRIDE_FILE="${COMPOSE_OVERRIDE_FILE:-${STACK_DIR}/compose.prod.override.yaml}"
-readonly CHECK_IMAGE="${CHECK_IMAGE:-vacaro-front-deploy-check}"
+if [[ -f "${SCRIPT_DIR}/compose.prod.yaml" ]]; then
+	DEFAULT_DEPLOY_DIR="${SCRIPT_DIR}"
+else
+	DEFAULT_DEPLOY_DIR="$(cd -- "${SCRIPT_DIR}/../deploy" && pwd)"
+fi
+readonly DEPLOY_DIR="${DEPLOY_DIR:-${DEFAULT_DEPLOY_DIR}}"
+readonly ENV_FILE="${ENV_FILE:-${DEPLOY_DIR}/.env.production}"
+readonly COMPOSE_FILE="${COMPOSE_FILE:-${DEPLOY_DIR}/compose.prod.yaml}"
+readonly COMPOSE_OVERRIDE_FILE="${COMPOSE_OVERRIDE_FILE:-${DEPLOY_DIR}/compose.prod.override.yaml}"
 readonly LOCAL_WEB_HEALTH_URL="${LOCAL_WEB_HEALTH_URL:-http://127.0.0.1:3000/}"
 readonly LOCAL_API_HEALTH_URL="${LOCAL_API_HEALTH_URL:-http://127.0.0.1:8080/ready}"
 readonly PUBLIC_WEB_HEALTH_URL="${PUBLIC_WEB_HEALTH_URL:-https://vacaro.astalum.dev/}"
@@ -31,15 +33,6 @@ require_file() {
 	[[ -f "${file_path}" ]] || fail "必要なファイルがありません: ${file_path}"
 }
 
-require_clean_repo() {
-	local repo_path="$1"
-	local repo_name="$2"
-	local changes
-
-	changes="$(git -C "${repo_path}" status --porcelain)"
-	[[ -z "${changes}" ]] || fail "${repo_name}に未コミットの変更があります"
-}
-
 wait_for_url() {
 	local label="$1"
 	local url="$2"
@@ -56,7 +49,7 @@ wait_for_url() {
 	return 1
 }
 
-for command_name in git docker curl flock; do
+for command_name in docker curl flock; do
 	command -v "${command_name}" >/dev/null 2>&1 ||
 		fail "必要なコマンドがありません: ${command_name}"
 done
@@ -66,8 +59,6 @@ docker info >/dev/null 2>&1 || fail "Dockerデーモンへ接続できません"
 
 require_file "${ENV_FILE}"
 require_file "${COMPOSE_FILE}"
-require_file "${FRONTEND_DIR}/Dockerfile"
-require_file "${BACKEND_DIR}/Dockerfile"
 
 compose_args=(--env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 if [[ -f "${COMPOSE_OVERRIDE_FILE}" ]]; then
@@ -82,28 +73,13 @@ compose() {
 exec 9>"${DEPLOY_LOCK}"
 flock -n 9 || fail "別の再デプロイが実行中です"
 
-require_clean_repo "${FRONTEND_DIR}" "vacaro-front"
-require_clean_repo "${BACKEND_DIR}" "vacaro-back"
-
-log "リモートの変更を取得しています"
-git -C "${FRONTEND_DIR}" pull --ff-only
-git -C "${BACKEND_DIR}" pull --ff-only
-
 log "本番Compose設定を検証しています"
 compose config --quiet
 
-log "Node 24コンテナ内で型チェックとテストを実行しています"
-docker build \
-	--target development-dependencies-env \
-	--tag "${CHECK_IMAGE}" \
-	"${FRONTEND_DIR}"
-docker run --rm "${CHECK_IMAGE}" npm run typecheck
-docker run --rm "${CHECK_IMAGE}" npm test
+log "CIでビルド済みの本番イメージを取得しています"
+compose pull
 
-log "本番イメージをビルドしています"
-compose build web api
-
-log "DBマイグレーションと本番コンテナを適用しています"
+log "本番コンテナを適用しています"
 compose up -d --remove-orphans
 
 log "ローカルのヘルスチェックを実行しています"

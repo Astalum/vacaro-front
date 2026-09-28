@@ -80,8 +80,39 @@ Docker開発環境を終了する場合：
 docker compose -f compose.dev.yaml down
 ```
 
+## 本番デプロイ
+
+本番VPSではソースコードの取得、依存関係のインストール、型チェック、テスト、イメージのビルドを行いません。`main`へのpush時にGitHub Actionsがこれらを実行し、検証済みイメージをGHCRへ発行します。
+
+VPSへ配置するのは、原則として次のファイルだけです。
+
+- `deploy/compose.prod.yaml`（バックエンド等と統合する場合は、その本番Composeへ同じ`image:`設定を反映）
+- `deploy/.env.production.example`を元に作成した`.env.production`
+- 必要に応じて`deploy/vacaro-front.service`と`scripts/redeploy.sh`
+
+`.env.production`のイメージは、GitHub Actionsが発行した不変のコミットSHAタグへ固定します。
+
+```env
+VACARO_FRONT_IMAGE=ghcr.io/astalum/vacaro-front:sha-<40桁のcommit SHA>
+```
+
+GHCRパッケージがprivateの場合のみ、VPSでread-onlyのPersonal Access Tokenを使って一度`docker login ghcr.io`を実行します。デプロイはVPS上で次の処理だけを行います。
+
+```bash
+DEPLOY_DIR=/opt/vacaro ./redeploy.sh
+```
+
+`redeploy.sh`はCompose設定の検証、`docker compose pull`、`docker compose up -d`、ヘルスチェックだけを実行します。新しい版へ更新するときは、`.env.production`のSHAタグを変更してから再実行します。これにより、VPSへGit、Node.js、npm、pnpm、TypeScript、コンパイラを置く必要はありません。
+
+### VS Code Remote SSH
+
+本番VPSは通常の開発ワークスペースとして開かない運用を推奨します。調査のために開く場合は、VS Codeの拡張機能ビューで`SSH: <VPS名> - Installed`を選び、TypeScript/JavaScript Language Features、ESLint、Prettier、Git関連など本番運用に不要な拡張をリモート側で`Disable (Workspace)`またはアンインストールします。ローカル側の拡張は無効化する必要はありません。
+
+VPS上の`/opt/vacaro`にはCompose、環境ファイル、運用スクリプトだけを置き、アプリのソースディレクトリをRemote SSHで開かないようにします。秘密値を含む`.env.production`はGitへ追加せず、権限を`600`にしてください。
+
 ## ドキュメント
 
+- [本番デプロイ手順](docs/production-deployment.md)
 - [画面・ルーティング設計](docs/screen-and-routing-design.md)
 - [API仕様](docs/api-design.md)
 - [データベース設計](docs/database-design.md)
