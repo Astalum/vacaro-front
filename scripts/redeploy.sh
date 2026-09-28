@@ -83,18 +83,18 @@ log "本番コンテナを適用しています"
 compose up -d --remove-orphans
 
 log "ローカルのヘルスチェックを実行しています"
-if ! wait_for_url "Web" "${LOCAL_WEB_HEALTH_URL}" ||
-	! wait_for_url "API" "${LOCAL_API_HEALTH_URL}"; then
+	if ! wait_for_url "Web" "${LOCAL_WEB_HEALTH_URL}" ||
+		! wait_for_url "API" "${LOCAL_API_HEALTH_URL}"; then
 	compose ps --all >&2 || true
-	compose logs --no-color --tail 100 web api migrate db >&2 || true
+	compose logs --no-color --tail 100 >&2 || true
 	fail "ローカルのヘルスチェックに失敗しました"
 fi
 
 log "公開URLのヘルスチェックを実行しています"
-if ! wait_for_url "公開Web" "${PUBLIC_WEB_HEALTH_URL}" ||
-	! wait_for_url "公開API" "${PUBLIC_API_HEALTH_URL}"; then
+	if ! wait_for_url "公開Web" "${PUBLIC_WEB_HEALTH_URL}" ||
+		! wait_for_url "公開API" "${PUBLIC_API_HEALTH_URL}"; then
 	compose ps --all >&2 || true
-	compose logs --no-color --tail 100 web api >&2 || true
+	compose logs --no-color --tail 100 >&2 || true
 	fail "公開URLのヘルスチェックに失敗しました"
 fi
 

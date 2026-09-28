@@ -84,16 +84,18 @@ docker compose -f compose.dev.yaml down
 
 本番VPSではソースコードの取得、依存関係のインストール、型チェック、テスト、イメージのビルドを行いません。`main`へのpush時にGitHub Actionsがこれらを実行し、検証済みイメージをGHCRへ発行します。
 
-VPSへ配置するのは、原則として次のファイルだけです。
+VPSへ配置するのは、原則として次のファイルだけです。`compose.prod.yaml`は、フロントエンド、バックエンドAPI、DBマイグレーション、PostgreSQLをまとめて起動します。
 
 - `deploy/compose.prod.yaml`（バックエンド等と統合する場合は、その本番Composeへ同じ`image:`設定を反映）
 - `deploy/.env.production.example`を元に作成した`.env.production`
 - 必要に応じて`deploy/vacaro-front.service`と`scripts/redeploy.sh`
 
-`.env.production`のイメージは、GitHub Actionsが発行した不変のコミットSHAタグへ固定します。
+`.env.production`のイメージは、各リポジトリのGitHub Actionsが発行した不変のコミットSHAタグへ固定します。
 
 ```env
 VACARO_FRONT_IMAGE=ghcr.io/astalum/vacaro-front:sha-<40桁のcommit SHA>
+VACARO_BACK_IMAGE=ghcr.io/astalum/vacaro-back:sha-<40桁のcommit SHA>
+VACARO_MIGRATIONS_IMAGE=ghcr.io/astalum/vacaro-back:migrations-sha-<40桁のcommit SHA>
 ```
 
 GHCRパッケージがprivateの場合のみ、VPSでread-onlyのPersonal Access Tokenを使って一度`docker login ghcr.io`を実行します。デプロイはVPS上で次の処理だけを行います。

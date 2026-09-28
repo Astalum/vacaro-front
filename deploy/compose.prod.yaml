@@ -16,3 +16,73 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+  api:
+    image: ${VACARO_BACK_IMAGE:?VACARO_BACK_IMAGE must be set to an immutable image tag}
+    init: true
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:?POSTGRES_DB must be set}?sslmode=disable
+      SESSION_KEY: ${SESSION_KEY:?SESSION_KEY must be set}
+      SESSION_COOKIE_SECURE: "true"
+      GUEST_TTL: ${GUEST_TTL:-168h}
+      REGISTERED_SESSION_TTL: ${REGISTERED_SESSION_TTL:-720h}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://vacaro.astalum.dev}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_LOGIN_REDIRECT_URL: ${GOOGLE_LOGIN_REDIRECT_URL:-}
+      GOOGLE_CALENDAR_REDIRECT_URL: ${GOOGLE_CALENDAR_REDIRECT_URL:-}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  migrate:
+    image: ${VACARO_MIGRATIONS_IMAGE:?VACARO_MIGRATIONS_IMAGE must be set to an immutable image tag}
+    command:
+      - -path=/migrations
+      - -database=postgres://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:?POSTGRES_DB must be set}?sslmode=disable
+      - up
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  db:
+    image: postgres:18.3-alpine3.23
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres-data:

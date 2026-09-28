@@ -9,7 +9,7 @@
 - WSLの作業ディレクトリは`/home/astalum/self-develop/vacaro-front`
 - GitHubリポジトリは`Astalum/vacaro-front`
 - VPSにはDocker EngineとDocker Composeプラグインがインストール済み
-- バックエンドはVPSの`127.0.0.1:8080`で稼働済み
+- バックエンドのGitHub Actionsが成功し、APIとマイグレーションイメージがGHCRへ発行済み
 - `vacaro.astalum.dev`のリバースプロキシとTLS設定は完了済み
 
 以下の`<VPS_HOST>`は、SSH接続名またはVPSのIPアドレスに置き換えます。
@@ -30,14 +30,27 @@ git commit -m "Separate development and production deployment"
 git push origin main
 ```
 
+バックエンド側もコミットしてpushします。
+
+```bash
+cd /home/astalum/self-develop/vacaro-back
+git diff
+git status
+git add .
+git commit -m "Add production image publishing workflow"
+git push origin main
+```
+
 ## 2. GitHub Actionsを確認する
 
-GitHubの`Astalum/vacaro-front`リポジトリを開き、Actionsにある「Test and publish production image」が成功することを確認します。
+GitHubの`Astalum/vacaro-front`と`Astalum/vacaro-back`を開き、それぞれのイメージ発行Actionsが成功することを確認します。
 
 成功すると、GHCRへ次の形式のイメージが発行されます。
 
 ```text
 ghcr.io/astalum/vacaro-front:sha-<40桁のコミットSHA>
+ghcr.io/astalum/vacaro-back:sha-<40桁のコミットSHA>
+ghcr.io/astalum/vacaro-back:migrations-sha-<40桁のコミットSHA>
 ```
 
 本番環境では、更新対象が変動する`latest`ではなく、`sha-...`タグを使用します。
@@ -59,7 +72,7 @@ scp deploy/.env.production.example <VPS_HOST>:/opt/vacaro/
 scp scripts/redeploy.sh <VPS_HOST>:/opt/vacaro/
 ```
 
-アプリケーションのソースコード、`node_modules`、TypeScript設定、テストファイルはVPSへ転送しません。
+アプリケーションのソースコード、`node_modules`、TypeScript設定、Goソース、テストファイル、マイグレーションSQLはVPSへ転送しません。
 
 ## 4. 本番環境ファイルを作成する
 
@@ -84,10 +97,12 @@ chmod 755 redeploy.sh
 nano .env.production
 ```
 
-GitHub Actionsが発行した実際のSHAタグを設定します。
+フロントエンドとバックエンドのGitHub Actionsが発行した実際のSHAタグを設定し、秘密値のプレースホルダーをすべて置き換えます。
 
 ```env
 VACARO_FRONT_IMAGE=ghcr.io/astalum/vacaro-front:sha-実際の40桁SHA
+VACARO_BACK_IMAGE=ghcr.io/astalum/vacaro-back:sha-実際の40桁SHA
+VACARO_MIGRATIONS_IMAGE=ghcr.io/astalum/vacaro-back:migrations-sha-実際の40桁SHA
 ```
 
 ## 5. privateイメージを利用する場合はGHCRへログインする
@@ -104,10 +119,10 @@ PasswordにはGitHubアカウントのパスワードではなく、作成した
 
 ## 6. 初回デプロイを実行する
 
-バックエンドが稼働していることを確認します。
+既存のAPIがある場合は状態を確認します。初回構築時に接続できないのは正常です。
 
 ```bash
-curl --fail http://127.0.0.1:8080/ready
+curl --fail http://127.0.0.1:8080/ready || true
 ```
 
 フロントエンドをデプロイします。
@@ -205,4 +220,4 @@ VPSの`/opt/vacaro`には、Compose設定、`.env.production`、運用スクリ�
 
 ## バックエンドについて
 
-このリポジトリのGitHub Actionsが発行するのはフロントエンドイメージだけです。バックエンドを現在VPS上でビルドしている場合は、`vacaro-back`側にも同じ考え方のCIを用意し、本番Composeの`api`サービスをビルド済みイメージの`pull`方式へ変更する必要があります。
+`vacaro-back`側のGitHub Actionsは、APIとマイグレーションの2種類のイメージを発行します。統合Composeは最初にPostgreSQLを起動し、マイグレーションの正常完了後にAPIを起動します。VPS上でGoのコンパイルやSQLファイルのbind mountは行いません。
