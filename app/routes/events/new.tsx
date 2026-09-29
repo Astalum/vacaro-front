@@ -58,6 +58,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 	const windowEndDate = String(formData.get("window_end_date") ?? "");
 	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
 	const dailyEndTime = String(formData.get("daily_end_time") ?? "");
+	const responseDeadlineAt = String(formData.get("response_deadline_at") ?? "");
+	const windowEndAt = `${windowEndDate}T${dailyEndTime}`;
 	if (
 		!windowStartDate ||
 		!windowEndDate ||
@@ -78,7 +80,20 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 		);
 	}
 	const windowStartAt = `${windowStartDate}T${dailyStartTime}`;
-	const windowEndAt = `${windowEndDate}T${dailyEndTime}`;
+	if (responseDeadlineAt && responseDeadlineAt > windowEndAt) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message: "回答期限は調整期間の終了以前にしてください",
+					fields: {
+						response_deadline_at: "調整期間の終了以前を指定してください",
+					},
+				},
+			},
+			{ status: 422 },
+		);
+	}
 	try {
 		try {
 			const me = await apiRequest<User>("/me");
@@ -148,6 +163,7 @@ export default function NewEvent({
 		const endDate = form.elements.namedItem("window_end_date");
 		const startTime = form.elements.namedItem("daily_start_time");
 		const endTime = form.elements.namedItem("daily_end_time");
+		const responseDeadline = form.elements.namedItem("response_deadline_at");
 		let nextScheduleError: string | null = null;
 		if (
 			!(startDate instanceof HTMLInputElement) ||
@@ -165,6 +181,12 @@ export default function NewEvent({
 			startTime.value >= endTime.value
 		) {
 			nextScheduleError = "毎日の終了時刻は開始時刻より後にしてください";
+		} else if (
+			responseDeadline instanceof HTMLInputElement &&
+			responseDeadline.value &&
+			responseDeadline.value > `${endDate.value}T${endTime.value}`
+		) {
+			nextScheduleError = "回答期限は調整期間の終了以前にしてください";
 		}
 
 		const firstInvalidField = requiredFields.find(
