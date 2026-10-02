@@ -1,10 +1,57 @@
 // @vitest-environment happy-dom
 
 import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EVENT_INVITE_URLS_STORAGE_KEY, saveEventInviteUrl } from "../lib/api";
-import { PageShell, WeekendText } from "./ui";
+import { AppHeader, PageShell, WeekendText } from "./ui";
+
+describe("AppHeader mobile menu", () => {
+	beforeEach(() => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						error: { code: "unauthorized", message: "認証が必要です" },
+					}),
+					{ status: 401, headers: { "Content-Type": "application/json" } },
+				),
+			),
+		);
+	});
+
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("shows every destination and closes after choosing a link", async () => {
+		const user = userEvent.setup();
+		render(
+			<MemoryRouter>
+				<AppHeader />
+			</MemoryRouter>,
+		);
+
+		const menuButton = screen.getByRole("button", { name: "メニューを開く" });
+		await user.click(menuButton);
+
+		expect(menuButton.getAttribute("aria-expanded")).toBe("true");
+		expect(
+			screen.getByRole("link", { name: /イベントを作る/ }).getAttribute("href"),
+		).toBe("/events/new");
+		expect(
+			screen.getByRole("link", { name: "イベント一覧" }).getAttribute("href"),
+		).toBe("/events");
+		expect(
+			screen
+				.getByRole("link", { name: /Googleでログイン/ })
+				.getAttribute("href"),
+		).toBe("/api/v1/auth/google/start");
+
+		await user.click(screen.getByRole("link", { name: "イベント一覧" }));
+		expect(menuButton.getAttribute("aria-expanded")).toBe("false");
+	});
+});
 
 describe("PageShell invite URL", () => {
 	beforeEach(() => {
