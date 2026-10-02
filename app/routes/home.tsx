@@ -21,18 +21,31 @@ export default function Home() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const notice =
 		searchParams.get("google_login") === "success"
-			? "Googleログインが完了しました。現在のイベントと回答を引き継いでいます。"
-			: searchParams.get("logout") === "success"
-				? "ログアウトしました。"
-				: null;
+			? {
+					kind: "success" as const,
+					message:
+						"Googleログインが完了しました。現在のイベントと回答を引き継いでいます。",
+				}
+			: searchParams.get("google_login") === "error"
+				? {
+						kind: "error" as const,
+						message:
+							"Googleログインを完了できませんでした。もう一度お試しください。",
+					}
+				: searchParams.get("logout") === "success"
+					? { kind: "success" as const, message: "ログアウトしました。" }
+					: null;
 	return (
 		<div className="site-shell landing-shell">
 			<AppHeader />
 			<main>
 				{notice && (
-					<div className="home-notice wrap" role="status">
-						<Icon name="check" size={18} />
-						<span>{notice}</span>
+					<div
+						className={`home-notice wrap ${notice.kind === "error" ? "home-notice-error" : ""}`}
+						role={notice.kind === "error" ? "alert" : "status"}
+					>
+						<Icon name={notice.kind === "error" ? "info" : "check"} size={18} />
+						<span>{notice.message}</span>
 						<button
 							type="button"
 							onClick={() => setSearchParams({}, { replace: true })}
