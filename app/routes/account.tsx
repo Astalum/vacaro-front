@@ -19,6 +19,7 @@ import {
 	savedCalendarIDs,
 	type User,
 } from "../lib/api";
+import { TIME_INPUT_STEP_SECONDS } from "../lib/time";
 import type { Route } from "./+types/account";
 
 type CalendarConnectionStatus = "connected" | "disconnected" | "unknown";
@@ -350,6 +351,7 @@ export default function Account({
 										</span>
 										<input
 											type="time"
+											step={TIME_INPUT_STEP_SECONDS}
 											value={availabilityWindow.start}
 											onChange={(event) => {
 												setAvailabilityWindowMessage(null);
@@ -370,6 +372,7 @@ export default function Account({
 										</span>
 										<input
 											type="time"
+											step={TIME_INPUT_STEP_SECONDS}
 											value={availabilityWindow.end}
 											onChange={(event) => {
 												setAvailabilityWindowMessage(null);

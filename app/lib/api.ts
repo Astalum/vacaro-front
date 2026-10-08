@@ -1,3 +1,5 @@
+import { isTimeValue } from "./time";
+
 export type AccountType = "guest" | "registered";
 export type EventStatus = "open" | "confirmed" | "cancelled";
 export type SchedulingMode = "whole_event" | "groups";
@@ -149,10 +151,6 @@ export const DEFAULT_CALENDAR_AVAILABILITY_WINDOW: CalendarAvailabilityWindow =
 		start: "09:00",
 		end: "18:00",
 	};
-
-function isTimeValue(value: unknown): value is string {
-	return typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
 
 export function savedCalendarAvailabilityWindow(): CalendarAvailabilityWindow {
 	try {

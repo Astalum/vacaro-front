@@ -49,8 +49,14 @@ describe("NewEvent validation", () => {
 			(screen.getByLabelText(/毎日の受付開始/) as HTMLInputElement).value,
 		).toBe("09:00");
 		expect(
+			(screen.getByLabelText(/毎日の受付開始/) as HTMLInputElement).step,
+		).toBe("60");
+		expect(
 			(screen.getByLabelText(/毎日の受付終了/) as HTMLInputElement).value,
 		).toBe("21:00");
+		expect(
+			(screen.getByLabelText(/毎日の受付終了/) as HTMLInputElement).step,
+		).toBe("60");
 
 		await user.click(submitButton);
 
@@ -95,8 +101,8 @@ describe("NewEvent validation", () => {
 		formData.set("time_zone", "Asia/Tokyo");
 		formData.set("window_start_date", "2026-10-02");
 		formData.set("window_end_date", "2026-10-09");
-		formData.set("daily_start_time", "09:00");
-		formData.set("daily_end_time", "21:00");
+		formData.set("daily_start_time", "09:17");
+		formData.set("daily_end_time", "21:43");
 		formData.set("duration_minutes", "60");
 
 		await clientAction({
@@ -108,8 +114,8 @@ describe("NewEvent validation", () => {
 
 		const eventRequest = fetchMock.mock.calls[1];
 		const body = JSON.parse(String(eventRequest[1]?.body));
-		expect(body.window_start_at).toBe("2026-10-02T00:00:00.000Z");
-		expect(body.window_end_at).toBe("2026-10-09T12:00:00.000Z");
+		expect(body.window_start_at).toBe("2026-10-02T00:17:00.000Z");
+		expect(body.window_end_at).toBe("2026-10-09T12:43:00.000Z");
 	});
 	it("rejects a response deadline after the event window without calling the API", async () => {
 		const fetchMock = vi.fn();

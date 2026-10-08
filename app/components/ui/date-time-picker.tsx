@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import { CalendarIcon, Clock3Icon, XIcon } from "lucide-react";
 import { useState } from "react";
+import { TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import { cn } from "~/lib/utils";
 import { WeekendText } from "../ui";
 import { Button } from "./button";
@@ -104,6 +105,7 @@ export function DateTimePicker({
 					<input
 						type="time"
 						aria-label="時刻"
+						step={TIME_INPUT_STEP_SECONDS}
 						value={time}
 						onChange={(event) => setTime(event.currentTarget.value)}
 						className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-white px-3 text-base font-bold outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"

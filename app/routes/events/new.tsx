@@ -30,6 +30,7 @@ import {
 	type User,
 } from "../../lib/api";
 import { getNewEventDefaults } from "../../lib/new-event-defaults";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
 import type { Route } from "./+types/new";
 
 export function meta() {
@@ -64,8 +65,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 		!windowStartDate ||
 		!windowEndDate ||
 		windowStartDate > windowEndDate ||
-		!dailyStartTime ||
-		!dailyEndTime ||
+		!isTimeValue(dailyStartTime) ||
+		!isTimeValue(dailyEndTime) ||
 		dailyStartTime >= dailyEndTime
 	) {
 		return data(
@@ -176,8 +177,8 @@ export default function NewEvent({
 		} else if (
 			!(startTime instanceof HTMLInputElement) ||
 			!(endTime instanceof HTMLInputElement) ||
-			!startTime.value ||
-			!endTime.value ||
+			!isTimeValue(startTime.value) ||
+			!isTimeValue(endTime.value) ||
 			startTime.value >= endTime.value
 		) {
 			nextScheduleError = "毎日の終了時刻は開始時刻より後にしてください";
@@ -400,7 +401,7 @@ export default function NewEvent({
 											id="daily-start-time"
 											name="daily_start_time"
 											type="time"
-											step={1800}
+											step={TIME_INPUT_STEP_SECONDS}
 											defaultValue={loaderData.windowStartAt.slice(11, 16)}
 											required
 										/>
@@ -416,7 +417,7 @@ export default function NewEvent({
 											id="daily-end-time"
 											name="daily_end_time"
 											type="time"
-											step={1800}
+											step={TIME_INPUT_STEP_SECONDS}
 											defaultValue={loaderData.windowEndAt.slice(11, 16)}
 											required
 										/>

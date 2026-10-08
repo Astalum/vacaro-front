@@ -18,6 +18,7 @@ import {
 	savedEventInviteUrl,
 	saveEventInviteUrl,
 } from "../../lib/api";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
 import type { Route } from "./+types/edit";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -55,8 +56,8 @@ export async function clientAction({
 		!windowStartDate ||
 		!windowEndDate ||
 		windowStartDate > windowEndDate ||
-		!dailyStartTime ||
-		!dailyEndTime ||
+		!isTimeValue(dailyStartTime) ||
+		!isTimeValue(dailyEndTime) ||
 		dailyStartTime >= dailyEndTime
 	) {
 		return data(
@@ -244,7 +245,7 @@ export default function EditEvent({
 									id="edit-daily-start-time"
 									name="daily_start_time"
 									type="time"
-									step={1800}
+									step={TIME_INPUT_STEP_SECONDS}
 									defaultValue={inputDateTime(event.window_start_at).slice(
 										11,
 										16,
@@ -259,7 +260,7 @@ export default function EditEvent({
 									id="edit-daily-end-time"
 									name="daily_end_time"
 									type="time"
-									step={1800}
+									step={TIME_INPUT_STEP_SECONDS}
 									defaultValue={inputDateTime(event.window_end_at).slice(
 										11,
 										16,

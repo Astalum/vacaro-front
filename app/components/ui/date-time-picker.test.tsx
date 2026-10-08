@@ -38,6 +38,7 @@ describe("DateTimePicker", () => {
 
 		await user.click(screen.getByRole("button", { name: /2026年6月15日/ }));
 		const timeInput = screen.getByLabelText("時刻");
+		expect((timeInput as HTMLInputElement).step).toBe("60");
 		await user.clear(timeInput);
 		await user.type(timeInput, "10:30");
 		await user.click(screen.getByRole("button", { name: "決定" }));

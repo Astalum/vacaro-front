@@ -14,6 +14,7 @@ import {
 	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
 } from "../../lib/api";
+import { TIME_INPUT_STEP_SECONDS } from "../../lib/time";
 import type { Route } from "./+types/availability";
 
 type TimeRange = { id: string; start: string; end: string };
@@ -808,7 +809,7 @@ export default function AvailabilityPage({
 										aria-label="開始時刻"
 										min={dailyStartTime}
 										max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-										step={1800}
+										step={TIME_INPUT_STEP_SECONDS}
 										value={range.start.slice(11, 16)}
 										onChange={(inputEvent) =>
 											updateTime(
@@ -836,7 +837,7 @@ export default function AvailabilityPage({
 											}
 											min={dailyStartTime}
 											max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-											step={1800}
+											step={TIME_INPUT_STEP_SECONDS}
 											value={
 												endsAtDayBoundary(range, selectedDate)
 													? "00:00"
@@ -1133,7 +1134,7 @@ export default function AvailabilityPage({
 									aria-label="開始時刻"
 									min={dailyStartTime}
 									max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-									step={1800}
+									step={TIME_INPUT_STEP_SECONDS}
 									value={range.start.slice(11, 16)}
 									onChange={(event) =>
 										updateTime(
@@ -1161,7 +1162,7 @@ export default function AvailabilityPage({
 										}
 										min={dailyStartTime}
 										max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-										step={1800}
+										step={TIME_INPUT_STEP_SECONDS}
 										value={
 											endsAtDayBoundary(range, selectedDate)
 												? "00:00"
