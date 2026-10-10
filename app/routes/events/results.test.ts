@@ -80,6 +80,7 @@ describe("results clientLoader", () => {
 			confirmed_start_at: null,
 			confirmed_end_at: null,
 			response_deadline_at: null,
+			results_visible_to_participants: true,
 			created_at: "2026-09-01T00:00:00Z",
 			updated_at: "2026-09-01T00:00:00Z",
 		} satisfies Event;
@@ -144,6 +145,7 @@ describe("results clientLoader", () => {
 			confirmed_start_at: null,
 			confirmed_end_at: null,
 			response_deadline_at: null,
+			results_visible_to_participants: true,
 			created_at: "2026-09-01T00:00:00Z",
 			updated_at: "2026-09-01T00:00:00Z",
 		} satisfies Event;
@@ -191,6 +193,7 @@ describe("results clientLoader", () => {
 			confirmed_start_at: null,
 			confirmed_end_at: null,
 			response_deadline_at: null,
+			results_visible_to_participants: true,
 			created_at: "2026-09-01T00:00:00Z",
 			updated_at: "2026-09-01T00:00:00Z",
 		} satisfies Event;
@@ -234,10 +237,83 @@ describe("results clientLoader", () => {
 		);
 		expect(requestedPaths).toContain("/api/v1/events/event-1/availability");
 	});
+
+	it("does not load result data when a participant cannot view results", async () => {
+		const event = {
+			id: "event-1",
+			created_by_user_id: "owner-1",
+			title: "非公開イベント",
+			description: null,
+			time_zone: "Asia/Tokyo",
+			window_start_at: "2026-09-10T00:00:00Z",
+			window_end_at: "2026-09-12T00:00:00Z",
+			duration_minutes: 60,
+			scheduling_mode: "groups",
+			status: "open",
+			confirmed_start_at: null,
+			confirmed_end_at: null,
+			response_deadline_at: null,
+			results_visible_to_participants: false,
+			created_at: "2026-09-01T00:00:00Z",
+			updated_at: "2026-09-01T00:00:00Z",
+		} satisfies Event;
+		const requestedPaths: string[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn((input: string | URL | Request) => {
+				const path = String(input);
+				requestedPaths.push(path);
+				if (path.endsWith("/events/event-1")) return response(event);
+				if (path.endsWith("/me")) return response({ id: "member-1" });
+				throw new Error(`unexpected result request: ${path}`);
+			}),
+		);
+
+		const loaded = await clientLoader({
+			params: { eventId: event.id },
+			request: new Request("https://vacaro.test/events/event-1/results"),
+		} as Parameters<typeof clientLoader>[0]);
+
+		expect(loaded).not.toBeInstanceOf(Response);
+		if (loaded instanceof Response) throw new Error("unexpected redirect");
+		expect(loaded.restricted).toBe(true);
+		expect(loaded.candidates).toEqual([]);
+		expect(loaded.availability).toEqual([]);
+		expect(requestedPaths).toHaveLength(2);
+	});
 });
 
 describe("results clientAction", () => {
 	afterEach(() => vi.restoreAllMocks());
+
+	it("updates whether participants can view results", async () => {
+		const fetchMock = vi.fn(() =>
+			response({ results_visible_to_participants: false }),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "update-results-visibility");
+		formData.set("visible", "false");
+
+		const result = await clientAction({
+			params: { eventId: "event-1" },
+			request: new Request("https://vacaro.test/events/event-1/results", {
+				method: "POST",
+				body: formData,
+			}),
+		} as Parameters<typeof clientAction>[0]);
+
+		expect(result).toEqual({
+			success: "回答者への結果公開を無効にしました",
+		});
+		expect(fetchMock).toHaveBeenCalledWith(
+			"/api/v1/events/event-1/results-visibility",
+			expect.objectContaining({
+				method: "PATCH",
+				body: JSON.stringify({ visible: false }),
+			}),
+		);
+	});
 
 	it("confirms the whole event when no group is selected", async () => {
 		const fetchMock = vi.fn(() => response({ status: "confirmed" }));

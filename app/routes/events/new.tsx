@@ -60,6 +60,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
 	const dailyEndTime = String(formData.get("daily_end_time") ?? "");
 	const responseDeadlineAt = String(formData.get("response_deadline_at") ?? "");
+	const resultsVisibilityValue = formData.get(
+		"results_visible_to_participants",
+	);
+	const resultsVisibleToParticipants =
+		resultsVisibilityValue === null ||
+		String(resultsVisibilityValue) === "true";
 	const windowEndAt = `${windowEndDate}T${dailyEndTime}`;
 	if (
 		!windowStartDate ||
@@ -122,6 +128,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 				window_end_at: localDateTimeToIso(windowEndAt),
 				duration_minutes: Number(formData.get("duration_minutes")),
 				scheduling_mode: "groups",
+				results_visible_to_participants: resultsVisibleToParticipants,
 				response_deadline_at: localDateTimeToIso(
 					formData.get("response_deadline_at"),
 				),
@@ -147,6 +154,7 @@ export default function NewEvent({
 	const submitting = navigation.state === "submitting";
 	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 	const [scheduleError, setScheduleError] = useState<string | null>(null);
+	const [resultsVisible, setResultsVisible] = useState(true);
 	const hasFieldErrors = Object.keys(fieldErrors).length > 0;
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -347,6 +355,47 @@ export default function NewEvent({
 										</Select>
 									</Field>
 								</div>
+								<Field className="new-event-results-visibility">
+									<div>
+										<FieldLabel htmlFor="results-visible-to-participants">
+											回答結果の公開
+										</FieldLabel>
+										<p id="results-visibility-description">
+											回答者がイベントの集計結果を閲覧できるようにします。
+											作成後も結果画面から変更できます。
+										</p>
+									</div>
+									<label className="new-event-results-toggle">
+										<input
+											id="results-visible-to-participants"
+											className="new-event-results-toggle-input"
+											name="results_visible_to_participants"
+											type="checkbox"
+											role="switch"
+											value="true"
+											checked={resultsVisible}
+											aria-checked={resultsVisible}
+											aria-describedby="results-visibility-description"
+											onChange={(event) =>
+												setResultsVisible(event.currentTarget.checked)
+											}
+										/>
+										<span
+											className="new-event-results-toggle-track"
+											aria-hidden="true"
+										>
+											<span />
+										</span>
+										<strong>
+											{resultsVisible ? "表示する" : "表示しない"}
+										</strong>
+									</label>
+									<input
+										type="hidden"
+										name="results_visible_to_participants"
+										value="false"
+									/>
+								</Field>
 							</FieldGroup>
 						</CardContent>
 					</Card>

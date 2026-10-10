@@ -35,6 +35,20 @@ export async function clientLoader({
 		apiRequest<Event>(`/events/${params.eventId}`),
 		apiRequest<User>("/me"),
 	]);
+	const restricted =
+		event.created_by_user_id !== user.id &&
+		!event.results_visible_to_participants;
+	if (restricted) {
+		return {
+			event,
+			user,
+			groups: [] as SchedulingGroup[],
+			activeGroup: null,
+			candidates: [] as Candidate[],
+			availability: [] as ParticipantAvailability[],
+			restricted: true,
+		};
+	}
 	const groups =
 		event.scheduling_mode === "groups"
 			? await apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
@@ -66,7 +80,15 @@ export async function clientLoader({
 		apiRequest<Candidate[]>(`${basePath}/candidates?limit=100`),
 		apiRequest<ParticipantAvailability[]>(`${basePath}/availability`),
 	]);
-	return { event, user, groups, activeGroup, candidates, availability };
+	return {
+		event,
+		user,
+		groups,
+		activeGroup,
+		candidates,
+		availability,
+		restricted: false,
+	};
 }
 clientLoader.hydrate = true as const;
 
@@ -81,6 +103,30 @@ export async function clientAction({
 		? `/events/${params.eventId}/groups/${groupID}/confirmation`
 		: `/events/${params.eventId}/confirmation`;
 	try {
+		if (intent === "update-results-visibility") {
+			const visibleValue = String(formData.get("visible") ?? "");
+			if (visibleValue !== "true" && visibleValue !== "false") {
+				return data(
+					{
+						error: {
+							code: "invalid_results_visibility",
+							message: "公開設定を確認してください",
+						},
+					},
+					{ status: 400 },
+				);
+			}
+			const visible = visibleValue === "true";
+			await apiRequest(`/events/${params.eventId}/results-visibility`, {
+				method: "PATCH",
+				body: JSON.stringify({ visible }),
+			});
+			return {
+				success: visible
+					? "回答者への結果公開を有効にしました"
+					: "回答者への結果公開を無効にしました",
+			};
+		}
 		if (intent === "unconfirm") {
 			await apiRequest(confirmationPath, { method: "DELETE" });
 			return { success: "確定を取り消しました" };
@@ -255,10 +301,20 @@ export default function Results({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { event, user, groups, activeGroup, candidates, availability } =
-		loaderData;
+	const {
+		event,
+		user,
+		groups,
+		activeGroup,
+		candidates,
+		availability,
+		restricted,
+	} = loaderData;
 	const navigation = useNavigation();
 	const submitting = navigation.state === "submitting";
+	const visibilitySubmitting =
+		submitting &&
+		navigation.formData?.get("intent") === "update-results-visibility";
 	const isOrganizer = event.created_by_user_id === user.id;
 	const submitted = availability.filter(
 		(item) => item.participant.response_status === "submitted",
@@ -346,6 +402,26 @@ export default function Results({
 			),
 		),
 	);
+	if (restricted) {
+		return (
+			<PageShell showPersistentInviteUrl={false}>
+				<section
+					className="results-restricted"
+					aria-labelledby="results-restricted-title"
+				>
+					<span className="results-restricted-icon" aria-hidden="true">
+						<Icon name="lock" size={28} />
+					</span>
+					<span className="page-eyebrow">AVAILABILITY RESULTS</span>
+					<h1 id="results-restricted-title">回答結果は非公開です</h1>
+					<p>「{event.title}」の回答結果は、現在主催者のみ閲覧できます。</p>
+					<Link className="button button-secondary" to="/events">
+						イベント一覧へ戻る
+					</Link>
+				</section>
+			</PageShell>
+		);
+	}
 	return (
 		<PageShell showPersistentInviteUrl={false}>
 			<section className="share-page-head result-head">
@@ -363,6 +439,42 @@ export default function Results({
 										: "中止"}
 						</span>
 					</div>
+					{isOrganizer && (
+						<Form method="post" className="results-visibility-control">
+							<div>
+								<strong>回答者への公開</strong>
+								<small>
+									{event.results_visible_to_participants
+										? "回答者も結果を閲覧できます"
+										: "主催者だけが結果を閲覧できます"}
+								</small>
+							</div>
+							<input
+								type="hidden"
+								name="intent"
+								value="update-results-visibility"
+							/>
+							<button
+								type="submit"
+								name="visible"
+								value={String(!event.results_visible_to_participants)}
+								className={`results-visibility-switch ${event.results_visible_to_participants ? "is-visible" : ""}`}
+								role="switch"
+								aria-checked={event.results_visible_to_participants}
+								aria-label="回答者への結果公開"
+								disabled={visibilitySubmitting}
+							>
+								<span aria-hidden="true" />
+								<b>
+									{visibilitySubmitting
+										? "変更中"
+										: event.results_visible_to_participants
+											? "公開中"
+											: "非公開"}
+								</b>
+							</button>
+						</Form>
+					)}
 				</div>
 				<div className="result-head-main">
 					<div className="event-summary">
@@ -394,22 +506,22 @@ export default function Results({
 							</span>
 						</div>
 					</div>
-					<nav className="head-links" aria-label="イベント操作">
-						{isOrganizer && (
+					{isOrganizer && (
+						<nav className="head-links" aria-label="イベント操作">
 							<Link
 								className="button result-manage-link"
 								to={`/events/${event.id}/manage`}
 							>
 								<Icon name="users" size={17} /> イベント管理
 							</Link>
-						)}
-						<Link
-							className="button button-ghost"
-							to={`/events/${event.id}/availability`}
-						>
-							<Icon name="edit" size={17} /> 回答を編集
-						</Link>
-					</nav>
+							<Link
+								className="button button-ghost"
+								to={`/events/${event.id}/availability`}
+							>
+								<Icon name="edit" size={17} /> 回答を編集
+							</Link>
+						</nav>
+					)}
 				</div>
 			</section>
 			<section className="result-group-selector">

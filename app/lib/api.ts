@@ -31,6 +31,7 @@ export interface Event {
 	confirmed_start_at: string | null;
 	confirmed_end_at: string | null;
 	response_deadline_at: string | null;
+	results_visible_to_participants: boolean;
 	created_at: string;
 	updated_at: string;
 }
