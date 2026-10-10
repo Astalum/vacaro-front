@@ -15,6 +15,7 @@ import {
 	type SchedulingGroup,
 	type User,
 } from "../../lib/api";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
 import type { Route } from "./+types/results";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -88,7 +89,7 @@ export async function clientAction({
 			const confirmationDate = String(formData.get("confirmation_date") ?? "");
 			const confirmationTime = String(formData.get("confirmation_time") ?? "");
 			const validDate = /^\d{4}-\d{2}-\d{2}$/.test(confirmationDate);
-			const validTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(confirmationTime);
+			const validTime = isTimeValue(confirmationTime);
 			const startAt =
 				validDate && validTime
 					? localDateTimeToIso(`${confirmationDate}T${confirmationTime}`)
@@ -650,6 +651,9 @@ export default function Results({
 									<p>
 										日付は左のカレンダーから反映されます。開始時刻だけを入力してください。
 									</p>
+									<p>
+										確定すると、対象の参加者の連携済みGoogleカレンダーへ予定を追加し、ほかの調整中イベントでは同じ時間を参加不可として反映します。
+									</p>
 								</div>
 								{confirmedStart && confirmedEnd ? (
 									<div className="manual-confirmation-current">
@@ -725,10 +729,8 @@ export default function Results({
 											id="confirmation-time"
 											className="manual-confirmation-time"
 											name="confirmation_time"
-											type="text"
-											inputMode="numeric"
-											placeholder="例：19:00"
-											pattern="(?:[01]\\d|2[0-3]):[0-5]\\d"
+											type="time"
+											step={TIME_INPUT_STEP_SECONDS}
 											autoComplete="off"
 											required
 										/>

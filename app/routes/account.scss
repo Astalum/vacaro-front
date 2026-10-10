@@ -151,6 +151,27 @@
 	padding-top: 20px;
 	border-top: 1px solid var(--line);
 }
+.calendar-write-permission-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 9px;
+	margin-top: 18px;
+	padding: 12px 14px;
+	border: 1px solid #ead7a4;
+	border-radius: 9px;
+	background: var(--yellow-soft);
+	color: #8f6810;
+}
+.calendar-write-permission-notice svg {
+	flex: 0 0 auto;
+	margin-top: 4px;
+}
+.calendar-write-permission-notice p {
+	color: #75570f;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.6;
+}
 .calendar-settings-card {
 	scroll-margin-top: 24px;
 }

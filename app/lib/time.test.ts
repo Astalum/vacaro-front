@@ -8,6 +8,7 @@ const timeInputFiles = [
 	"../routes/events/new.tsx",
 	"../routes/events/edit.tsx",
 	"../routes/events/availability.tsx",
+	"../routes/events/results.tsx",
 	"../routes/account.tsx",
 	"../components/ui/date-time-picker.tsx",
 ];

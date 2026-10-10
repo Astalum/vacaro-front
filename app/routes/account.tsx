@@ -33,11 +33,13 @@ export async function clientLoader() {
 		const user = await apiRequest<User>("/me");
 		const calendarOptions =
 			user.account_type === "registered"
-				? await apiRequest<{ calendars: GoogleCalendar[] }>(
-						"/integrations/google-calendar/calendars",
-					)
+				? await apiRequest<{
+						calendars: GoogleCalendar[];
+						write_enabled: boolean;
+					}>("/integrations/google-calendar/calendars")
 						.then((result) => ({
 							calendars: result.calendars,
+							writeEnabled: result.write_enabled,
 							error: null,
 							connectionStatus: "connected" as const,
 						}))
@@ -45,6 +47,7 @@ export async function clientLoader() {
 							const apiError = apiErrorData(error);
 							return {
 								calendars: [] as GoogleCalendar[],
+								writeEnabled: false,
 								error: apiError,
 								connectionStatus: (apiError.code === "calendar_not_connected"
 									? "disconnected"
@@ -53,6 +56,7 @@ export async function clientLoader() {
 						})
 				: {
 						calendars: [] as GoogleCalendar[],
+						writeEnabled: false,
 						error: null,
 						connectionStatus: "disconnected" as const,
 					};
@@ -63,6 +67,7 @@ export async function clientLoader() {
 				user: null,
 				calendarOptions: {
 					calendars: [] as GoogleCalendar[],
+					writeEnabled: false,
 					error: null,
 					connectionStatus: "disconnected" as const,
 				},
@@ -282,7 +287,7 @@ export default function Account({
 										</span>
 										<h2>Googleカレンダー連携</h2>
 										<p>
-											予定の空き時間を回答へ取り込むための接続を管理します。
+											予定の空き時間の取り込みと、確定日時の登録に使う接続を管理します。
 										</p>
 									</div>
 									<span
@@ -296,6 +301,18 @@ export default function Account({
 												: "確認できません"}
 									</span>
 								</div>
+								{calendarConnectionStatus === "connected" &&
+									!calendarOptions.writeEnabled && (
+										<div
+											className="calendar-write-permission-notice"
+											role="status"
+										>
+											<Icon name="info" size={18} />
+											<p>
+												確定日時の自動登録を有効にするには、Googleカレンダーを再接続してください。
+											</p>
+										</div>
+									)}
 								<div className="integration-actions">
 									<Form method="post">
 										<button

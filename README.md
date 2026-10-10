@@ -51,9 +51,9 @@ http://localhost:8080/api/v1/auth/google/callback
 http://localhost:8080/api/v1/integrations/google-calendar/callback
 ```
 
-`vacaro-back`の`.env`へ`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_LOGIN_REDIRECT_URL`、`GOOGLE_CALENDAR_REDIRECT_URL`、`TOKEN_ENCRYPTION_KEY`を設定してください。フロントエンドはログイン開始、コールバック後の完了表示、ログアウト、カレンダー接続と空き時間プレビューに対応しています。
+`vacaro-back`の`.env`へ`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_LOGIN_REDIRECT_URL`、`GOOGLE_CALENDAR_REDIRECT_URL`、`TOKEN_ENCRYPTION_KEY`を設定してください。フロントエンドはログイン開始、コールバック後の完了表示、ログアウト、カレンダー接続、空き時間プレビュー、確定日時の自動登録に対応しています。
 
-カレンダー連携では空き時間取得用の`calendar.freebusy`に加え、読み込み対象を選択するための`calendar.calendarlist.readonly`権限を使用します。権限追加前に接続済みだった場合は、`/account`からGoogleカレンダーを再接続してください。
+カレンダー連携では空き時間取得用の`calendar.freebusy`、読み込み対象を選択するための`calendar.calendarlist.readonly`、確定予定を書き込むための`calendar.events`権限を使用します。権限追加前に接続済みだった場合は、`/account`からGoogleカレンダーを再接続してください。
 
 バックエンドのURLを変更する場合：
 
