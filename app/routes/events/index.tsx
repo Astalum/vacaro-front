@@ -29,7 +29,7 @@ export function HydrateFallback() {
 	);
 }
 
-function EventList({
+export function EventList({
 	events,
 	currentUserId,
 }: {
@@ -41,6 +41,8 @@ function EventList({
 			{events.map((event) => {
 				const displayStatus = eventDisplayStatus(event);
 				const canManage = event.created_by_user_id === currentUserId;
+				const canViewResults =
+					canManage || event.results_visible_to_participants;
 				return (
 					<article key={event.id}>
 						<div className="event-list-body">
@@ -90,6 +92,30 @@ function EventList({
 									<span className="event-action-label-full">回答ページへ</span>
 									<span className="event-action-label-compact">回答</span>
 									<Icon name="arrow" size={15} />
+								</Link>
+							)}
+							{displayStatus === "confirmed" && (
+								<Link
+									className="button button-primary"
+									to={`/events/${event.id}/confirmed`}
+								>
+									<span className="event-action-label-full">
+										確定日時を見る
+									</span>
+									<span className="event-action-label-compact">確定日時</span>
+									<Icon name="calendar" size={15} />
+								</Link>
+							)}
+							{canViewResults && (
+								<Link
+									className="button button-ghost"
+									to={`/events/${event.id}/results`}
+								>
+									<span className="event-action-label-full">
+										回答結果を見る
+									</span>
+									<span className="event-action-label-compact">結果</span>
+									<Icon name="chart" size={15} />
 								</Link>
 							)}
 							{canManage && (
