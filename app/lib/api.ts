@@ -94,6 +94,25 @@ export interface GoogleCalendar {
 	background_color?: string;
 }
 
+export type ConfirmationCalendarConnectionStatus =
+	| "connected"
+	| "not_connected"
+	| "write_permission_required"
+	| "unavailable"
+	| "error";
+
+export interface ConfirmationCalendarSync {
+	event_id?: string;
+	group_id: string | null;
+	status: "synced" | "failed";
+	attempted_at: string | null;
+}
+
+export interface ConfirmationCalendarStatus {
+	connection_status: ConfirmationCalendarConnectionStatus;
+	syncs: ConfirmationCalendarSync[];
+}
+
 export const CALENDAR_SELECTION_STORAGE_KEY = "vacaro.calendar-selection";
 export const CALENDAR_AVAILABILITY_WINDOW_STORAGE_KEY =
 	"vacaro.calendar-availability-window";
@@ -259,9 +278,9 @@ export interface ApiErrorBody {
 	request_id?: string;
 }
 
-interface ApiEnvelope<T> {
+export interface ApiEnvelope<T, M = Record<string, unknown>> {
 	data: T;
-	meta?: Record<string, unknown>;
+	meta?: M;
 }
 interface ApiErrorEnvelope {
 	error: ApiErrorBody;
@@ -283,10 +302,10 @@ export class ApiError extends Error {
 	}
 }
 
-export async function apiRequest<T>(
+async function requestAPIEnvelope<T, M = Record<string, unknown>>(
 	path: string,
 	init?: RequestInit,
-): Promise<T> {
+): Promise<ApiEnvelope<T, M>> {
 	const headers = new Headers(init?.headers);
 	if (init?.body && !headers.has("Content-Type"))
 		headers.set("Content-Type", "application/json");
@@ -297,9 +316,9 @@ export async function apiRequest<T>(
 		headers,
 		credentials: "same-origin",
 	});
-	if (response.status === 204) return undefined as T;
+	if (response.status === 204) return { data: undefined as T };
 
-	const body = (await response.json()) as ApiEnvelope<T> | ApiErrorEnvelope;
+	const body = (await response.json()) as ApiEnvelope<T, M> | ApiErrorEnvelope;
 	if (!response.ok) {
 		const error =
 			"error" in body
@@ -310,7 +329,21 @@ export async function apiRequest<T>(
 					};
 		throw new ApiError(response.status, error);
 	}
-	return (body as ApiEnvelope<T>).data;
+	return body as ApiEnvelope<T, M>;
+}
+
+export async function apiRequest<T>(
+	path: string,
+	init?: RequestInit,
+): Promise<T> {
+	return (await requestAPIEnvelope<T>(path, init)).data;
+}
+
+export async function apiRequestWithMeta<T, M>(
+	path: string,
+	init?: RequestInit,
+): Promise<ApiEnvelope<T, M>> {
+	return requestAPIEnvelope<T, M>(path, init);
 }
 
 export function apiErrorData(error: unknown): ApiErrorBody {

@@ -1,11 +1,17 @@
-import { Link } from "react-router";
+import { data, Form, Link, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "../../components/ui";
 import {
+	ApiError,
+	apiErrorData,
 	apiRequest,
+	type ConfirmationCalendarStatus,
+	type ConfirmationCalendarSync,
 	type Event,
 	formatDateRange,
 	minutesLabel,
+	type Participant,
 	type SchedulingGroup,
+	type User,
 } from "../../lib/api";
 import type { Route } from "./+types/confirmed";
 
@@ -20,13 +26,67 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const event = await apiRequest<Event>(`/events/${params.eventId}`);
-	const groups =
+	const [user, participants, groups, calendarStatus] = await Promise.all([
+		apiRequest<User>("/me"),
+		apiRequest<Participant[]>(`/events/${event.id}/participants`),
 		event.scheduling_mode === "groups"
-			? await apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
-			: [];
-	return { event, groups };
+			? apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
+			: Promise.resolve([] as SchedulingGroup[]),
+		apiRequest<ConfirmationCalendarStatus>(
+			`/events/${event.id}/confirmation-calendar`,
+		).catch(
+			(): ConfirmationCalendarStatus => ({
+				connection_status: "error",
+				syncs: [],
+			}),
+		),
+	]);
+	return { event, user, participants, groups, calendarStatus };
 }
 clientLoader.hydrate = true as const;
+
+export async function clientAction({
+	params,
+	request,
+}: Route.ClientActionArgs) {
+	const formData = await request.formData();
+	const intent = String(formData.get("intent") ?? "");
+	const rawGroupID = String(formData.get("group_id") ?? "").trim();
+	const groupID = rawGroupID || null;
+	if (intent !== "sync-calendar") {
+		return data(
+			{
+				kind: "error" as const,
+				group_id: groupID,
+				error: { code: "invalid_intent", message: "操作を確認してください" },
+			},
+			{ status: 400 },
+		);
+	}
+	try {
+		await apiRequest<ConfirmationCalendarSync>(
+			`/events/${params.eventId}/confirmation-calendar`,
+			{
+				method: "POST",
+				body: JSON.stringify({ group_id: groupID }),
+			},
+		);
+		return {
+			kind: "success" as const,
+			group_id: groupID,
+			message: "Googleカレンダーに追加しました",
+		};
+	} catch (error) {
+		return data(
+			{
+				kind: "error" as const,
+				group_id: groupID,
+				error: apiErrorData(error),
+			},
+			{ status: error instanceof ApiError ? error.status : 500 },
+		);
+	}
+}
 export function HydrateFallback() {
 	return (
 		<PageShell>
@@ -35,12 +95,22 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Confirmed({ loaderData }: Route.ComponentProps) {
-	const { event, groups } = loaderData;
+export default function Confirmed({
+	loaderData,
+	actionData,
+}: Route.ComponentProps) {
+	const { event, user, participants, groups, calendarStatus } = loaderData;
+	const navigation = useNavigation();
+	const submittingGroupID =
+		navigation.formData?.get("intent") === "sync-calendar"
+			? String(navigation.formData.get("group_id") ?? "") || null
+			: undefined;
+	const canViewResults =
+		event.created_by_user_id === user.id ||
+		event.results_visible_to_participants;
 	if (event.scheduling_mode === "groups") {
 		const allConfirmed =
-			Boolean(event.confirmed_start_at) &&
-			groups.every((group) => group.confirmed_start_at);
+			groups.length > 0 && groups.every((group) => group.confirmed_start_at);
 		return (
 			<PageShell>
 				<div className="confirmed-hero">
@@ -55,6 +125,13 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 					</h1>
 					<p>{event.title}</p>
 				</div>
+				<section className="confirmed-description">
+					<h2>グループごとの日程について</h2>
+					<p>
+						グループごとに確定日時が異なります。所属しているグループの日時をご確認ください。
+					</p>
+					{event.description && <p>{event.description}</p>}
+				</section>
 				<div className="confirmed-group-grid">
 					<article
 						className={event.confirmed_start_at ? "confirmed" : "pending"}
@@ -80,7 +157,7 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 						) : (
 							<p>日程はまだ確定していません。</p>
 						)}
-						<div>
+						<div className="confirmed-group-meta">
 							<span>
 								<Icon name="clock" size={15} />{" "}
 								{minutesLabel(event.duration_minutes)}
@@ -89,12 +166,25 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 								<Icon name="users" size={15} /> 全参加者
 							</span>
 						</div>
-						<Link
-							className="button button-ghost"
-							to={`/events/${event.id}/results?scope=whole`}
-						>
-							結果を見る
-						</Link>
+						<ParticipantList label="参加者" participants={participants} />
+						<div className="confirmed-group-actions">
+							{event.confirmed_start_at && event.confirmed_end_at && (
+								<CalendarSyncControl
+									actionData={actionData}
+									calendarStatus={calendarStatus}
+									groupID={null}
+									submittingGroupID={submittingGroupID}
+								/>
+							)}
+							{canViewResults && (
+								<Link
+									className="button button-ghost"
+									to={`/events/${event.id}/results?scope=whole`}
+								>
+									結果を見る
+								</Link>
+							)}
+						</div>
 					</article>
 					{groups.map((group) => (
 						<article
@@ -122,7 +212,7 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 							) : (
 								<p>日程はまだ確定していません。</p>
 							)}
-							<div>
+							<div className="confirmed-group-meta">
 								<span>
 									<Icon name="clock" size={15} />{" "}
 									{minutesLabel(group.duration_minutes)}
@@ -131,12 +221,32 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 									<Icon name="users" size={15} /> {group.members.length}人
 								</span>
 							</div>
-							<Link
-								className="button button-ghost"
-								to={`/events/${event.id}/results?group_id=${group.id}`}
-							>
-								結果を見る
-							</Link>
+							<ParticipantList
+								label="グループメンバー"
+								participants={group.members}
+							/>
+							<div className="confirmed-group-actions">
+								{group.confirmed_start_at &&
+									group.confirmed_end_at &&
+									group.members.some(
+										(member) => member.user_id === user.id,
+									) && (
+										<CalendarSyncControl
+											actionData={actionData}
+											calendarStatus={calendarStatus}
+											groupID={group.id}
+											submittingGroupID={submittingGroupID}
+										/>
+									)}
+								{canViewResults && (
+									<Link
+										className="button button-ghost"
+										to={`/events/${event.id}/results?group_id=${group.id}`}
+									>
+										結果を見る
+									</Link>
+								)}
+							</div>
 						</article>
 					))}
 				</div>
@@ -238,18 +348,131 @@ export default function Confirmed({ loaderData }: Route.ComponentProps) {
 						</div>
 					</div>
 				)}
+				<ParticipantList label="参加者" participants={participants} />
 			</section>
 			<div className="confirmed-actions">
-				<button className="button button-primary" type="button">
-					<Icon name="calendar" size={17} /> Googleカレンダーに追加
-				</button>
-				<Link
-					className="button button-ghost"
-					to={`/events/${event.id}/results`}
-				>
-					回答結果を見る
-				</Link>
+				<CalendarSyncControl
+					actionData={actionData}
+					calendarStatus={calendarStatus}
+					groupID={null}
+					submittingGroupID={submittingGroupID}
+				/>
+				{canViewResults && (
+					<Link
+						className="button button-ghost"
+						to={`/events/${event.id}/results`}
+					>
+						回答結果を見る
+					</Link>
+				)}
 			</div>
 		</PageShell>
+	);
+}
+
+function ParticipantList({
+	label,
+	participants,
+}: {
+	label: string;
+	participants: Participant[];
+}) {
+	return (
+		<div className="confirmed-participants">
+			<strong>{label}</strong>
+			{participants.length > 0 ? (
+				<ul>
+					{participants.map((participant) => (
+						<li key={participant.id}>{participant.display_name}</li>
+					))}
+				</ul>
+			) : (
+				<p>参加者はいません。</p>
+			)}
+		</div>
+	);
+}
+
+function CalendarSyncControl({
+	calendarStatus,
+	groupID,
+	submittingGroupID,
+	actionData,
+}: {
+	calendarStatus: ConfirmationCalendarStatus;
+	groupID: string | null;
+	submittingGroupID: string | null | undefined;
+	actionData: Route.ComponentProps["actionData"];
+}) {
+	const sync = calendarStatus.syncs.find((item) => item.group_id === groupID);
+	const isSubmitting = submittingGroupID === groupID;
+	const isCurrentAction = actionData?.group_id === groupID;
+	const hasCurrentActionMessage = isCurrentAction && Boolean(actionData);
+	if (
+		calendarStatus.connection_status === "not_connected" ||
+		calendarStatus.connection_status === "write_permission_required"
+	) {
+		return (
+			<div className="calendar-sync-panel needs-connection">
+				<p>
+					{calendarStatus.connection_status === "not_connected"
+						? "Googleカレンダーを連携すると、この予定を追加できます。"
+						: "予定の追加にはGoogleカレンダーへの書き込み権限が必要です。"}
+				</p>
+				<Link className="button button-primary" to="/account#calendar-settings">
+					<Icon name="calendar" size={17} />
+					{calendarStatus.connection_status === "not_connected"
+						? "Googleカレンダーを連携"
+						: "連携権限を更新"}
+				</Link>
+			</div>
+		);
+	}
+	if (calendarStatus.connection_status !== "connected") {
+		return (
+			<div className="calendar-sync-panel error">
+				<p>Googleカレンダー連携の状態を確認できませんでした。</p>
+			</div>
+		);
+	}
+	return (
+		<div className="calendar-sync-panel">
+			{sync?.status === "failed" && !hasCurrentActionMessage && (
+				<p className="calendar-sync-message error">
+					自動登録に失敗しました。下のボタンから再試行してください。
+				</p>
+			)}
+			{sync?.status === "synced" && !hasCurrentActionMessage && (
+				<p className="calendar-sync-message success">
+					Googleカレンダーに追加済みです。
+				</p>
+			)}
+			{isCurrentAction && actionData?.kind === "error" && (
+				<p className="calendar-sync-message error">
+					{actionData.error.message}
+				</p>
+			)}
+			{isCurrentAction && actionData?.kind === "success" && (
+				<p className="calendar-sync-message success">{actionData.message}</p>
+			)}
+			<Form method="post">
+				<input name="intent" type="hidden" value="sync-calendar" />
+				{groupID && <input name="group_id" type="hidden" value={groupID} />}
+				<button
+					className="button button-primary"
+					disabled={isSubmitting}
+					type="submit"
+				>
+					<Icon name="calendar" size={17} />
+					{isSubmitting
+						? "追加しています…"
+						: sync?.status === "failed"
+							? "Googleカレンダーへの追加を再試行"
+							: sync?.status === "synced"
+								? "Googleカレンダーへ再登録"
+								: "Googleカレンダーに追加"}
+				</button>
+			</Form>
+		</div>
 	);
 }

@@ -1,7 +1,10 @@
-import { Link } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { Link, useFetcher } from "react-router";
 import { Icon, PageIntro, PageShell, WeekendText } from "../../components/ui";
 import {
+	apiErrorData,
 	apiRequest,
+	apiRequestWithMeta,
 	type Event,
 	eventDisplayStatus,
 	formatDateTime,
@@ -13,12 +16,36 @@ import type { Route } from "./+types/index";
 export function meta() {
 	return [{ title: "イベント一覧 | vacaro" }];
 }
-export async function clientLoader() {
-	const [events, user] = await Promise.all([
-		apiRequest<Event[]>("/events"),
-		apiRequest<User>("/me"),
-	]);
-	return { events, currentUserId: user.id };
+type EventsPageMeta = { next_cursor: string | null };
+
+export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+	const cursor = new URL(request.url).searchParams.get("cursor");
+	const query = new URLSearchParams({ limit: "20" });
+	if (cursor) query.set("cursor", cursor);
+	const userPromise = apiRequest<User>("/me");
+	try {
+		const [page, user] = await Promise.all([
+			apiRequestWithMeta<Event[], EventsPageMeta>(`/events?${query}`),
+			userPromise,
+		]);
+		return {
+			events: page.data,
+			currentUserId: user.id,
+			nextCursor: page.meta?.next_cursor ?? null,
+			requestedCursor: cursor,
+			error: null,
+		};
+	} catch (error) {
+		if (!cursor) throw error;
+		const user = await userPromise;
+		return {
+			events: [] as Event[],
+			currentUserId: user.id,
+			nextCursor: null,
+			requestedCursor: cursor,
+			error: apiErrorData(error),
+		};
+	}
 }
 clientLoader.hydrate = true as const;
 export function HydrateFallback() {
@@ -137,7 +164,31 @@ export function EventList({
 }
 
 export default function EventsIndex({ loaderData }: Route.ComponentProps) {
-	const { events, currentUserId } = loaderData;
+	const { currentUserId } = loaderData;
+	const fetcher = useFetcher<typeof clientLoader>();
+	const [events, setEvents] = useState(loaderData.events);
+	const [nextCursor, setNextCursor] = useState(loaderData.nextCursor);
+	const consumedCursor = useRef<string | null>(null);
+	useEffect(() => {
+		const page = fetcher.data;
+		if (
+			!page ||
+			page.error ||
+			!page.requestedCursor ||
+			consumedCursor.current === page.requestedCursor
+		) {
+			return;
+		}
+		consumedCursor.current = page.requestedCursor;
+		setEvents((current) => {
+			const knownIDs = new Set(current.map((event) => event.id));
+			return [
+				...current,
+				...page.events.filter((event) => !knownIDs.has(event.id)),
+			];
+		});
+		setNextCursor(page.nextCursor);
+	}, [fetcher.data]);
 	const acceptingEvents = events.filter(
 		(event) => eventDisplayStatus(event) === "open",
 	);
@@ -168,7 +219,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 								<span>ACCEPTING RESPONSES</span>
 								<h2>回答受付中のイベント</h2>
 							</div>
-							<b>{acceptingEvents.length}件</b>
+							<b>{acceptingEvents.length}件表示</b>
 						</header>
 						{acceptingEvents.length > 0 ? (
 							<EventList
@@ -187,7 +238,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 								<span>CLOSED RESPONSES</span>
 								<h2>回答受付終了のイベント</h2>
 							</div>
-							<b>{closedEvents.length}件</b>
+							<b>{closedEvents.length}件表示</b>
 						</header>
 						{closedEvents.length > 0 ? (
 							<EventList events={closedEvents} currentUserId={currentUserId} />
@@ -197,6 +248,29 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							</p>
 						)}
 					</section>
+					{nextCursor && (
+						<div className="event-pagination">
+							{fetcher.data?.error && (
+								<p className="event-pagination-error" role="alert">
+									{fetcher.data.error.message}
+								</p>
+							)}
+							<button
+								className="button button-ghost"
+								disabled={fetcher.state !== "idle"}
+								onClick={() =>
+									fetcher.load(
+										`/events?cursor=${encodeURIComponent(nextCursor)}`,
+									)
+								}
+								type="button"
+							>
+								{fetcher.state !== "idle"
+									? "読み込んでいます…"
+									: "さらに読み込む"}
+							</button>
+						</div>
+					)}
 				</div>
 			)}
 		</PageShell>

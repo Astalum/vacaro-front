@@ -115,9 +115,89 @@
 }
 .confirmed-actions {
 	display: flex;
+	align-items: flex-start;
 	justify-content: center;
 	gap: 9px;
 	margin-top: 23px;
+}
+.confirmed-description {
+	margin-bottom: 18px;
+	padding: 18px 20px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: #faf9f6;
+}
+.confirmed-description h2,
+.confirmed-description p {
+	margin: 0;
+}
+.confirmed-description h2 {
+	font-size: 18px;
+}
+.confirmed-description p {
+	margin-top: 7px;
+	color: var(--muted);
+	line-height: 1.7;
+}
+.confirmed-participants {
+	text-align: left;
+}
+.confirmed-participants > strong {
+	display: block;
+	margin-bottom: 9px;
+	font-size: 14px;
+	color: var(--muted);
+}
+.confirmed-participants ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.confirmed-participants li {
+	padding: 5px 10px;
+	border: 1px solid #e5e1d8;
+	border-radius: 999px;
+	background: #faf9f6;
+	font-size: 14px;
+}
+.confirmed-participants p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 14px;
+}
+.confirmed-card > .confirmed-participants {
+	margin-top: 20px;
+}
+.calendar-sync-panel {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 7px;
+}
+.confirmed-actions > .calendar-sync-panel {
+	width: min(100%, 440px);
+}
+.calendar-sync-panel p {
+	margin: 0;
+	max-width: 440px;
+	font-size: 14px;
+	line-height: 1.5;
+}
+.calendar-sync-panel.needs-connection,
+.calendar-sync-panel.error {
+	padding: 12px;
+	border: 1px solid #eadfcf;
+	border-radius: 10px;
+	background: #fffaf1;
+}
+.calendar-sync-message.error {
+	color: var(--coral-dark, #a33a2d);
+}
+.calendar-sync-message.success {
+	color: #277761;
 }
 .simple-date-list {
 	display: flex;
@@ -177,19 +257,26 @@
 	font-size: 17px;
 	line-height: 1.6;
 }
-.confirmed-group-grid > article > div {
+.confirmed-group-meta {
 	display: flex;
 	gap: 14px;
 	color: var(--muted);
 	font-size: 14px;
 }
-.confirmed-group-grid > article > div span {
+.confirmed-group-meta span {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
 }
 .confirmed-group-grid .button {
 	align-self: flex-start;
+}
+.confirmed-group-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: 9px;
+	margin-top: auto;
 }
 
 @media (min-width: 760px) {
@@ -199,7 +286,8 @@
 		grid-template-areas:
 			"label label"
 			"date details"
-			"message message";
+			"message message"
+			"participants participants";
 		align-items: center;
 		column-gap: clamp(28px, 5vw, 64px);
 	}
@@ -223,5 +311,8 @@
 	}
 	.host-message {
 		grid-area: message;
+	}
+	.confirmed-card > .confirmed-participants {
+		grid-area: participants;
 	}
 }
