@@ -346,6 +346,14 @@ export async function apiRequestWithMeta<T, M>(
 	return requestAPIEnvelope<T, M>(path, init);
 }
 
+export async function reissueEventInviteUrl(eventID: string) {
+	const invitedEvent = await apiRequest<EventWithInvite>(
+		`/events/${eventID}/invite-token`,
+		{ method: "POST" },
+	);
+	return saveEventInviteUrl(eventID, invitedEvent.invite_url);
+}
+
 export function apiErrorData(error: unknown): ApiErrorBody {
 	if (error instanceof ApiError)
 		return {

@@ -1,6 +1,7 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import {
 	Icon,
+	InviteUrlReissue,
 	PageShell,
 	PersistentInviteUrl,
 	WeekendText,
@@ -10,14 +11,13 @@ import {
 	apiErrorData,
 	apiRequest,
 	type Event,
-	type EventWithInvite,
 	eventDisplayStatus,
 	formatDateRange,
 	minutesLabel,
 	type Participant,
+	reissueEventInviteUrl,
 	type SchedulingGroup,
 	savedEventInviteUrl,
-	saveEventInviteUrl,
 } from "../../lib/api";
 import type { Route } from "./+types/manage";
 
@@ -40,14 +40,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 		event.scheduling_mode === "groups"
 			? await apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
 			: [];
-	let inviteUrl = savedEventInviteUrl(event.id);
-	if (!inviteUrl && event.status === "open") {
-		const invited = await apiRequest<EventWithInvite>(
-			`/events/${event.id}/invite-token`,
-			{ method: "POST" },
-		);
-		inviteUrl = saveEventInviteUrl(event.id, invited.invite_url);
-	}
+	const inviteUrl = savedEventInviteUrl(event.id);
 	return { event, participants, groups, inviteUrl };
 }
 clientLoader.hydrate = true as const;
@@ -70,6 +63,10 @@ export async function clientAction({
 		});
 	try {
 		switch (intent) {
+			case "reissue-invite-url": {
+				const inviteUrl = await reissueEventInviteUrl(params.eventId);
+				return { success: "招待URLを再発行しました", inviteUrl };
+			}
 			case "create-first-group":
 				await apiRequest<Event>(`/events/${params.eventId}`, {
 					method: "PATCH",
@@ -231,6 +228,10 @@ export default function ManageEvent({
 	const { event, participants, groups, inviteUrl } = loaderData;
 	const navigation = useNavigation();
 	const busy = navigation.state === "submitting";
+	const reissuingInviteUrl =
+		busy && navigation.formData?.get("intent") === "reissue-invite-url";
+	const currentInviteUrl =
+		actionData && "inviteUrl" in actionData ? actionData.inviteUrl : inviteUrl;
 	const submittedParticipants = participants.filter(
 		(participant) => participant.response_status === "submitted",
 	).length;
@@ -513,18 +514,23 @@ export default function ManageEvent({
 				</section>
 			)}
 
-			{inviteUrl && (
-				<section className="manage-invite-section">
-					<div className="manage-invite-heading">
-						<div>
-							<span className="page-eyebrow">INVITATION</span>
-							<h2>参加者を招待</h2>
-						</div>
-						<p>このURLを参加者へ共有してください。</p>
+			<section className="manage-invite-section">
+				<div className="manage-invite-heading">
+					<div>
+						<span className="page-eyebrow">INVITATION</span>
+						<h2>参加者を招待</h2>
 					</div>
-					<PersistentInviteUrl />
-				</section>
-			)}
+					<p>このURLを参加者へ共有してください。</p>
+				</div>
+				{currentInviteUrl && (
+					<PersistentInviteUrl inviteUrl={currentInviteUrl} />
+				)}
+				<InviteUrlReissue
+					hasInviteUrl={Boolean(currentInviteUrl)}
+					canReissue={event.status === "open"}
+					busy={reissuingInviteUrl}
+				/>
+			</section>
 
 			<Form
 				method="post"

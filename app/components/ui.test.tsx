@@ -2,10 +2,10 @@
 
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { createRoutesStub, MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EVENT_INVITE_URLS_STORAGE_KEY, saveEventInviteUrl } from "../lib/api";
-import { AppHeader, PageShell, WeekendText } from "./ui";
+import { AppHeader, InviteUrlReissue, PageShell, WeekendText } from "./ui";
 
 describe("AppHeader mobile menu", () => {
 	beforeEach(() => {
@@ -86,6 +86,41 @@ describe("PageShell invite URL", () => {
 				screen.getByRole("link", { name: regeneratedUrl }).getAttribute("href"),
 			).toBe(regeneratedUrl);
 		});
+	});
+});
+
+describe("InviteUrlReissue", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it("warns that the saved URL stays valid and requires confirmation", async () => {
+		const user = userEvent.setup();
+		const action = vi.fn(() => ({ ok: true }));
+		const confirm = vi.fn(() => false);
+		vi.stubGlobal("confirm", confirm);
+		const RouterStub = createRoutesStub([
+			{
+				path: "/events/event-1/manage",
+				Component: () => (
+					<InviteUrlReissue hasInviteUrl={false} canReissue busy={false} />
+				),
+				action,
+			},
+		]);
+
+		render(<RouterStub initialEntries={["/events/event-1/manage"]} />);
+
+		expect(screen.getByText(/共有済みのURLは引き続き有効です/)).toBeTruthy();
+		const button = screen.getByRole("button", { name: /招待URLを再発行/ });
+		await user.click(button);
+		expect(confirm).toHaveBeenCalledTimes(1);
+		expect(action).not.toHaveBeenCalled();
+
+		confirm.mockReturnValue(true);
+		await user.click(button);
+		await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
 	});
 });
 

@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { Icon, PageShell, WeekendText } from "../../components/ui";
+import { data, Link, useNavigation } from "react-router";
 import {
+	Icon,
+	InviteUrlReissue,
+	PageShell,
+	WeekendText,
+} from "../../components/ui";
+import {
+	ApiError,
+	apiErrorData,
 	apiRequest,
 	type Event,
-	type EventWithInvite,
 	formatDateRange,
 	minutesLabel,
+	reissueEventInviteUrl,
 	savedEventInviteUrl,
 	saveEventInviteUrl,
 } from "../../lib/api";
@@ -24,17 +31,39 @@ export async function clientLoader({
 	let inviteUrl =
 		new URL(request.url).searchParams.get("invite_url") ??
 		savedEventInviteUrl(event.id);
-	if (!inviteUrl) {
-		const invitedEvent = await apiRequest<EventWithInvite>(
-			`/events/${event.id}/invite-token`,
-			{ method: "POST" },
-		);
-		inviteUrl = invitedEvent.invite_url;
+	if (inviteUrl) {
+		inviteUrl = saveEventInviteUrl(event.id, inviteUrl);
 	}
-	saveEventInviteUrl(event.id, inviteUrl);
 	return { event, inviteUrl };
 }
 clientLoader.hydrate = true as const;
+
+export async function clientAction({
+	params,
+	request,
+}: Route.ClientActionArgs) {
+	const formData = await request.formData();
+	if (formData.get("intent") !== "reissue-invite-url") {
+		return data(
+			{
+				error: {
+					code: "invalid_intent",
+					message: "操作を確認してください",
+				},
+			},
+			{ status: 400 },
+		);
+	}
+	try {
+		const inviteUrl = await reissueEventInviteUrl(params.eventId);
+		return { success: "招待URLを再発行しました", inviteUrl };
+	} catch (error) {
+		return data(
+			{ error: apiErrorData(error) },
+			{ status: error instanceof ApiError ? error.status : 500 },
+		);
+	}
+}
 
 export function HydrateFallback() {
 	return (
@@ -44,11 +73,21 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Created({ loaderData }: Route.ComponentProps) {
+export default function Created({
+	loaderData,
+	actionData,
+}: Route.ComponentProps) {
 	const { event, inviteUrl } = loaderData;
+	const navigation = useNavigation();
+	const reissuingInviteUrl =
+		navigation.state === "submitting" &&
+		navigation.formData?.get("intent") === "reissue-invite-url";
+	const currentInviteUrl =
+		actionData && "inviteUrl" in actionData ? actionData.inviteUrl : inviteUrl;
 	const [copied, setCopied] = useState(false);
 	const copy = async () => {
-		await navigator.clipboard.writeText(inviteUrl);
+		if (!currentInviteUrl) return;
+		await navigator.clipboard.writeText(currentInviteUrl);
 		setCopied(true);
 		window.setTimeout(() => setCopied(false), 1800);
 	};
@@ -91,17 +130,32 @@ export default function Created({ loaderData }: Route.ComponentProps) {
 					</div>
 					<div className="share-block">
 						<span className="field-label">参加者用の招待URL</span>
-						<div className="copy-field">
-							<span title={inviteUrl}>{inviteUrl}</span>
-							<button type="button" onClick={copy}>
-								<Icon name={copied ? "check" : "copy"} size={18} />
-								{copied ? "コピーしました" : "コピー"}
-							</button>
-						</div>
-						<p>
-							<Icon name="info" size={15} />{" "}
-							このURLを知っている人がイベントへ参加できます。
-						</p>
+						{currentInviteUrl && (
+							<>
+								<div className="copy-field">
+									<span title={currentInviteUrl}>{currentInviteUrl}</span>
+									<button type="button" onClick={copy}>
+										<Icon name={copied ? "check" : "copy"} size={18} />
+										{copied ? "コピーしました" : "コピー"}
+									</button>
+								</div>
+								<p>
+									<Icon name="info" size={15} />{" "}
+									このURLを知っている人がイベントへ参加できます。
+								</p>
+							</>
+						)}
+						{actionData && "error" in actionData && (
+							<div className="form-error">
+								<Icon name="info" size={17} />
+								<strong>{actionData.error.message}</strong>
+							</div>
+						)}
+						<InviteUrlReissue
+							hasInviteUrl={Boolean(currentInviteUrl)}
+							canReissue={event.status === "open"}
+							busy={reissuingInviteUrl}
+						/>
 					</div>
 				</section>
 			</div>

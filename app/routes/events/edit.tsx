@@ -1,5 +1,11 @@
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageIntro, PageShell } from "../../components/ui";
+import {
+	Icon,
+	InviteUrlReissue,
+	PageIntro,
+	PageShell,
+	PersistentInviteUrl,
+} from "../../components/ui";
 import { DateTimePicker } from "../../components/ui/date-time-picker";
 import {
 	Select,
@@ -13,10 +19,9 @@ import {
 	apiErrorData,
 	apiRequest,
 	type Event,
-	type EventWithInvite,
 	localDateTimeToIso,
+	reissueEventInviteUrl,
 	savedEventInviteUrl,
-	saveEventInviteUrl,
 } from "../../lib/api";
 import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
 import type { Route } from "./+types/edit";
@@ -32,14 +37,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const event = await apiRequest<Event>(`/events/${params.eventId}`);
-	let inviteUrl = savedEventInviteUrl(event.id);
-	if (!inviteUrl && event.status === "open") {
-		const invited = await apiRequest<EventWithInvite>(
-			`/events/${event.id}/invite-token`,
-			{ method: "POST" },
-		);
-		inviteUrl = saveEventInviteUrl(event.id, invited.invite_url);
-	}
+	const inviteUrl = savedEventInviteUrl(event.id);
 	return { event, inviteUrl };
 }
 clientLoader.hydrate = true as const;
@@ -48,6 +46,18 @@ export async function clientAction({
 	request,
 }: Route.ClientActionArgs) {
 	const formData = await request.formData();
+	const intent = String(formData.get("intent") ?? "");
+	if (intent === "reissue-invite-url") {
+		try {
+			const inviteUrl = await reissueEventInviteUrl(params.eventId);
+			return { success: "招待URLを再発行しました", inviteUrl };
+		} catch (error) {
+			return data(
+				{ error: apiErrorData(error) },
+				{ status: error instanceof ApiError ? error.status : 500 },
+			);
+		}
+	}
 	const windowStartDate = String(formData.get("window_start_date") ?? "");
 	const windowEndDate = String(formData.get("window_end_date") ?? "");
 	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
@@ -123,11 +133,15 @@ export function HydrateFallback() {
 }
 
 export default function EditEvent({
-	loaderData: { event },
+	loaderData: { event, inviteUrl },
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const saving = navigation.state === "submitting";
+	const reissuingInviteUrl =
+		saving && navigation.formData?.get("intent") === "reissue-invite-url";
+	const currentInviteUrl =
+		actionData && "inviteUrl" in actionData ? actionData.inviteUrl : inviteUrl;
 	return (
 		<PageShell showPersistentInviteUrl={false}>
 			<PageIntro
@@ -144,8 +158,14 @@ export default function EditEvent({
 					登録済みの参加可能時間を除外する変更はAPIによって拒否されます。
 				</span>
 			</div>
+			{actionData && "success" in actionData && (
+				<div className="confirm-banner compact-banner">
+					<Icon name="check" size={18} />
+					<strong>{actionData.success}</strong>
+				</div>
+			)}
 			<Form className="form-stack" method="post">
-				{actionData?.error && (
+				{actionData && "error" in actionData && (
 					<div className="form-error">
 						<Icon name="info" size={17} />
 						<span>
@@ -299,6 +319,23 @@ export default function EditEvent({
 					</button>
 				</div>
 			</Form>
+			<section className="form-section edit-invite-section">
+				<div className="form-section-title">
+					<span>URL</span>
+					<div>
+						<h2>参加者用の招待URL</h2>
+						<p>共有済みURLの再発行は、必要な場合だけ行ってください。</p>
+					</div>
+				</div>
+				{currentInviteUrl && (
+					<PersistentInviteUrl inviteUrl={currentInviteUrl} />
+				)}
+				<InviteUrlReissue
+					hasInviteUrl={Boolean(currentInviteUrl)}
+					canReissue={event.status === "open"}
+					busy={reissuingInviteUrl}
+				/>
+			</section>
 		</PageShell>
 	);
 }

@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Form, Link, useLocation } from "react-router";
 import {
 	ApiError,
 	apiRequest,
@@ -282,25 +282,31 @@ type InviteUrlUpdatedDetail = {
 	inviteUrl: string;
 };
 
-export function PersistentInviteUrl() {
+export function PersistentInviteUrl({
+	inviteUrl: controlledInviteUrl,
+}: {
+	inviteUrl?: string | null;
+} = {}) {
 	const { pathname } = useLocation();
 	const eventID = pathname.match(/^\/events\/([^/]+)(?:\/|$)/)?.[1] ?? null;
-	const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+	const [savedInviteUrl, setSavedInviteUrl] = useState<string | null>(null);
 	const [copied, setCopied] = useState(false);
+	const inviteUrl =
+		controlledInviteUrl === undefined ? savedInviteUrl : controlledInviteUrl;
 
 	useEffect(() => {
 		setCopied(false);
-		setInviteUrl(eventID ? savedEventInviteUrl(eventID) : null);
+		setSavedInviteUrl(eventID ? savedEventInviteUrl(eventID) : null);
 		if (!eventID) return;
 
 		const syncFromStorage = (event: StorageEvent) => {
 			if (event.key === EVENT_INVITE_URLS_STORAGE_KEY) {
-				setInviteUrl(savedEventInviteUrl(eventID));
+				setSavedInviteUrl(savedEventInviteUrl(eventID));
 			}
 		};
 		const syncFromUpdate = (event: Event) => {
 			const { detail } = event as CustomEvent<InviteUrlUpdatedDetail>;
-			if (detail.eventID === eventID) setInviteUrl(detail.inviteUrl);
+			if (detail.eventID === eventID) setSavedInviteUrl(detail.inviteUrl);
 		};
 
 		window.addEventListener("storage", syncFromStorage);
@@ -338,6 +344,60 @@ export function PersistentInviteUrl() {
 				{copied ? "コピー済み" : "コピー"}
 			</button>
 		</section>
+	);
+}
+
+export function InviteUrlReissue({
+	hasInviteUrl,
+	canReissue,
+	busy = false,
+}: {
+	hasInviteUrl: boolean;
+	canReissue: boolean;
+	busy?: boolean;
+}) {
+	return (
+		<div className="invite-url-reissue">
+			<p
+				className={
+					hasInviteUrl ? "invite-reissue-warning" : "invite-url-missing"
+				}
+			>
+				<Icon name="info" size={16} />
+				<span>
+					{hasInviteUrl
+						? "再発行すると、現在の招待URLは直ちに無効になります。"
+						: "このブラウザには現在の招待URLが保存されていません。共有済みのURLは引き続き有効です。"}
+				</span>
+			</p>
+			{canReissue ? (
+				<Form
+					method="post"
+					onSubmit={(submitEvent) => {
+						if (
+							!window.confirm(
+								"招待URLを再発行しますか？\n現在共有済みの招待URLは直ちに無効になります。",
+							)
+						) {
+							submitEvent.preventDefault();
+						}
+					}}
+				>
+					<button
+						className="button button-ghost button-small"
+						type="submit"
+						name="intent"
+						value="reissue-invite-url"
+						disabled={busy}
+					>
+						<Icon name="link" size={16} />
+						{busy ? "再発行しています…" : "招待URLを再発行"}
+					</button>
+				</Form>
+			) : (
+				!hasInviteUrl && <small>回答受付中のイベントのみ再発行できます。</small>
+			)}
+		</div>
 	);
 }
 
