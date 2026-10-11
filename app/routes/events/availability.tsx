@@ -6,13 +6,16 @@ import {
 	type AvailabilityInterval,
 	apiErrorData,
 	apiRequest,
+	apiRequestWithMeta,
 	type CalendarAvailabilityWindow,
 	type Event,
 	formatDateRange,
 	type GoogleCalendar,
+	localDateTimeToIso,
 	minutesLabel,
 	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
+	type User,
 } from "../../lib/api";
 import { TIME_INPUT_STEP_SECONDS } from "../../lib/time";
 import type { Route } from "./+types/availability";
@@ -29,6 +32,22 @@ type DragState = {
 
 const DAY_MINUTES = 24 * 60;
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+type EventsPageMeta = { next_cursor: string | null };
+
+async function listCopySourceEvents(targetEventID: string) {
+	const events: Event[] = [];
+	let cursor: string | null = null;
+	do {
+		const query = new URLSearchParams({ limit: "100" });
+		if (cursor) query.set("cursor", cursor);
+		const page = await apiRequestWithMeta<Event[], EventsPageMeta>(
+			`/events?${query}`,
+		);
+		events.push(...page.data.filter((event) => event.id !== targetEventID));
+		cursor = page.meta?.next_cursor ?? null;
+	} while (cursor);
+	return events;
+}
 
 function weekendClassName(day: number) {
 	if (day === 0) return "weekday-sunday";
@@ -43,21 +62,37 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	const [event, availability, calendarOptions] = await Promise.all([
-		apiRequest<Event>(`/events/${params.eventId}`),
-		apiRequest<{ response_status: string; intervals: AvailabilityInterval[] }>(
-			`/events/${params.eventId}/my-availability`,
-		),
-		apiRequest<{ calendars: GoogleCalendar[] }>(
-			"/integrations/google-calendar/calendars",
-		)
-			.then((result) => ({ calendars: result.calendars, error: null }))
-			.catch((error: unknown) => ({
-				calendars: [] as GoogleCalendar[],
-				error: apiErrorData(error),
-			})),
-	]);
-	return { event, availability, calendarOptions };
+	const [event, availability, calendarOptions, user, copySources] =
+		await Promise.all([
+			apiRequest<Event>(`/events/${params.eventId}`),
+			apiRequest<{
+				response_status: string;
+				intervals: AvailabilityInterval[];
+			}>(`/events/${params.eventId}/my-availability`),
+			apiRequest<{ calendars: GoogleCalendar[] }>(
+				"/integrations/google-calendar/calendars",
+			)
+				.then((result) => ({ calendars: result.calendars, error: null }))
+				.catch((error: unknown) => ({
+					calendars: [] as GoogleCalendar[],
+					error: apiErrorData(error),
+				})),
+			apiRequest<User>("/me"),
+			listCopySourceEvents(params.eventId)
+				.then((events) => ({ events, error: null }))
+				.catch((error: unknown) => ({
+					events: [] as Event[],
+					error: apiErrorData(error),
+				})),
+		]);
+	return {
+		event,
+		availability,
+		calendarOptions,
+		user,
+		copySourceEvents: copySources.events,
+		copySourceEventsError: copySources.error,
+	};
 }
 clientLoader.hydrate = true as const;
 
@@ -66,8 +101,21 @@ export async function clientAction({
 	request,
 }: Route.ClientActionArgs) {
 	const formData = await request.formData();
+	const intent = String(formData.get("intent") ?? "");
 	try {
-		if (formData.get("intent") === "calendar-preview") {
+		if (intent === "copy-availability") {
+			const result = await apiRequest<{
+				response_status: string;
+				intervals: AvailabilityInterval[];
+			}>(`/events/${params.eventId}/my-availability/copy`, {
+				method: "POST",
+				body: JSON.stringify({
+					source_event_id: String(formData.get("source_event_id") ?? ""),
+				}),
+			});
+			return { kind: "copied" as const, intervals: result.intervals };
+		}
+		if (intent === "calendar-preview") {
 			const parsedCalendarIDs = JSON.parse(
 				String(formData.get("calendar_ids") ?? "[]"),
 			) as unknown;
@@ -89,22 +137,34 @@ export async function clientAction({
 			return { kind: "preview" as const, intervals: result.intervals };
 		}
 		const ranges =
-			formData.get("intent") === "none"
+			intent === "none"
 				? []
 				: (JSON.parse(
 						String(formData.get("intervals") ?? "[]"),
 					) as TimeRange[]);
+		const timeZone = String(formData.get("time_zone") ?? "Asia/Tokyo");
+		const intervals = ranges.map((range) => ({
+			start_at: localDateTimeToIso(range.start, timeZone),
+			end_at: localDateTimeToIso(range.end, timeZone),
+		}));
+		if (intervals.some((interval) => !interval.start_at || !interval.end_at)) {
+			return data(
+				{
+					kind: "error" as const,
+					error: {
+						code: "invalid_time_zone_datetime",
+						message: "イベントのタイムゾーンで日時を解釈できませんでした",
+					},
+				},
+				{ status: 422 },
+			);
+		}
 		await apiRequest<{
 			response_status: string;
 			intervals: AvailabilityInterval[];
 		}>(`/events/${params.eventId}/my-availability`, {
 			method: "PUT",
-			body: JSON.stringify({
-				intervals: ranges.map((range) => ({
-					start_at: new Date(range.start).toISOString(),
-					end_at: new Date(range.end).toISOString(),
-				})),
-			}),
+			body: JSON.stringify({ intervals }),
 		});
 		return redirect("/events");
 	} catch (error) {
@@ -334,7 +394,14 @@ export default function AvailabilityPage({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { event, availability, calendarOptions } = loaderData;
+	const {
+		event,
+		availability,
+		calendarOptions,
+		user,
+		copySourceEvents,
+		copySourceEventsError,
+	} = loaderData;
 	const navigation = useNavigation();
 	const [calendarWindow] = useState(() => savedCalendarAvailabilityWindow());
 	const selectedCalendarIDs = useMemo(
@@ -398,22 +465,40 @@ export default function AvailabilityPage({
 		}
 		return result;
 	}, [firstDate, lastDate]);
-	const importedRanges = useMemo(
+	const copyCandidates = useMemo(
 		() =>
-			actionData?.kind === "preview"
-				? clipCalendarIntervals(
-						actionData.intervals,
-						event.time_zone,
-						importWindow,
-						windowStart,
-						windowEnd,
-					)
-				: [],
-		[actionData, event.time_zone, importWindow, windowEnd, windowStart],
+			copySourceEvents.filter(
+				(source) =>
+					source.window_start_at < event.window_end_at &&
+					source.window_end_at > event.window_start_at,
+			),
+		[copySourceEvents, event.window_end_at, event.window_start_at],
 	);
+	const [sourceEventID, setSourceEventID] = useState(
+		() => copyCandidates[0]?.id ?? "",
+	);
+	const importedRanges = useMemo(() => {
+		if (actionData?.kind === "preview") {
+			return clipCalendarIntervals(
+				actionData.intervals,
+				event.time_zone,
+				importWindow,
+				windowStart,
+				windowEnd,
+			);
+		}
+		if (actionData?.kind === "copied") {
+			return actionData.intervals.map((interval) => ({
+				id: interval.id ?? crypto.randomUUID(),
+				start: localDateTime(interval.start_at, event.time_zone),
+				end: localDateTime(interval.end_at, event.time_zone),
+			}));
+		}
+		return [];
+	}, [actionData, event.time_zone, importWindow, windowEnd, windowStart]);
 
 	useEffect(() => {
-		if (actionData?.kind !== "preview") return;
+		if (actionData?.kind !== "preview" && actionData?.kind !== "copied") return;
 		setEntryMode("available");
 		setRanges(importedRanges);
 		if (importedRanges[0]) {
@@ -554,6 +639,56 @@ export default function AvailabilityPage({
 	}).format(dateFromKey(selectedDate));
 	const submitting = navigation.state === "submitting";
 	const submittingIntent = navigation.formData?.get("intent");
+	const renderCopyControl = (scope: "mobile" | "desktop") => (
+		<section className="schedule-copy-control">
+			<strong>別イベントの回答をコピー</strong>
+			{user.account_type !== "registered" ? (
+				<p>
+					Googleログインすると、日時が重なる別イベントの回答をコピーできます。
+					<a href="/api/v1/auth/google/start">Googleでログイン</a>
+				</p>
+			) : copySourceEventsError ? (
+				<p>コピー元イベントを読み込めませんでした。</p>
+			) : copyCandidates.length === 0 ? (
+				<p>日時が重なるコピー元イベントはありません。</p>
+			) : (
+				<div>
+					<label htmlFor={`copy-source-${scope}`}>コピー元</label>
+					<select
+						id={`copy-source-${scope}`}
+						value={sourceEventID}
+						onChange={(inputEvent) =>
+							setSourceEventID(inputEvent.currentTarget.value)
+						}
+					>
+						{copyCandidates.map((source) => (
+							<option key={source.id} value={source.id}>
+								{source.title}（
+								{formatDateRange(
+									source.window_start_at,
+									source.window_end_at,
+									source.time_zone,
+								)}
+								）
+							</option>
+						))}
+					</select>
+					<button
+						type="submit"
+						name="intent"
+						value="copy-availability"
+						disabled={submitting || !sourceEventID}
+						title="現在の回答を残したまま、重なる日時の回答を追加します"
+					>
+						<Icon name="copy" size={15} />
+						{submittingIntent === "copy-availability"
+							? "コピー中…"
+							: "回答をコピー"}
+					</button>
+				</div>
+			)}
+		</section>
+	);
 
 	return (
 		<PageShell fullScreen showHeader showPersistentInviteUrl={false}>
@@ -568,6 +703,8 @@ export default function AvailabilityPage({
 					name="calendar_ids"
 					value={JSON.stringify(selectedCalendarIDs)}
 				/>
+				<input type="hidden" name="time_zone" value={event.time_zone} />
+				<input type="hidden" name="source_event_id" value={sourceEventID} />
 
 				<div className="schedule-mobile">
 					<section className="schedule-mobile-event">
@@ -647,6 +784,7 @@ export default function AvailabilityPage({
 							</Link>
 						)}
 					</section>
+					{renderCopyControl("mobile")}
 
 					<nav className="schedule-mobile-dates" aria-label="回答する日付">
 						{eventDates.map((key) => {
@@ -877,6 +1015,11 @@ export default function AvailabilityPage({
 							予定から{importedRanges.length}件を取り込みました
 						</p>
 					)}
+					{actionData?.kind === "copied" && (
+						<p className="schedule-message success">
+							別イベントの回答をコピーしました
+						</p>
+					)}
 					{actionData?.kind === "error" && (
 						<p className="schedule-message error">{actionData.error.message}</p>
 					)}
@@ -1103,6 +1246,7 @@ export default function AvailabilityPage({
 							</Link>
 						)}
 					</div>
+					{renderCopyControl("desktop")}
 					<section className="schedule-editor">
 						<div className="schedule-editor-heading">
 							<h2>
@@ -1200,6 +1344,11 @@ export default function AvailabilityPage({
 						<p className="schedule-message success">
 							{calendarWindow.start}〜{calendarWindow.end}の範囲から
 							{importedRanges.length}件を取り込みました
+						</p>
+					)}
+					{actionData?.kind === "copied" && (
+						<p className="schedule-message success">
+							別イベントの回答をコピーしました
 						</p>
 					)}
 					{actionData?.kind === "error" && (

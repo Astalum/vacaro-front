@@ -107,6 +107,75 @@
 	opacity: 0.55;
 	cursor: default;
 }
+.schedule-copy-control {
+	@include schedule-surface-card;
+	display: grid;
+	gap: 8px;
+	padding: 12px;
+}
+.schedule-copy-control > strong {
+	color: #254f44;
+	font-size: 13px;
+}
+.schedule-copy-control > p {
+	margin: 0;
+	color: #687b75;
+	font-size: 12px;
+	line-height: 1.55;
+}
+.schedule-copy-control > p a {
+	display: inline-block;
+	margin-left: 6px;
+	color: #147a5f;
+	font-weight: 800;
+}
+.schedule-copy-control > div {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 7px;
+}
+.schedule-copy-control label {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+.schedule-copy-control select,
+.schedule-copy-control button {
+	min-width: 0;
+	min-height: 38px;
+	border: 1px solid #b9dace;
+	border-radius: 8px;
+	background: #fff;
+	color: #315e52;
+	font-size: 12px;
+	font-weight: 700;
+}
+.schedule-copy-control select {
+	width: 100%;
+	padding: 5px 8px;
+}
+.schedule-copy-control button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 5px 10px;
+	cursor: pointer;
+}
+.schedule-copy-control button:hover:not(:disabled) {
+	border-color: #65b99d;
+	background: #edf9f4;
+}
+.schedule-copy-control button:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
 .schedule-main > .schedule-calendar {
 	@include schedule-surface-card;
 	border-radius: 0;
@@ -806,6 +875,7 @@
 	min-height: 38px;
 }
 .schedule-sidebar > .schedule-guide,
+.schedule-sidebar > .schedule-copy-control,
 .schedule-sidebar > .schedule-editor,
 .schedule-sidebar > .persistent-invite-dock,
 .schedule-sidebar > .schedule-message,
@@ -956,6 +1026,10 @@
 		min-height: 34px;
 		padding-inline: 10px;
 		font-size: 12px;
+	}
+	.schedule-mobile > .schedule-copy-control {
+		border-radius: 13px;
+		box-shadow: 0 4px 12px rgba(27, 104, 83, 0.06);
 	}
 	.schedule-mobile-dates {
 		display: flex;

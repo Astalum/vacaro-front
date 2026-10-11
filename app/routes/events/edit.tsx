@@ -18,7 +18,10 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
+	COMMON_TIME_ZONES,
 	type Event,
+	isoToLocalDateTime,
+	isValidTimeZone,
 	localDateTimeToIso,
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
@@ -62,6 +65,10 @@ export async function clientAction({
 	const windowEndDate = String(formData.get("window_end_date") ?? "");
 	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
 	const dailyEndTime = String(formData.get("daily_end_time") ?? "");
+	const timeZone = String(formData.get("time_zone") ?? "").trim();
+	const durationMinutes = Number(formData.get("duration_minutes"));
+	const schedulingMode = String(formData.get("scheduling_mode") ?? "");
+	const responseDeadlineAt = String(formData.get("response_deadline_at") ?? "");
 	if (
 		!windowStartDate ||
 		!windowEndDate ||
@@ -83,19 +90,45 @@ export async function clientAction({
 	}
 	const windowStartAt = `${windowStartDate}T${dailyStartTime}`;
 	const windowEndAt = `${windowEndDate}T${dailyEndTime}`;
+	const windowStartIso = localDateTimeToIso(windowStartAt, timeZone);
+	const windowEndIso = localDateTimeToIso(windowEndAt, timeZone);
+	const responseDeadlineIso = responseDeadlineAt
+		? localDateTimeToIso(responseDeadlineAt, timeZone)
+		: null;
+	if (
+		!isValidTimeZone(timeZone) ||
+		!windowStartIso ||
+		!windowEndIso ||
+		(responseDeadlineAt && !responseDeadlineIso) ||
+		!Number.isInteger(durationMinutes) ||
+		durationMinutes < 5 ||
+		durationMinutes > 1440 ||
+		(schedulingMode !== "whole_event" && schedulingMode !== "groups")
+	) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message:
+						"タイムゾーン、必要時間、調整単位、または日時を確認してください",
+					fields: null,
+				},
+			},
+			{ status: 422 },
+		);
+	}
 	try {
 		await apiRequest<Event>(`/events/${params.eventId}`, {
 			method: "PATCH",
 			body: JSON.stringify({
 				title: String(formData.get("title") ?? ""),
 				description: String(formData.get("description") ?? "") || null,
-				time_zone: String(formData.get("time_zone") ?? "Asia/Tokyo"),
-				window_start_at: localDateTimeToIso(windowStartAt),
-				window_end_at: localDateTimeToIso(windowEndAt),
-				duration_minutes: Number(formData.get("duration_minutes")),
-				response_deadline_at: localDateTimeToIso(
-					formData.get("response_deadline_at"),
-				),
+				time_zone: timeZone,
+				window_start_at: windowStartIso,
+				window_end_at: windowEndIso,
+				duration_minutes: durationMinutes,
+				scheduling_mode: schedulingMode,
+				response_deadline_at: responseDeadlineIso,
 			}),
 		});
 		return redirect(`/events/${params.eventId}/manage`);
@@ -105,23 +138,6 @@ export async function clientAction({
 			{ status: error instanceof ApiError ? error.status : 500 },
 		);
 	}
-}
-
-function inputDateTime(value: string | null) {
-	if (!value) return "";
-	const date = new Date(value);
-	const parts = new Intl.DateTimeFormat("en-CA", {
-		timeZone: "Asia/Tokyo",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		hourCycle: "h23",
-	}).formatToParts(date);
-	const get = (type: Intl.DateTimeFormatPartTypes) =>
-		parts.find((part) => part.type === type)?.value ?? "";
-	return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
 export function HydrateFallback() {
@@ -204,21 +220,28 @@ export default function EditEvent({
 							<DateTimePicker
 								id="edit-deadline"
 								name="response_deadline_at"
-								defaultValue={inputDateTime(event.response_deadline_at)}
+								defaultValue={isoToLocalDateTime(
+									event.response_deadline_at,
+									event.time_zone,
+								)}
 							/>
 						</div>
 						<div className="field">
 							<label htmlFor="edit-timezone">タイムゾーン</label>
-							<Select name="time_zone" defaultValue={event.time_zone}>
-								<SelectTrigger id="edit-timezone">
-									<SelectValue placeholder="タイムゾーンを選択" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="Asia/Tokyo">
-										日本時間（Asia/Tokyo）
-									</SelectItem>
-								</SelectContent>
-							</Select>
+							<input
+								id="edit-timezone"
+								name="time_zone"
+								list="edit-event-time-zones"
+								defaultValue={event.time_zone}
+								placeholder="例：America/New_York"
+								required
+							/>
+							<datalist id="edit-event-time-zones">
+								{COMMON_TIME_ZONES.map((timeZone) => (
+									<option key={timeZone} value={timeZone} />
+								))}
+							</datalist>
+							<small>候補以外のIANAタイムゾーンも入力できます。</small>
 						</div>
 					</div>
 				</section>
@@ -237,7 +260,10 @@ export default function EditEvent({
 								id="edit-window-start-date"
 								name="window_start_date"
 								type="date"
-								defaultValue={inputDateTime(event.window_start_at).slice(0, 10)}
+								defaultValue={isoToLocalDateTime(
+									event.window_start_at,
+									event.time_zone,
+								).slice(0, 10)}
 								required
 							/>
 						</div>
@@ -248,7 +274,10 @@ export default function EditEvent({
 								id="edit-window-end-date"
 								name="window_end_date"
 								type="date"
-								defaultValue={inputDateTime(event.window_end_at).slice(0, 10)}
+								defaultValue={isoToLocalDateTime(
+									event.window_end_at,
+									event.time_zone,
+								).slice(0, 10)}
 								required
 							/>
 						</div>
@@ -266,10 +295,10 @@ export default function EditEvent({
 									name="daily_start_time"
 									type="time"
 									step={TIME_INPUT_STEP_SECONDS}
-									defaultValue={inputDateTime(event.window_start_at).slice(
-										11,
-										16,
-									)}
+									defaultValue={isoToLocalDateTime(
+										event.window_start_at,
+										event.time_zone,
+									).slice(11, 16)}
 									required
 								/>
 							</div>
@@ -281,10 +310,10 @@ export default function EditEvent({
 									name="daily_end_time"
 									type="time"
 									step={TIME_INPUT_STEP_SECONDS}
-									defaultValue={inputDateTime(event.window_end_at).slice(
-										11,
-										16,
-									)}
+									defaultValue={isoToLocalDateTime(
+										event.window_end_at,
+										event.time_zone,
+									).slice(11, 16)}
 									required
 								/>
 							</div>
@@ -298,9 +327,26 @@ export default function EditEvent({
 							type="number"
 							min={5}
 							max={1440}
-							step={5}
+							step={1}
 							defaultValue={event.duration_minutes}
+							required
 						/>
+						<small>5～1,440分の範囲で1分単位に指定できます。</small>
+					</div>
+					<div className="field">
+						<label htmlFor="edit-scheduling-mode">調整単位</label>
+						<Select name="scheduling_mode" defaultValue={event.scheduling_mode}>
+							<SelectTrigger id="edit-scheduling-mode">
+								<SelectValue placeholder="調整単位を選択" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="whole_event">イベント全体で調整</SelectItem>
+								<SelectItem value="groups">小グループごとに調整</SelectItem>
+							</SelectContent>
+						</Select>
+						<small>
+							確定済み、またはグループが残っている場合は変更できません。
+						</small>
 					</div>
 				</section>
 				<div className="form-actions horizontal">

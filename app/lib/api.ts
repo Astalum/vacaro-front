@@ -307,9 +307,12 @@ async function requestAPIEnvelope<T, M = Record<string, unknown>>(
 	init?: RequestInit,
 ): Promise<ApiEnvelope<T, M>> {
 	const headers = new Headers(init?.headers);
+	const method = (init?.method ?? "GET").toUpperCase();
 	if (init?.body && !headers.has("Content-Type"))
 		headers.set("Content-Type", "application/json");
 	headers.set("Accept", "application/json");
+	if (!["GET", "HEAD", "OPTIONS"].includes(method))
+		headers.set("X-Vacaro-CSRF", "same-origin");
 
 	const response = await fetch(`/api/v1${path}`, {
 		...init,
@@ -395,7 +398,136 @@ export function minutesLabel(minutes: number) {
 	return rest ? `${hours}時間${rest}分` : `${hours}時間`;
 }
 
-export function localDateTimeToIso(value: FormDataEntryValue | null) {
+export const COMMON_TIME_ZONES = [
+	"UTC",
+	"Pacific/Honolulu",
+	"America/Los_Angeles",
+	"America/Denver",
+	"America/Chicago",
+	"America/New_York",
+	"America/Toronto",
+	"America/Sao_Paulo",
+	"Europe/London",
+	"Europe/Paris",
+	"Europe/Berlin",
+	"Africa/Johannesburg",
+	"Asia/Dubai",
+	"Asia/Kolkata",
+	"Asia/Bangkok",
+	"Asia/Singapore",
+	"Asia/Hong_Kong",
+	"Asia/Shanghai",
+	"Asia/Seoul",
+	"Asia/Tokyo",
+	"Australia/Perth",
+	"Australia/Sydney",
+	"Pacific/Auckland",
+] as const;
+
+export function isValidTimeZone(timeZone: string) {
+	try {
+		new Intl.DateTimeFormat("en-US", { timeZone }).format();
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function localDateTimeParts(value: string) {
+	const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+		value,
+	);
+	if (!match) return null;
+	const [, year, month, day, hour, minute, second = "00"] = match;
+	const values = [year, month, day, hour, minute, second].map(Number);
+	const utc = Date.UTC(
+		values[0],
+		values[1] - 1,
+		values[2],
+		values[3],
+		values[4],
+		values[5],
+	);
+	const date = new Date(utc);
+	if (
+		date.getUTCFullYear() !== values[0] ||
+		date.getUTCMonth() !== values[1] - 1 ||
+		date.getUTCDate() !== values[2] ||
+		date.getUTCHours() !== values[3] ||
+		date.getUTCMinutes() !== values[4] ||
+		date.getUTCSeconds() !== values[5]
+	) {
+		return null;
+	}
+	return { values, wallClockUtc: utc };
+}
+
+function zonedParts(date: Date, timeZone: string) {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone,
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const part = (type: Intl.DateTimeFormatPartTypes) =>
+		Number(parts.find((item) => item.type === type)?.value ?? "");
+	return [
+		part("year"),
+		part("month"),
+		part("day"),
+		part("hour"),
+		part("minute"),
+		part("second"),
+	];
+}
+
+export function localDateTimeToIso(
+	value: FormDataEntryValue | null,
+	timeZone = "Asia/Tokyo",
+) {
 	if (typeof value !== "string" || !value) return null;
-	return new Date(`${value}:00+09:00`).toISOString();
+	const parsed = localDateTimeParts(value);
+	if (!parsed || !isValidTimeZone(timeZone)) return null;
+
+	let instant = parsed.wallClockUtc;
+	for (let attempt = 0; attempt < 4; attempt += 1) {
+		const displayed = zonedParts(new Date(instant), timeZone);
+		const offset =
+			Date.UTC(
+				displayed[0],
+				displayed[1] - 1,
+				displayed[2],
+				displayed[3],
+				displayed[4],
+				displayed[5],
+			) - instant;
+		const adjusted = parsed.wallClockUtc - offset;
+		if (adjusted === instant) break;
+		instant = adjusted;
+	}
+
+	const date = new Date(instant);
+	if (
+		!zonedParts(date, timeZone).every(
+			(part, index) => part === parsed.values[index],
+		)
+	) {
+		return null;
+	}
+	return date.toISOString();
+}
+
+export function isoToLocalDateTime(
+	value: string | null,
+	timeZone = "Asia/Tokyo",
+) {
+	if (!value || !isValidTimeZone(timeZone)) return "";
+	const parts = zonedParts(new Date(value), timeZone);
+	if (parts.some((part) => !Number.isFinite(part))) return "";
+	const pad = (part: number) => String(part).padStart(2, "0");
+	return `${parts[0]}-${pad(parts[1])}-${pad(parts[2])}T${pad(parts[3])}:${pad(parts[4])}`;
 }

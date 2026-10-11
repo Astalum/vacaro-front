@@ -134,11 +134,15 @@ export async function clientAction({
 		if (intent === "confirm") {
 			const confirmationDate = String(formData.get("confirmation_date") ?? "");
 			const confirmationTime = String(formData.get("confirmation_time") ?? "");
+			const timeZone = String(formData.get("time_zone") ?? "Asia/Tokyo");
 			const validDate = /^\d{4}-\d{2}-\d{2}$/.test(confirmationDate);
 			const validTime = isTimeValue(confirmationTime);
 			const startAt =
 				validDate && validTime
-					? localDateTimeToIso(`${confirmationDate}T${confirmationTime}`)
+					? localDateTimeToIso(
+							`${confirmationDate}T${confirmationTime}`,
+							timeZone,
+						)
 					: null;
 			const durationMinutes = Number(formData.get("duration_minutes"));
 			if (
@@ -805,6 +809,11 @@ export default function Results({
 											type="hidden"
 											name="group_id"
 											value={activeGroup?.id ?? ""}
+										/>
+										<input
+											type="hidden"
+											name="time_zone"
+											value={event.time_zone}
 										/>
 										<input
 											type="hidden"

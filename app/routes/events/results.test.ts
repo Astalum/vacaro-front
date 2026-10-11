@@ -355,6 +355,7 @@ describe("results clientAction", () => {
 		formData.set("confirmation_date", "2026-09-10");
 		formData.set("confirmation_time", "19:00");
 		formData.set("duration_minutes", "45");
+		formData.set("time_zone", "America/New_York");
 
 		const result = await clientAction({
 			params: { eventId: "event-1" },
@@ -370,8 +371,8 @@ describe("results clientAction", () => {
 			expect.objectContaining({
 				method: "PUT",
 				body: JSON.stringify({
-					start_at: "2026-09-10T10:00:00.000Z",
-					end_at: "2026-09-10T10:45:00.000Z",
+					start_at: "2026-09-10T23:00:00.000Z",
+					end_at: "2026-09-10T23:45:00.000Z",
 				}),
 			}),
 		);

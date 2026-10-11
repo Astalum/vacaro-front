@@ -5,11 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Event } from "../../lib/api";
-import EventsIndex, { clientLoader, EventList } from "./index";
+import EventsIndex, { clientAction, clientLoader, EventList } from "./index";
 
 afterEach(() => {
 	cleanup();
 	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
 });
 
 function event(overrides: Partial<Event> = {}): Event {
@@ -58,6 +59,9 @@ describe("EventList navigation", () => {
 			screen.getByRole("link", { name: /回答結果を見る/ }).getAttribute("href"),
 		).toBe("/events/event-1/results");
 		expect(screen.queryByRole("link", { name: /管理画面へ/ })).toBeNull();
+		expect(
+			screen.getByRole("button", { name: /イベントから退出/ }),
+		).toBeTruthy();
 	});
 
 	it("hides the results link from a participant while results are private", () => {
@@ -77,6 +81,9 @@ describe("EventList navigation", () => {
 			screen.getByRole("link", { name: /回答結果を見る/ }).getAttribute("href"),
 		).toBe("/events/event-1/results");
 		expect(screen.getByRole("link", { name: /管理画面へ/ })).toBeTruthy();
+		expect(
+			screen.queryByRole("button", { name: /イベントから退出/ }),
+		).toBeNull();
 	});
 
 	it("shows the confirmed schedule to a participant independently of results visibility", () => {
@@ -94,6 +101,31 @@ describe("EventList navigation", () => {
 		).toBe("/events/event-1/confirmed");
 		expect(screen.queryByRole("link", { name: /回答結果を見る/ })).toBeNull();
 		expect(screen.queryByRole("link", { name: /回答ページへ/ })).toBeNull();
+	});
+});
+
+describe("event leave action", () => {
+	it("deletes the current participant from the selected event", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(new Response(null, { status: 204 }));
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "leave-event");
+		formData.set("event_id", "event-1");
+
+		const result = await clientAction({
+			request: new Request("https://vacaro.test/events", {
+				method: "POST",
+				body: formData,
+			}),
+		} as Parameters<typeof clientAction>[0]);
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			"/api/v1/events/event-1/participants/me",
+			expect.objectContaining({ method: "DELETE" }),
+		);
+		expect(result).toEqual({ leftEventId: "event-1" });
 	});
 });
 

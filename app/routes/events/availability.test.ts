@@ -49,6 +49,86 @@ describe("availability clientAction", () => {
 			expect(body.intervals).toHaveLength(expectedCount);
 		},
 	);
+
+	it("copies an answer from another event", async () => {
+		const intervals = [
+			{
+				id: "copied-1",
+				start_at: "2026-10-03T00:00:00Z",
+				end_at: "2026-10-03T01:00:00Z",
+			},
+		];
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: { response_status: "submitted", intervals },
+				}),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "copy-availability");
+		formData.set("source_event_id", "source-event");
+
+		const result = await clientAction({
+			params: { eventId: "target-event" },
+			request: new Request(
+				"http://localhost/events/target-event/availability",
+				{ method: "POST", body: formData },
+			),
+		} as never);
+
+		expect(fetchMock.mock.calls[0][0]).toBe(
+			"/api/v1/events/target-event/my-availability/copy",
+		);
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+			source_event_id: "source-event",
+		});
+		expect(result).toEqual({ kind: "copied", intervals });
+	});
+
+	it("saves local ranges using the event time zone", async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: { response_status: "submitted", intervals: [] },
+				}),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "save");
+		formData.set("time_zone", "America/New_York");
+		formData.set(
+			"intervals",
+			JSON.stringify([
+				{
+					id: "range-1",
+					start: "2026-07-01T09:00",
+					end: "2026-07-01T10:00",
+				},
+			]),
+		);
+
+		await clientAction({
+			params: { eventId: "event-1" },
+			request: new Request("http://localhost/events/event-1/availability", {
+				method: "POST",
+				body: formData,
+			}),
+		} as never);
+
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+			intervals: [
+				{
+					start_at: "2026-07-01T13:00:00.000Z",
+					end_at: "2026-07-01T14:00:00.000Z",
+				},
+			],
+		});
+	});
 });
 
 describe("invertRangesForWindow", () => {

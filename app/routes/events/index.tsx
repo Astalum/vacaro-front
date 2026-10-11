@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useFetcher } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { data, Link, useFetcher } from "react-router";
 import { Icon, PageIntro, PageShell, WeekendText } from "../../components/ui";
 import {
+	ApiError,
 	apiErrorData,
 	apiRequest,
 	apiRequestWithMeta,
@@ -48,6 +49,29 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 	}
 }
 clientLoader.hydrate = true as const;
+
+export async function clientAction({ request }: Route.ClientActionArgs) {
+	const formData = await request.formData();
+	const eventID = String(formData.get("event_id") ?? "");
+	if (formData.get("intent") !== "leave-event" || !eventID) {
+		return data(
+			{ error: { code: "invalid_intent", message: "操作を確認してください" } },
+			{ status: 400 },
+		);
+	}
+	try {
+		await apiRequest<void>(`/events/${eventID}/participants/me`, {
+			method: "DELETE",
+		});
+		return { leftEventId: eventID };
+	} catch (error) {
+		return data(
+			{ error: apiErrorData(error) },
+			{ status: error instanceof ApiError ? error.status : 500 },
+		);
+	}
+}
+
 export function HydrateFallback() {
 	return (
 		<PageShell>
@@ -59,107 +83,166 @@ export function HydrateFallback() {
 export function EventList({
 	events,
 	currentUserId,
+	onEventLeft,
 }: {
 	events: Event[];
 	currentUserId: string;
+	onEventLeft?: (eventID: string) => void;
 }) {
 	return (
 		<div className="event-list">
-			{events.map((event) => {
-				const displayStatus = eventDisplayStatus(event);
-				const canManage = event.created_by_user_id === currentUserId;
-				const canViewResults =
-					canManage || event.results_visible_to_participants;
-				return (
-					<article key={event.id}>
-						<div className="event-list-body">
-							<h2>{event.title}</h2>
-							<div className="event-list-meta">
-								<span className="event-list-period">
-									<Icon name="calendar" size={15} />
-									<span className="event-list-period-text">
-										<span>
-											<WeekendText>
-												{formatDateTime(event.window_start_at, event.time_zone)}
-											</WeekendText>
-										</span>
-										<span className="event-list-period-end">
-											<span>〜</span>
-											<WeekendText>
-												{formatDateTime(event.window_end_at, event.time_zone)}
-											</WeekendText>
-										</span>
-									</span>
-								</span>
-								<span className="event-list-meta-separator" aria-hidden="true">
-									・
-								</span>
-								<span className="event-list-duration">
-									<Icon name="clock" size={15} />
-									{minutesLabel(event.duration_minutes)}
-								</span>
-							</div>
-						</div>
-						<div className="event-list-actions">
-							<span className={`status-pill status-${displayStatus}`}>
-								<i />{" "}
-								{displayStatus === "open"
-									? "回答受付中"
-									: displayStatus === "confirmed"
-										? "日程確定"
-										: displayStatus === "expired"
-											? "回答期限超過"
-											: "取消済み"}
-							</span>
-							{displayStatus === "open" && (
-								<Link
-									className="button button-primary"
-									to={`/events/${event.id}/availability`}
-								>
-									<span className="event-action-label-full">回答ページへ</span>
-									<span className="event-action-label-compact">回答</span>
-									<Icon name="arrow" size={15} />
-								</Link>
-							)}
-							{displayStatus === "confirmed" && (
-								<Link
-									className="button button-primary"
-									to={`/events/${event.id}/confirmed`}
-								>
-									<span className="event-action-label-full">
-										確定日時を見る
-									</span>
-									<span className="event-action-label-compact">確定日時</span>
-									<Icon name="calendar" size={15} />
-								</Link>
-							)}
-							{canViewResults && (
-								<Link
-									className="button button-ghost"
-									to={`/events/${event.id}/results`}
-								>
-									<span className="event-action-label-full">
-										回答結果を見る
-									</span>
-									<span className="event-action-label-compact">結果</span>
-									<Icon name="chart" size={15} />
-								</Link>
-							)}
-							{canManage && (
-								<Link
-									className="button button-ghost"
-									to={`/events/${event.id}/manage`}
-								>
-									<span className="event-action-label-full">管理画面へ</span>
-									<span className="event-action-label-compact">管理</span>
-									<Icon name="users" size={15} />
-								</Link>
-							)}
-						</div>
-					</article>
-				);
-			})}
+			{events.map((event) => (
+				<EventListItem
+					key={event.id}
+					event={event}
+					currentUserId={currentUserId}
+					onEventLeft={onEventLeft}
+				/>
+			))}
 		</div>
+	);
+}
+
+function EventListItem({
+	event,
+	currentUserId,
+	onEventLeft,
+}: {
+	event: Event;
+	currentUserId: string;
+	onEventLeft?: (eventID: string) => void;
+}) {
+	const leaveFetcher = useFetcher<typeof clientAction>();
+	const displayStatus = eventDisplayStatus(event);
+	const canManage = event.created_by_user_id === currentUserId;
+	const canViewResults = canManage || event.results_visible_to_participants;
+	const leaving = leaveFetcher.state !== "idle";
+	const leftEventID =
+		leaveFetcher.data && "leftEventId" in leaveFetcher.data
+			? leaveFetcher.data.leftEventId
+			: null;
+	useEffect(() => {
+		if (leftEventID) onEventLeft?.(leftEventID);
+	}, [leftEventID, onEventLeft]);
+	if (leftEventID) return null;
+	return (
+		<article>
+			<div className="event-list-body">
+				<h2>{event.title}</h2>
+				<div className="event-list-meta">
+					<span className="event-list-period">
+						<Icon name="calendar" size={15} />
+						<span className="event-list-period-text">
+							<span>
+								<WeekendText>
+									{formatDateTime(event.window_start_at, event.time_zone)}
+								</WeekendText>
+							</span>
+							<span className="event-list-period-end">
+								<span>〜</span>
+								<WeekendText>
+									{formatDateTime(event.window_end_at, event.time_zone)}
+								</WeekendText>
+							</span>
+						</span>
+					</span>
+					<span className="event-list-meta-separator" aria-hidden="true">
+						・
+					</span>
+					<span className="event-list-duration">
+						<Icon name="clock" size={15} />
+						{minutesLabel(event.duration_minutes)}
+					</span>
+				</div>
+			</div>
+			<div className="event-list-actions">
+				<span className={`status-pill status-${displayStatus}`}>
+					<i />{" "}
+					{displayStatus === "open"
+						? "回答受付中"
+						: displayStatus === "confirmed"
+							? "日程確定"
+							: displayStatus === "expired"
+								? "回答期限超過"
+								: "取消済み"}
+				</span>
+				{displayStatus === "open" && (
+					<Link
+						className="button button-primary"
+						to={`/events/${event.id}/availability`}
+					>
+						<span className="event-action-label-full">回答ページへ</span>
+						<span className="event-action-label-compact">回答</span>
+						<Icon name="arrow" size={15} />
+					</Link>
+				)}
+				{displayStatus === "confirmed" && (
+					<Link
+						className="button button-primary"
+						to={`/events/${event.id}/confirmed`}
+					>
+						<span className="event-action-label-full">確定日時を見る</span>
+						<span className="event-action-label-compact">確定日時</span>
+						<Icon name="calendar" size={15} />
+					</Link>
+				)}
+				{canViewResults && (
+					<Link
+						className="button button-ghost"
+						to={`/events/${event.id}/results`}
+					>
+						<span className="event-action-label-full">回答結果を見る</span>
+						<span className="event-action-label-compact">結果</span>
+						<Icon name="chart" size={15} />
+					</Link>
+				)}
+				{canManage && (
+					<Link
+						className="button button-ghost"
+						to={`/events/${event.id}/manage`}
+					>
+						<span className="event-action-label-full">管理画面へ</span>
+						<span className="event-action-label-compact">管理</span>
+						<Icon name="users" size={15} />
+					</Link>
+				)}
+				{!canManage && (
+					<leaveFetcher.Form
+						method="post"
+						className="event-leave-form"
+						onSubmit={(submitEvent) => {
+							if (
+								!window.confirm(
+									`「${event.title}」から退出しますか？回答内容も削除されます。`,
+								)
+							) {
+								submitEvent.preventDefault();
+							}
+						}}
+					>
+						<input type="hidden" name="event_id" value={event.id} />
+						<button
+							type="submit"
+							name="intent"
+							value="leave-event"
+							disabled={leaving}
+						>
+							<span className="event-action-label-full">
+								{leaving ? "退出しています…" : "イベントから退出"}
+							</span>
+							<span className="event-action-label-compact">
+								{leaving ? "退出中" : "退出"}
+							</span>
+						</button>
+					</leaveFetcher.Form>
+				)}
+				{leaveFetcher.data && "error" in leaveFetcher.data && (
+					<small className="event-leave-error">
+						{leaveFetcher.data.error.message}
+					</small>
+				)}
+			</div>
+		</article>
 	);
 }
 
@@ -168,6 +251,11 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 	const fetcher = useFetcher<typeof clientLoader>();
 	const [events, setEvents] = useState(loaderData.events);
 	const [nextCursor, setNextCursor] = useState(loaderData.nextCursor);
+	const removeEvent = useCallback(
+		(eventID: string) =>
+			setEvents((current) => current.filter((event) => event.id !== eventID)),
+		[],
+	);
 	const consumedCursor = useRef<string | null>(null);
 	useEffect(() => {
 		const page = fetcher.data;
@@ -225,6 +313,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							<EventList
 								events={acceptingEvents}
 								currentUserId={currentUserId}
+								onEventLeft={removeEvent}
 							/>
 						) : (
 							<p className="event-section-empty">
@@ -241,7 +330,11 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							<b>{closedEvents.length}件表示</b>
 						</header>
 						{closedEvents.length > 0 ? (
-							<EventList events={closedEvents} currentUserId={currentUserId} />
+							<EventList
+								events={closedEvents}
+								currentUserId={currentUserId}
+								onEventLeft={removeEvent}
+							/>
 						) : (
 							<p className="event-section-empty">
 								回答受付終了のイベントはありません。

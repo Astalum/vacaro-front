@@ -105,6 +105,18 @@ VACARO_BACK_IMAGE=ghcr.io/astalum/vacaro-back:sha-実際の40桁SHA
 VACARO_MIGRATIONS_IMAGE=ghcr.io/astalum/vacaro-back:migrations-sha-実際の40桁SHA
 ```
 
+公開URLとAPI保護設定も本番環境に合わせます。
+
+```env
+PUBLIC_APP_URL=https://vacaro.astalum.dev
+ALLOWED_ORIGINS=https://vacaro.astalum.dev
+API_RATE_LIMIT_REQUESTS=120
+API_RATE_LIMIT_WINDOW=1m
+TRUSTED_PROXY_CIDRS=
+```
+
+`TRUSTED_PROXY_CIDRS`には、APIコンテナへ直接接続できるリバースプロキシのネットワークだけを設定します。値が不明な状態で広いCIDRを推測して設定せず、未設定のまま開始してください。未設定時は転送IPヘッダーを無視するため、レート制限はAPIから見える接続元IP単位になります。稼働環境のDockerネットワークを確認した後、必要なら最小のCIDRへ更新します。
+
 ## 5. privateイメージを利用する場合はGHCRへログインする
 
 GHCRパッケージをpublicにする場合、この作業は不要です。

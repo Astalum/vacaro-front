@@ -24,7 +24,9 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
+	COMMON_TIME_ZONES,
 	type EventWithInvite,
+	isValidTimeZone,
 	localDateTimeToIso,
 	saveEventInviteUrl,
 	type User,
@@ -60,6 +62,11 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 	const dailyStartTime = String(formData.get("daily_start_time") ?? "");
 	const dailyEndTime = String(formData.get("daily_end_time") ?? "");
 	const responseDeadlineAt = String(formData.get("response_deadline_at") ?? "");
+	const timeZone = String(formData.get("time_zone") ?? "").trim();
+	const durationMinutes = Number(formData.get("duration_minutes"));
+	const schedulingMode = String(
+		formData.get("scheduling_mode") ?? "whole_event",
+	);
 	const resultsVisibilityValue = formData.get(
 		"results_visible_to_participants",
 	);
@@ -101,6 +108,33 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 			{ status: 422 },
 		);
 	}
+	const windowStartIso = localDateTimeToIso(windowStartAt, timeZone);
+	const windowEndIso = localDateTimeToIso(windowEndAt, timeZone);
+	const responseDeadlineIso = responseDeadlineAt
+		? localDateTimeToIso(responseDeadlineAt, timeZone)
+		: null;
+	if (
+		!isValidTimeZone(timeZone) ||
+		!windowStartIso ||
+		!windowEndIso ||
+		(responseDeadlineAt && !responseDeadlineIso) ||
+		!Number.isInteger(durationMinutes) ||
+		durationMinutes < 5 ||
+		durationMinutes > 1440 ||
+		(schedulingMode !== "whole_event" && schedulingMode !== "groups")
+	) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message:
+						"タイムゾーン、必要時間、調整単位、または日時を確認してください",
+					fields: null,
+				},
+			},
+			{ status: 422 },
+		);
+	}
 	try {
 		try {
 			const me = await apiRequest<User>("/me");
@@ -123,15 +157,13 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 			body: JSON.stringify({
 				title: String(formData.get("title") ?? ""),
 				description: String(formData.get("description") ?? "") || null,
-				time_zone: String(formData.get("time_zone") ?? "Asia/Tokyo"),
-				window_start_at: localDateTimeToIso(windowStartAt),
-				window_end_at: localDateTimeToIso(windowEndAt),
-				duration_minutes: Number(formData.get("duration_minutes")),
-				scheduling_mode: "groups",
+				time_zone: timeZone,
+				window_start_at: windowStartIso,
+				window_end_at: windowEndIso,
+				duration_minutes: durationMinutes,
+				scheduling_mode: schedulingMode,
 				results_visible_to_participants: resultsVisibleToParticipants,
-				response_deadline_at: localDateTimeToIso(
-					formData.get("response_deadline_at"),
-				),
+				response_deadline_at: responseDeadlineIso,
 			}),
 		});
 		saveEventInviteUrl(created.id, created.invite_url);
@@ -343,16 +375,22 @@ export default function NewEvent({
 										<FieldLabel htmlFor="timezone">
 											タイムゾーン <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Select name="time_zone" defaultValue="Asia/Tokyo">
-											<SelectTrigger id="timezone">
-												<SelectValue placeholder="タイムゾーンを選択" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="Asia/Tokyo">
-													日本時間（Asia/Tokyo）
-												</SelectItem>
-											</SelectContent>
-										</Select>
+										<Input
+											id="timezone"
+											name="time_zone"
+											list="new-event-time-zones"
+											defaultValue="Asia/Tokyo"
+											placeholder="例：America/New_York"
+											required
+										/>
+										<datalist id="new-event-time-zones">
+											{COMMON_TIME_ZONES.map((timeZone) => (
+												<option key={timeZone} value={timeZone} />
+											))}
+										</datalist>
+										<p className="text-sm text-muted-foreground">
+											候補以外のIANAタイムゾーンも入力できます。
+										</p>
 									</Field>
 								</div>
 								<Field className="new-event-results-visibility">
@@ -490,16 +528,36 @@ export default function NewEvent({
 										イベントに必要な時間
 										<Badge variant="destructive">必須</Badge>
 									</FieldLabel>
-									<Select name="duration_minutes" defaultValue="60">
-										<SelectTrigger id="duration">
-											<SelectValue placeholder="所要時間を選択" />
+									<Input
+										id="duration"
+										name="duration_minutes"
+										type="number"
+										min={5}
+										max={1440}
+										step={1}
+										defaultValue={60}
+										required
+									/>
+									<p className="text-sm text-muted-foreground">
+										5～1,440分の範囲で1分単位に指定できます。
+									</p>
+								</Field>
+
+								<Field>
+									<FieldLabel htmlFor="scheduling-mode">
+										調整単位 <Badge variant="destructive">必須</Badge>
+									</FieldLabel>
+									<Select name="scheduling_mode" defaultValue="whole_event">
+										<SelectTrigger id="scheduling-mode">
+											<SelectValue placeholder="調整単位を選択" />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="30">30分</SelectItem>
-											<SelectItem value="60">1時間</SelectItem>
-											<SelectItem value="90">1時間30分</SelectItem>
-											<SelectItem value="120">2時間</SelectItem>
-											<SelectItem value="180">3時間</SelectItem>
+											<SelectItem value="whole_event">
+												イベント全体で調整
+											</SelectItem>
+											<SelectItem value="groups">
+												小グループごとに調整
+											</SelectItem>
 										</SelectContent>
 									</Select>
 								</Field>

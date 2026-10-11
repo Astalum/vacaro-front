@@ -76,6 +76,17 @@ describe("NewEvent validation", () => {
 		expect(
 			(screen.getByLabelText(/毎日の受付終了/) as HTMLInputElement).step,
 		).toBe("60");
+		const duration = screen.getByRole("spinbutton", {
+			name: /イベントに必要な時間/,
+		}) as HTMLInputElement;
+		expect(duration.min).toBe("5");
+		expect(duration.max).toBe("1440");
+		expect(duration.step).toBe("1");
+		expect(
+			new FormData(title.closest("form") as HTMLFormElement).get(
+				"scheduling_mode",
+			),
+		).toBe("whole_event");
 
 		await user.click(submitButton);
 
@@ -136,6 +147,53 @@ describe("NewEvent validation", () => {
 		expect(body.window_start_at).toBe("2026-10-02T00:17:00.000Z");
 		expect(body.window_end_at).toBe("2026-10-09T12:43:00.000Z");
 		expect(body.results_visible_to_participants).toBe(true);
+		expect(body.scheduling_mode).toBe("whole_event");
+	});
+
+	it("accepts an arbitrary duration and converts another IANA time zone", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(
+				new Response(JSON.stringify({ data: { display_name: "主催者" } }), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			)
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify({
+						data: { id: "event-1", invite_url: "https://example.com/invite" },
+					}),
+					{ status: 201, headers: { "Content-Type": "application/json" } },
+				),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("title", "海外チーム会議");
+		formData.set("display_name", "主催者");
+		formData.set("time_zone", "America/New_York");
+		formData.set("window_start_date", "2026-07-01");
+		formData.set("window_end_date", "2026-07-02");
+		formData.set("daily_start_time", "09:00");
+		formData.set("daily_end_time", "17:00");
+		formData.set("duration_minutes", "37");
+		formData.set("scheduling_mode", "groups");
+
+		await clientAction({
+			request: new Request("http://localhost/events/new", {
+				method: "POST",
+				body: formData,
+			}),
+		} as never);
+
+		const body = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+		expect(body).toMatchObject({
+			time_zone: "America/New_York",
+			window_start_at: "2026-07-01T13:00:00.000Z",
+			window_end_at: "2026-07-02T21:00:00.000Z",
+			duration_minutes: 37,
+			scheduling_mode: "groups",
+		});
 	});
 
 	it("sends a disabled results visibility setting when the toggle is off", async () => {

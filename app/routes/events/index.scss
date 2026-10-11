@@ -99,6 +99,33 @@
 .event-list-actions .button {
 	width: 100%;
 }
+.event-leave-form button {
+	width: 100%;
+	min-height: 36px;
+	padding: 6px 10px;
+	border: 1px solid #efd1cb;
+	border-radius: 8px;
+	background: #fff8f6;
+	color: #a84b40;
+	font-size: 13px;
+	font-weight: 800;
+	cursor: pointer;
+}
+.event-leave-form button:hover:not(:disabled) {
+	border-color: #dfaaa1;
+	background: #fff0ec;
+}
+.event-leave-form button:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+.event-leave-error {
+	max-width: 180px;
+	color: #a84b40;
+	font-size: 11px;
+	line-height: 1.4;
+	text-align: center;
+}
 .event-action-label-compact {
 	display: none;
 }
@@ -240,6 +267,11 @@
 		gap: 4px;
 		font-size: 13px;
 		white-space: nowrap;
+	}
+	.event-leave-form button {
+		min-height: 34px;
+		padding: 6px 4px;
+		font-size: 12px;
 	}
 	.event-action-label-full {
 		display: none;
