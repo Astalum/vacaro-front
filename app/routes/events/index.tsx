@@ -128,6 +128,16 @@ function EventListItem({
 	return (
 		<article>
 			<div className="event-list-body">
+				<span className={`status-pill status-${displayStatus}`}>
+					<i />{" "}
+					{displayStatus === "open"
+						? "回答受付中"
+						: displayStatus === "confirmed"
+							? "日程確定"
+							: displayStatus === "expired"
+								? "回答期限超過"
+								: "取消済み"}
+				</span>
 				<h2>{event.title}</h2>
 				<div className="event-list-meta">
 					<div className="event-list-period">
@@ -153,16 +163,6 @@ function EventListItem({
 				</div>
 			</div>
 			<div className="event-list-actions">
-				<span className={`status-pill status-${displayStatus}`}>
-					<i />{" "}
-					{displayStatus === "open"
-						? "回答受付中"
-						: displayStatus === "confirmed"
-							? "日程確定"
-							: displayStatus === "expired"
-								? "回答期限超過"
-								: "取消済み"}
-				</span>
 				{displayStatus === "open" && (
 					<Link
 						className="button button-primary"

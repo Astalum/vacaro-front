@@ -97,6 +97,9 @@
 .event-list-body {
 	flex: 1;
 }
+.event-list-body > .status-pill {
+	margin-bottom: 6px;
+}
 .event-list-actions {
 	display: flex;
 	flex-direction: column;
@@ -266,11 +269,10 @@
 		justify-content: flex-start;
 		gap: 6px;
 	}
-	.event-list-actions .status-pill {
-		align-self: center;
-		padding: 4px 5px;
+	.event-list-body > .status-pill {
+		padding: 4px 7px;
 		gap: 3px;
-		font-size: 10px;
+		font-size: 11px;
 		white-space: nowrap;
 	}
 	.event-list-actions .button {
