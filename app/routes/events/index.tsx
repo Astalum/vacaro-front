@@ -301,7 +301,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 				</div>
 			) : (
 				<div className="event-sections">
-					<section className="event-section">
+					<section className="event-section event-section-accepting">
 						<header className="event-section-heading">
 							<div>
 								<span>ACCEPTING RESPONSES</span>
@@ -321,7 +321,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							</p>
 						)}
 					</section>
-					<section className="event-section">
+					<section className="event-section event-section-closed">
 						<header className="event-section-heading">
 							<div>
 								<span>CLOSED RESPONSES</span>

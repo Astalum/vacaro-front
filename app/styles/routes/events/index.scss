@@ -11,6 +11,14 @@
 	border-radius: 18px;
 	background: rgba(255, 255, 255, 0.58);
 }
+.event-section-accepting {
+	grid-column: 2;
+	grid-row: 1;
+}
+.event-section-closed {
+	grid-column: 1;
+	grid-row: 1;
+}
 .event-section-heading {
 	display: flex;
 	align-items: flex-end;
@@ -183,6 +191,11 @@
 @media (max-width: 900px) {
 	.event-sections {
 		grid-template-columns: 1fr;
+	}
+	.event-section-accepting,
+	.event-section-closed {
+		grid-column: auto;
+		grid-row: auto;
 	}
 }
 
