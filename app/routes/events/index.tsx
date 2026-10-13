@@ -304,7 +304,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 								<span>ACCEPTING RESPONSES</span>
 								<h2>回答受付中のイベント</h2>
 							</div>
-							<b>{acceptingEvents.length}件表示</b>
+							<b>{acceptingEvents.length}件</b>
 						</header>
 						{acceptingEvents.length > 0 ? (
 							<EventList
@@ -324,7 +324,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 								<span>CLOSED RESPONSES</span>
 								<h2>回答受付終了のイベント</h2>
 							</div>
-							<b>{closedEvents.length}件表示</b>
+							<b>{closedEvents.length}件</b>
 						</header>
 						{closedEvents.length > 0 ? (
 							<EventList
