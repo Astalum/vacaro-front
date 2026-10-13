@@ -148,6 +148,10 @@
 	.how-section {
 		padding-block: 70px;
 	}
+	.group-feature {
+		margin-top: 55px;
+		padding: 26px 24px;
+	}
 	.page-main {
 		padding-top: 40px;
 	}
@@ -623,6 +627,15 @@
 	}
 	.section-heading h2 {
 		font-size: 28px;
+	}
+	.group-feature {
+		grid-template-columns: 1fr;
+		justify-items: center;
+		text-align: center;
+		gap: 18px;
+	}
+	.group-feature-copy h3 {
+		font-size: 21px;
 	}
 	.form-section,
 	.respond-panel,

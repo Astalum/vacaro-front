@@ -192,6 +192,18 @@ export default function Home() {
 								</p>
 							</article>
 						</div>
+						<aside className="group-feature">
+							<div className="group-feature-icon">
+								<Icon name="users" size={32} />
+							</div>
+							<div className="group-feature-copy">
+								<span className="section-kicker">GROUP SCHEDULING</span>
+								<h3>グループごとの日程も、まとめて調整</h3>
+								<p>
+									イベント作成時に「小グループごとに調整」を選ぶと、参加者をチームや役割ごとに分け、同じ回答からグループごとの候補時間を集計・確定できます。全員が参加する「全体」の日程も一緒に確認できます。
+								</p>
+							</div>
+						</aside>
 					</div>
 				</section>
 			</main>
