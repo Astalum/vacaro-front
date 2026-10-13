@@ -142,9 +142,11 @@
 	font-size: 22px;
 }
 .event-list-meta {
-	display: flex;
-	align-items: center;
-	gap: 5px;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	align-items: start;
+	justify-items: start;
+	gap: 7px;
 	margin: 0;
 	color: var(--muted);
 	font-size: 15px;
@@ -255,9 +257,6 @@
 	}
 	.event-list-duration {
 		margin-left: 0;
-	}
-	.event-list-meta-separator {
-		display: none;
 	}
 	.event-list-actions {
 		width: auto;
