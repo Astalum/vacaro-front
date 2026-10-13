@@ -6,6 +6,7 @@ import {
 	PageShell,
 	WeekendText,
 } from "~/components/app";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -146,10 +147,9 @@ export default function Created({
 							</>
 						)}
 						{actionData && "error" in actionData && (
-							<div className="form-error">
-								<Icon name="info" size={17} />
-								<strong>{actionData.error.message}</strong>
-							</div>
+							<ValidationMessage title={actionData.error.message} compact>
+								招待URLの状態を確認して、もう一度お試しください。
+							</ValidationMessage>
 						)}
 						<InviteUrlReissue
 							hasInviteUrl={Boolean(currentInviteUrl)}

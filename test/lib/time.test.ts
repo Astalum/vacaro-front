@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
+import { isTimeValue } from "~/lib/time";
 
 const timeInputFiles = [
 	"../../app/routes/events/new.tsx",
@@ -12,13 +12,7 @@ const timeInputFiles = [
 	"../../app/routes/account.tsx",
 	"../../app/components/ui/date-time-picker.tsx",
 ];
-const legacyThirtyMinuteStep = `step={${30 * 60}}`;
-
 describe("time input validation", () => {
-	it("uses one-minute increments", () => {
-		expect(TIME_INPUT_STEP_SECONDS).toBe(60);
-	});
-
 	it.each(["00:00", "09:17", "12:34", "23:59"])(
 		"accepts valid clock time %s",
 		(value) => {
@@ -34,16 +28,20 @@ describe("time input validation", () => {
 	);
 
 	it.each(timeInputFiles)(
-		"uses minute precision for every time input in %s",
+		"uses the custom time picker instead of native time inputs in %s",
 		(file) => {
 			const source = readFileSync(new URL(file, import.meta.url), "utf8");
-			const timeInputCount = source.match(/type="time"/g)?.length ?? 0;
-			const minuteStepCount =
-				source.match(/step=\{TIME_INPUT_STEP_SECONDS\}/g)?.length ?? 0;
 
-			expect(timeInputCount).toBeGreaterThan(0);
-			expect(minuteStepCount).toBe(timeInputCount);
-			expect(source).not.toContain(legacyThirtyMinuteStep);
+			expect(source).toContain("TimePicker");
+			expect(source).not.toContain('type="time"');
 		},
 	);
+
+	it("offers every minute in the custom time picker", () => {
+		const source = readFileSync(
+			new URL("../../app/components/ui/time-picker.tsx", import.meta.url),
+			"utf8",
+		);
+		expect(source).toContain("length: 60");
+	});
 });

@@ -6,6 +6,7 @@ import {
 	PageShell,
 	PersistentInviteUrl,
 } from "~/components/app";
+import { DatePicker } from "~/components/ui/date-picker";
 import { DateTimePicker } from "~/components/ui/date-time-picker";
 import {
 	Select,
@@ -14,6 +15,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "~/components/ui/select";
+import { TimePicker } from "~/components/ui/time-picker";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -26,7 +29,7 @@ import {
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
 } from "~/lib/api";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
+import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/edit";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -182,14 +185,11 @@ export default function EditEvent({
 			)}
 			<Form className="form-stack" method="post">
 				{actionData && "error" in actionData && (
-					<div className="form-error">
-						<Icon name="info" size={17} />
-						<span>
-							<strong>{actionData.error.message}</strong>
-							{actionData.error.fields &&
-								Object.values(actionData.error.fields).join(" / ")}
-						</span>
-					</div>
+					<ValidationMessage title={actionData.error.message}>
+						{actionData.error.fields
+							? Object.values(actionData.error.fields).join(" / ")
+							: "入力内容をもう一度ご確認ください。"}
+					</ValidationMessage>
 				)}
 				<section className="form-section compact-section">
 					<div className="field">
@@ -256,10 +256,9 @@ export default function EditEvent({
 					<div className="window-fields">
 						<div className="field">
 							<label htmlFor="edit-window-start-date">開始日</label>
-							<input
+							<DatePicker
 								id="edit-window-start-date"
 								name="window_start_date"
-								type="date"
 								defaultValue={isoToLocalDateTime(
 									event.window_start_at,
 									event.time_zone,
@@ -270,10 +269,9 @@ export default function EditEvent({
 						<span className="window-arrow">→</span>
 						<div className="field">
 							<label htmlFor="edit-window-end-date">終了日</label>
-							<input
+							<DatePicker
 								id="edit-window-end-date"
 								name="window_end_date"
-								type="date"
 								defaultValue={isoToLocalDateTime(
 									event.window_end_at,
 									event.time_zone,
@@ -290,11 +288,9 @@ export default function EditEvent({
 						<div className="daily-window-fields">
 							<div className="field">
 								<label htmlFor="edit-daily-start-time">受付開始</label>
-								<input
+								<TimePicker
 									id="edit-daily-start-time"
 									name="daily_start_time"
-									type="time"
-									step={TIME_INPUT_STEP_SECONDS}
 									defaultValue={isoToLocalDateTime(
 										event.window_start_at,
 										event.time_zone,
@@ -305,11 +301,9 @@ export default function EditEvent({
 							<span>〜</span>
 							<div className="field">
 								<label htmlFor="edit-daily-end-time">受付終了</label>
-								<input
+								<TimePicker
 									id="edit-daily-end-time"
 									name="daily_end_time"
-									type="time"
-									step={TIME_INPUT_STEP_SECONDS}
 									defaultValue={isoToLocalDateTime(
 										event.window_end_at,
 										event.time_zone,

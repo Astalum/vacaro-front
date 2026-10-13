@@ -31,9 +31,6 @@ describe("responsive overflow safeguards", () => {
 		expect(edit).toMatch(
 			/@media\s*\(max-width:\s*560px\)[\s\S]*?\.daily-window-fields\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
 		);
-		expect(edit).toMatch(
-			/\.daily-window-fields input\[type="time"\]\s*\{[^}]*display:\s*block[^}]*max-width:\s*100%/,
-		);
 	});
 
 	it("keeps the results calendar and empty state inside phone viewports", () => {
@@ -51,32 +48,17 @@ describe("responsive overflow safeguards", () => {
 		);
 	});
 
-	it.each([
-		[
-			"account",
-			"../../app/styles/routes/account.scss",
-			".settings-time-window input",
-		],
-		[
-			"availability",
-			"../../app/styles/routes/events/availability.scss",
-			".schedule-time-row input",
-		],
-		[
-			"results",
-			"../../app/styles/routes/events/results.scss",
-			".manual-confirmation-time",
-		],
-	])("constrains raw time inputs on the %s page", (_, path, selector) => {
-		const styles = read(path);
-		const escapedSelector = selector
-			.replaceAll(".", "\\.")
-			.replaceAll(" ", "\\s+");
+	it("keeps the custom time picker within every form container", () => {
+		const picker = read("../../app/components/ui/time-picker.tsx");
+		const account = read("../../app/styles/routes/account.scss");
+		const results = read("../../app/styles/routes/events/results.scss");
 
-		expect(styles).toMatch(
-			new RegExp(
-				`${escapedSelector}\\s*\\{[^}]*display:\\s*block[^}]*min-width:\\s*0[^}]*max-width:\\s*100%`,
-			),
+		expect(picker).toContain("w-full min-w-0 max-w-full");
+		expect(account).toMatch(
+			/\.settings-time-window button\[data-slot="popover-trigger"\]\s*\{[^}]*display:\s*flex[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*max-width:\s*100%/,
+		);
+		expect(results).toMatch(
+			/\.manual-confirmation-time\s*\{[^}]*display:\s*flex[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*max-width:\s*100%/,
 		);
 	});
 });

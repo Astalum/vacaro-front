@@ -4,6 +4,7 @@ import { Icon, PageIntro, PageShell } from "~/components/app";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { DatePicker } from "~/components/ui/date-picker";
 import { DateTimePicker } from "~/components/ui/date-time-picker";
 import { Field, FieldGroup, FieldLabel } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
@@ -15,6 +16,11 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { TimePicker } from "~/components/ui/time-picker";
+import {
+	FieldError,
+	ValidationMessage,
+} from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -27,7 +33,7 @@ import {
 	type User,
 } from "~/lib/api";
 import { getNewEventDefaults } from "~/lib/new-event-defaults";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
+import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/new";
 
 export function meta() {
@@ -237,10 +243,12 @@ export default function NewEvent({
 		event.preventDefault();
 		setFieldErrors(nextErrors);
 		setScheduleError(nextScheduleError);
-		const input = form.elements.namedItem(
-			firstInvalidField?.name ?? "window_start_date",
-		);
-		if (input instanceof HTMLElement) input.focus();
+		const controlId = firstInvalidField
+			? firstInvalidField.name === "display_name"
+				? "owner"
+				: firstInvalidField.name
+			: "window-start-date";
+		document.getElementById(controlId)?.focus();
 	}
 
 	function clearFieldError(name: RequiredFieldName) {
@@ -268,32 +276,16 @@ export default function NewEvent({
 				onSubmit={handleSubmit}
 			>
 				{actionData?.error && (
-					<div className="flex items-start gap-3 rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
-						<Icon name="info" size={20} />
-						<span className="grid gap-1 text-base font-semibold">
-							<strong>{actionData.error.message}</strong>
-							{actionData.error.fields &&
-								Object.values(actionData.error.fields).join(" / ")}
-						</span>
-					</div>
+					<ValidationMessage title={actionData.error.message}>
+						{actionData.error.fields
+							? Object.values(actionData.error.fields).join(" / ")
+							: "入力内容をもう一度ご確認ください。"}
+					</ValidationMessage>
 				)}
 				{hasFieldErrors && (
-					<div
-						role="alert"
-						className="flex items-center gap-3 rounded-2xl border border-destructive/25 bg-destructive/10 px-4 py-3.5 text-destructive shadow-[0_10px_30px_rgba(176,69,53,0.08)]"
-					>
-						<span className="grid size-9 shrink-0 place-items-center rounded-xl bg-destructive text-white shadow-sm">
-							<Icon name="info" size={19} />
-						</span>
-						<span className="grid gap-0.5">
-							<strong className="text-sm font-extrabold text-foreground">
-								入力内容を確認してください
-							</strong>
-							<span className="text-sm font-semibold">
-								未入力の項目が{Object.keys(fieldErrors).length}件あります
-							</span>
-						</span>
-					</div>
+					<ValidationMessage>
+						未入力の項目が{Object.keys(fieldErrors).length}件あります
+					</ValidationMessage>
 				)}
 				<div className="new-event-card-grid">
 					<Card className="new-event-card h-full overflow-hidden">
@@ -322,15 +314,9 @@ export default function NewEvent({
 										onChange={() => clearFieldError("title")}
 									/>
 									{fieldErrors.title && (
-										<p
-											id="title-error"
-											className="flex items-center gap-2 text-sm font-bold text-destructive"
-										>
-											<span className="grid size-5 place-items-center rounded-full bg-destructive text-xs text-white">
-												!
-											</span>
+										<FieldError id="title-error">
 											{fieldErrors.title}
-										</p>
+										</FieldError>
 									)}
 								</Field>
 								<Field>
@@ -355,15 +341,9 @@ export default function NewEvent({
 											onChange={() => clearFieldError("display_name")}
 										/>
 										{fieldErrors.display_name && (
-											<p
-												id="owner-error"
-												className="flex items-center gap-2 text-sm font-bold text-destructive"
-											>
-												<span className="grid size-5 place-items-center rounded-full bg-destructive text-xs text-white">
-													!
-												</span>
+											<FieldError id="owner-error">
 												{fieldErrors.display_name}
-											</p>
+											</FieldError>
 										)}
 									</Field>
 									<Field>
@@ -449,10 +429,9 @@ export default function NewEvent({
 										<FieldLabel htmlFor="window-start-date">
 											開始日 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Input
+										<DatePicker
 											id="window-start-date"
 											name="window_start_date"
-											type="date"
 											defaultValue={loaderData.windowStartAt.slice(0, 10)}
 											required
 										/>
@@ -464,10 +443,9 @@ export default function NewEvent({
 										<FieldLabel htmlFor="window-end-date">
 											終了日 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Input
+										<DatePicker
 											id="window-end-date"
 											name="window_end_date"
-											type="date"
 											defaultValue={loaderData.windowEndAt.slice(0, 10)}
 											required
 										/>
@@ -479,11 +457,9 @@ export default function NewEvent({
 										<FieldLabel htmlFor="daily-start-time">
 											毎日の受付開始 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Input
+										<TimePicker
 											id="daily-start-time"
 											name="daily_start_time"
-											type="time"
-											step={TIME_INPUT_STEP_SECONDS}
 											defaultValue={loaderData.windowStartAt.slice(11, 16)}
 											required
 										/>
@@ -495,11 +471,9 @@ export default function NewEvent({
 										<FieldLabel htmlFor="daily-end-time">
 											毎日の受付終了 <Badge variant="destructive">必須</Badge>
 										</FieldLabel>
-										<Input
+										<TimePicker
 											id="daily-end-time"
 											name="daily_end_time"
-											type="time"
-											step={TIME_INPUT_STEP_SECONDS}
 											defaultValue={loaderData.windowEndAt.slice(11, 16)}
 											required
 										/>
@@ -509,13 +483,12 @@ export default function NewEvent({
 									参加者は期間中の各日、この時間帯の中で回答できます。
 								</p>
 								{scheduleError && (
-									<p
-										className="flex items-center gap-2 text-sm font-bold text-destructive"
-										role="alert"
+									<ValidationMessage
+										compact
+										title="日時の指定を確認してください"
 									>
-										<Icon name="info" size={17} />
 										{scheduleError}
-									</p>
+									</ValidationMessage>
 								)}
 
 								<Field>

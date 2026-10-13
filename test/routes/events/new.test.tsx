@@ -64,18 +64,14 @@ describe("NewEvent validation", () => {
 			),
 		).toBe("false");
 		await user.click(resultsVisibility);
+		const form = title.closest("form") as HTMLFormElement;
+		expect(new FormData(form).get("daily_start_time")).toBe("09:00");
+		expect(new FormData(form).get("daily_end_time")).toBe("21:00");
+		expect(screen.getByLabelText(/毎日の受付開始/)).toBeTruthy();
+		expect(screen.getByLabelText(/毎日の受付終了/)).toBeTruthy();
 		expect(
-			(screen.getByLabelText(/毎日の受付開始/) as HTMLInputElement).value,
-		).toBe("09:00");
-		expect(
-			(screen.getByLabelText(/毎日の受付開始/) as HTMLInputElement).step,
-		).toBe("60");
-		expect(
-			(screen.getByLabelText(/毎日の受付終了/) as HTMLInputElement).value,
-		).toBe("21:00");
-		expect(
-			(screen.getByLabelText(/毎日の受付終了/) as HTMLInputElement).step,
-		).toBe("60");
+			form.querySelector('input[type="date"], input[type="time"]'),
+		).toBeNull();
 		const duration = screen.getByRole("spinbutton", {
 			name: /イベントに必要な時間/,
 		}) as HTMLInputElement;

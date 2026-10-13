@@ -37,10 +37,18 @@ describe("DateTimePicker", () => {
 		).toBe("2026-06-14T09:00");
 
 		await user.click(screen.getByRole("button", { name: /2026年6月15日/ }));
-		const timeInput = screen.getByLabelText("時刻");
-		expect((timeInput as HTMLInputElement).step).toBe("60");
-		await user.clear(timeInput);
-		await user.type(timeInput, "10:30");
+		await user.click(screen.getByRole("button", { name: "時刻 09:00" }));
+		await user.click(
+			within(screen.getByRole("listbox", { name: "時" })).getByRole("option", {
+				name: "10",
+			}),
+		);
+		await user.click(
+			within(screen.getByRole("listbox", { name: "分" })).getByRole("option", {
+				name: "30",
+			}),
+		);
+		await user.click(screen.getByRole("button", { name: "この時刻にする" }));
 		await user.click(screen.getByRole("button", { name: "決定" }));
 
 		await waitFor(() => {

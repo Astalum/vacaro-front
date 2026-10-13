@@ -6,6 +6,7 @@ import {
 	PersistentInviteUrl,
 	WeekendText,
 } from "~/components/app";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -276,12 +277,9 @@ export default function ManageEvent({
 			</div>
 
 			{actionData && "error" in actionData && (
-				<div className="form-error">
-					<Icon name="info" size={17} />
-					<span>
-						<strong>{actionData.error.message}</strong>
-					</span>
-				</div>
+				<ValidationMessage title={actionData.error.message}>
+					操作内容を確認して、もう一度お試しください。
+				</ValidationMessage>
 			)}
 			{actionData && "success" in actionData && (
 				<div className="confirm-banner compact-banner">

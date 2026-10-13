@@ -1,6 +1,8 @@
 import { type PointerEvent, useEffect, useMemo, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
+import { TimePicker } from "~/components/ui/time-picker";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	type AvailabilityInterval,
@@ -17,7 +19,6 @@ import {
 	savedCalendarIDs,
 	type User,
 } from "~/lib/api";
-import { TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/availability";
 
 type TimeRange = { id: string; start: string; end: string };
@@ -602,7 +603,7 @@ export default function AvailabilityPage({
 					? {
 							...range,
 							[field]:
-								field === "end" && value === "00:00"
+								field === "end" && (value === "00:00" || value === "24:00")
 									? `${addDays(key, 1)}T00:00`
 									: `${key}T${value}`,
 						}
@@ -942,20 +943,15 @@ export default function AvailabilityPage({
 							)}
 							{selectedRanges.map((range) => (
 								<div className="schedule-time-row" key={range.id}>
-									<input
-										type="time"
+									<TimePicker
+										id={`desktop-range-${range.id}-start`}
+										className="schedule-time-picker"
 										aria-label="開始時刻"
 										min={dailyStartTime}
-										max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-										step={TIME_INPUT_STEP_SECONDS}
+										max={dailyEndTime}
 										value={range.start.slice(11, 16)}
-										onChange={(inputEvent) =>
-											updateTime(
-												range.id,
-												"start",
-												inputEvent.target.value,
-												selectedDate,
-											)
+										onValueChange={(value) =>
+											updateTime(range.id, "start", value, selectedDate)
 										}
 									/>
 									<span>〜</span>
@@ -966,35 +962,29 @@ export default function AvailabilityPage({
 												: "schedule-time-input"
 										}
 									>
-										<input
-											type="time"
+										<TimePicker
+											id={`desktop-range-${range.id}-end`}
+											className="schedule-time-picker"
 											aria-label={
 												endsAtDayBoundary(range, selectedDate)
 													? "終了時刻 24:00"
 													: "終了時刻"
 											}
 											min={dailyStartTime}
-											max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-											step={TIME_INPUT_STEP_SECONDS}
+											max={dailyEndTime}
+											allowEndOfDay={dailyEndTime === "24:00"}
 											value={
 												endsAtDayBoundary(range, selectedDate)
-													? "00:00"
+													? "24:00"
 													: range.end.slice(11, 16)
 											}
-											onChange={(inputEvent) =>
-												updateTime(
-													range.id,
-													"end",
-													inputEvent.target.value,
-													selectedDate,
-												)
+											onValueChange={(value) =>
+												updateTime(range.id, "end", value, selectedDate)
 											}
 										/>
-										{endsAtDayBoundary(range, selectedDate) && (
-											<span aria-hidden="true">24:00</span>
-										)}
 									</div>
 									<button
+										className="schedule-time-remove"
 										type="button"
 										aria-label="削除"
 										onClick={() =>
@@ -1021,7 +1011,9 @@ export default function AvailabilityPage({
 						</p>
 					)}
 					{actionData?.kind === "error" && (
-						<p className="schedule-message error">{actionData.error.message}</p>
+						<ValidationMessage compact title={actionData.error.message}>
+							回答時間を確認して、もう一度お試しください。
+						</ValidationMessage>
 					)}
 
 					<footer className="schedule-submit schedule-mobile-submit">
@@ -1273,20 +1265,15 @@ export default function AvailabilityPage({
 						)}
 						{selectedRanges.map((range) => (
 							<div className="schedule-time-row" key={range.id}>
-								<input
-									type="time"
+								<TimePicker
+									id={`mobile-range-${range.id}-start`}
+									className="schedule-time-picker"
 									aria-label="開始時刻"
 									min={dailyStartTime}
-									max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-									step={TIME_INPUT_STEP_SECONDS}
+									max={dailyEndTime}
 									value={range.start.slice(11, 16)}
-									onChange={(event) =>
-										updateTime(
-											range.id,
-											"start",
-											event.target.value,
-											selectedDate,
-										)
+									onValueChange={(value) =>
+										updateTime(range.id, "start", value, selectedDate)
 									}
 								/>
 								<span>〜</span>
@@ -1297,35 +1284,29 @@ export default function AvailabilityPage({
 											: ""
 									}`}
 								>
-									<input
-										type="time"
+									<TimePicker
+										id={`mobile-range-${range.id}-end`}
+										className="schedule-time-picker"
 										aria-label={
 											endsAtDayBoundary(range, selectedDate)
 												? "終了時刻 24:00"
 												: "終了時刻"
 										}
 										min={dailyStartTime}
-										max={dailyEndTime === "24:00" ? "23:59" : dailyEndTime}
-										step={TIME_INPUT_STEP_SECONDS}
+										max={dailyEndTime}
+										allowEndOfDay={dailyEndTime === "24:00"}
 										value={
 											endsAtDayBoundary(range, selectedDate)
-												? "00:00"
+												? "24:00"
 												: range.end.slice(11, 16)
 										}
-										onChange={(event) =>
-											updateTime(
-												range.id,
-												"end",
-												event.target.value,
-												selectedDate,
-											)
+										onValueChange={(value) =>
+											updateTime(range.id, "end", value, selectedDate)
 										}
 									/>
-									{endsAtDayBoundary(range, selectedDate) && (
-										<span aria-hidden="true">24:00</span>
-									)}
 								</div>
 								<button
+									className="schedule-time-remove"
 									type="button"
 									aria-label="削除"
 									onClick={() =>
@@ -1352,7 +1333,9 @@ export default function AvailabilityPage({
 						</p>
 					)}
 					{actionData?.kind === "error" && (
-						<p className="schedule-message error">{actionData.error.message}</p>
+						<ValidationMessage compact title={actionData.error.message}>
+							回答時間を確認して、もう一度お試しください。
+						</ValidationMessage>
 					)}
 					<footer className="schedule-submit">
 						<button

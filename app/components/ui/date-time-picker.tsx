@@ -1,13 +1,13 @@
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
-import { CalendarIcon, Clock3Icon, XIcon } from "lucide-react";
+import { CalendarIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { WeekendText } from "~/components/app";
-import { TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import { cn } from "~/lib/utils";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { TimePicker } from "./time-picker";
 
 type DateTimePickerProps = {
 	id: string;
@@ -101,14 +101,12 @@ export function DateTimePicker({
 					fixedWeeks
 				/>
 				<div className="flex shrink-0 items-center gap-2 border-t border-border bg-muted/40 p-3">
-					<Clock3Icon className="size-4 shrink-0 text-primary" />
-					<input
-						type="time"
+					<TimePicker
+						id={`${id}-time`}
 						aria-label="時刻"
-						step={TIME_INPUT_STEP_SECONDS}
 						value={time}
-						onChange={(event) => setTime(event.currentTarget.value)}
-						className="h-10 min-w-0 max-w-full flex-1 rounded-lg border border-input bg-white px-3 text-base font-bold outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
+						onValueChange={setTime}
+						className="h-10 flex-1 rounded-lg px-3 text-base shadow-none"
 					/>
 					{!required && date && (
 						<Button

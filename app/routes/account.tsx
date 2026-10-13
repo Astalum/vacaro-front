@@ -7,6 +7,8 @@ import {
 	useNavigation,
 } from "react-router";
 import { Icon, PageIntro, PageShell } from "~/components/app";
+import { TimePicker } from "~/components/ui/time-picker";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -19,7 +21,6 @@ import {
 	savedCalendarIDs,
 	type User,
 } from "~/lib/api";
-import { TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/account";
 
 type CalendarConnectionStatus = "connected" | "disconnected" | "unknown";
@@ -207,12 +208,9 @@ export default function Account({
 				</div>
 			)}
 			{actionData?.kind === "error" && (
-				<div className="form-error">
-					<Icon name="info" size={17} />
-					<span>
-						<strong>{actionData.error.message}</strong>
-					</span>
-				</div>
+				<ValidationMessage title={actionData.error.message}>
+					操作内容を確認して、もう一度お試しください。
+				</ValidationMessage>
 			)}
 
 			{!user ? (
@@ -361,45 +359,43 @@ export default function Account({
 									</div>
 								</div>
 								<div className="settings-time-window">
-									<label>
-										<span>
+									<div className="settings-time-window-field">
+										<label htmlFor="calendar-window-start">
 											<em>IN</em>
 											開始時刻
-										</span>
-										<input
-											type="time"
-											step={TIME_INPUT_STEP_SECONDS}
+										</label>
+										<TimePicker
+											id="calendar-window-start"
 											value={availabilityWindow.start}
-											onChange={(event) => {
+											onValueChange={(value) => {
 												setAvailabilityWindowMessage(null);
 												setAvailabilityWindow((current) => ({
 													...current,
-													start: event.target.value,
+													start: value,
 												}));
 											}}
 										/>
-									</label>
+									</div>
 									<span className="time-window-separator" aria-hidden="true">
 										〜
 									</span>
-									<label>
-										<span>
+									<div className="settings-time-window-field">
+										<label htmlFor="calendar-window-end">
 											<em>OUT</em>
 											終了時刻
-										</span>
-										<input
-											type="time"
-											step={TIME_INPUT_STEP_SECONDS}
+										</label>
+										<TimePicker
+											id="calendar-window-end"
 											value={availabilityWindow.end}
-											onChange={(event) => {
+											onValueChange={(value) => {
 												setAvailabilityWindowMessage(null);
 												setAvailabilityWindow((current) => ({
 													...current,
-													end: event.target.value,
+													end: value,
 												}));
 											}}
 										/>
-									</label>
+									</div>
 								</div>
 								<div className="settings-save-row">
 									{availabilityWindowMessage && (

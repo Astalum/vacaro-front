@@ -183,13 +183,13 @@
 	max-width: 620px;
 	margin-top: 22px;
 }
-.settings-time-window label {
+.settings-time-window-field {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 	gap: 9px;
 }
-.settings-time-window label > span {
+.settings-time-window-field > label {
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -210,8 +210,8 @@
 	font-style: normal;
 	letter-spacing: 0.08em;
 }
-.settings-time-window input {
-	display: block;
+.settings-time-window button[data-slot="popover-trigger"] {
+	display: flex;
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
@@ -223,7 +223,7 @@
 	color: var(--ink);
 	font: 800 18px/1 var(--font-gothic);
 }
-.settings-time-window input:focus {
+.settings-time-window button[data-slot="popover-trigger"]:focus-visible {
 	border-color: #58b99b;
 	outline: 3px solid rgba(33, 166, 125, 0.13);
 }

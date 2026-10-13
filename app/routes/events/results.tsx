@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
+import { TimePicker } from "~/components/ui/time-picker";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -15,7 +17,7 @@ import {
 	type SchedulingGroup,
 	type User,
 } from "~/lib/api";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
+import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/results";
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -846,13 +848,10 @@ export default function Results({
 											</strong>
 										</div>
 										<label htmlFor="confirmation-time">開始時刻</label>
-										<input
+										<TimePicker
 											id="confirmation-time"
 											className="manual-confirmation-time"
 											name="confirmation_time"
-											type="time"
-											step={TIME_INPUT_STEP_SECONDS}
-											autoComplete="off"
 											required
 										/>
 										<small>
@@ -959,10 +958,12 @@ export default function Results({
 				</div>
 			</div>
 			{actionData && "error" in actionData && (
-				<div className="form-error result-confirmation-message">
-					<Icon name="info" size={17} />
-					<strong>{actionData.error.message}</strong>
-				</div>
+				<ValidationMessage
+					className="result-confirmation-message"
+					title={actionData.error.message}
+				>
+					日時や回答状況を確認して、もう一度お試しください。
+				</ValidationMessage>
 			)}
 			{actionData && "success" in actionData && (
 				<div className="confirm-banner compact-banner result-confirmation-message">

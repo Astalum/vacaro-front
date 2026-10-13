@@ -1,5 +1,6 @@
 import { data, Form, redirect, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
+import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -153,10 +154,9 @@ export default function JoinEvent({
 					<p>表示名を入力すると、空いている時間を回答できます。</p>
 				</div>
 				{actionData?.error && (
-					<div className="form-error">
-						<Icon name="info" size={17} />
-						<span>{actionData.error.message}</span>
-					</div>
+					<ValidationMessage title={actionData.error.message} compact>
+						お名前とイベントの状態を確認してください。
+					</ValidationMessage>
 				)}
 				<div className="field">
 					<label htmlFor="join-name">

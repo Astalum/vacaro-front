@@ -627,6 +627,20 @@
 	color: #30394a;
 	font-size: 15px;
 }
+.schedule-time-row .schedule-time-picker {
+	height: 40px;
+	padding: 4px 7px;
+	gap: 5px;
+	border-radius: 8px;
+	font-size: 14px;
+}
+.schedule-time-row .schedule-time-picker > span:first-child {
+	width: 26px;
+	height: 26px;
+}
+.schedule-time-row .schedule-time-picker > span:last-child {
+	display: none;
+}
 .schedule-time-input {
 	position: relative;
 	min-width: 0;
@@ -650,7 +664,7 @@
 .schedule-time-row > span {
 	font-size: 15px;
 }
-.schedule-time-row > button {
+.schedule-time-row > .schedule-time-remove {
 	display: grid;
 	place-items: center;
 	width: 38px;
@@ -662,7 +676,7 @@
 	color: #c65d50;
 	cursor: pointer;
 }
-.schedule-time-row > button:hover {
+.schedule-time-row > .schedule-time-remove:hover {
 	border-color: #e8bcb6;
 	background: #fff0ec;
 }
@@ -840,7 +854,7 @@
 .schedule-sidebar .schedule-time-row > span {
 	font-size: 13px;
 }
-.schedule-sidebar .schedule-time-row > button {
+.schedule-sidebar .schedule-time-row > .schedule-time-remove {
 	width: 34px;
 	height: 34px;
 }
@@ -1131,7 +1145,7 @@
 		padding-inline: 5px;
 		font-size: 14px;
 	}
-	.schedule-mobile-editor .schedule-time-row > button {
+	.schedule-mobile-editor .schedule-time-row > .schedule-time-remove {
 		grid-column: 2;
 		grid-row: 1 / 4;
 		width: 34px;
