@@ -1,9 +1,12 @@
 # syntax=docker/dockerfile:1
 
 FROM node:24-alpine AS development-dependencies-env
+ARG LOCAL_UID=1000
+ARG LOCAL_GID=1000
 COPY . /app
 WORKDIR /app
-RUN npm ci
+RUN npm ci \
+	&& chown -R "${LOCAL_UID}:${LOCAL_GID}" /app/node_modules
 
 FROM node:24-alpine AS production-dependencies-env
 COPY ./package.json package-lock.json /app/

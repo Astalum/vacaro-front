@@ -29,6 +29,18 @@ LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f compose.dev.yaml up --bu
 
 ブラウザで `http://localhost:3000` を開きます。ソースコードの変更は自動的に反映されます。
 
+ホストの`8080`番ポートを別のアプリが使用している場合は、バックエンドと
+フロントエンドの接続先を同じ代替ポートへ変更します。
+
+```bash
+cd ../vacaro-back
+API_PORT=8081 docker compose up --build -d
+
+cd ../vacaro-front
+VACARO_API_URL=http://host.docker.internal:8081 \
+  docker compose -f compose.dev.yaml up --build -d
+```
+
 ### ローカルのNode.jsで起動する
 
 Linux版Node.js 24が利用できる環境では、次のコマンドでも起動できます。

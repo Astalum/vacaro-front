@@ -3,10 +3,13 @@ services:
     build:
       context: .
       target: development-dependencies-env
+      args:
+        LOCAL_UID: ${LOCAL_UID:-1000}
+        LOCAL_GID: ${LOCAL_GID:-1000}
     user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     command: npm run dev -- --host 0.0.0.0
     environment:
-      VACARO_API_URL: http://host.docker.internal:8080
+      VACARO_API_URL: ${VACARO_API_URL:-http://host.docker.internal:8080}
     extra_hosts:
       - host.docker.internal:host-gateway
     ports:
