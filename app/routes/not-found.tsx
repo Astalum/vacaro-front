@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Icon, PageShell } from "../components/ui";
+import { Icon, PageShell } from "~/components/app";
 
 export function meta() {
 	return [{ title: "ページが見つかりません | vacaro" }];

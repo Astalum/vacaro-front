@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getNewEventDefaults } from "./new-event-defaults";
+import { getNewEventDefaults } from "~/lib/new-event-defaults";
 
 describe("getNewEventDefaults", () => {
 	it("uses the current date in Asia/Tokyo and applies the requested offsets", () => {

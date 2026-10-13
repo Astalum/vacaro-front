@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import NewEvent, { clientAction } from "./new";
+import NewEvent, { clientAction } from "~/routes/events/new";
 
 describe("NewEvent validation", () => {
 	beforeEach(() => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiRequest } from "./api";
+import { apiRequest } from "~/lib/api";
 
 describe("API request CSRF protection", () => {
 	afterEach(() => vi.unstubAllGlobals());

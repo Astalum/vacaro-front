@@ -2,15 +2,15 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "./time";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 
 const timeInputFiles = [
-	"../routes/events/new.tsx",
-	"../routes/events/edit.tsx",
-	"../routes/events/availability.tsx",
-	"../routes/events/results.tsx",
-	"../routes/account.tsx",
-	"../components/ui/date-time-picker.tsx",
+	"../../app/routes/events/new.tsx",
+	"../../app/routes/events/edit.tsx",
+	"../../app/routes/events/availability.tsx",
+	"../../app/routes/events/results.tsx",
+	"../../app/routes/account.tsx",
+	"../../app/components/ui/date-time-picker.tsx",
 ];
 const legacyThirtyMinuteStep = `step={${30 * 60}}`;
 

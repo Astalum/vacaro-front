@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-	EVENT_INVITE_URLS_STORAGE_KEY,
-	savedEventInviteUrl,
-} from "../../lib/api";
+import { EVENT_INVITE_URLS_STORAGE_KEY, savedEventInviteUrl } from "~/lib/api";
 import {
 	clientAction as createdAction,
 	clientLoader as createdLoader,
-} from "./created";
-import { clientAction as editAction, clientLoader as editLoader } from "./edit";
+} from "~/routes/events/created";
+import {
+	clientAction as editAction,
+	clientLoader as editLoader,
+} from "~/routes/events/edit";
 import {
 	clientAction as manageAction,
 	clientLoader as manageLoader,
-} from "./manage";
+} from "~/routes/events/manage";
 
 const event = {
 	id: "event-1",
@@ -128,15 +128,13 @@ describe("explicit event invite URL reissue", () => {
 		"reissues only after the %s action is submitted",
 		async (_, action, path) => {
 			const inviteUrl = "https://vacaro.test/invitations/new-token";
-			const fetchMock = vi
-				.fn()
-				.mockImplementation(() =>
-					response({
-						...event,
-						invite_token: "new-token",
-						invite_url: inviteUrl,
-					}),
-				);
+			const fetchMock = vi.fn().mockImplementation(() =>
+				response({
+					...event,
+					invite_token: "new-token",
+					invite_url: inviteUrl,
+				}),
+			);
 			vi.stubGlobal("fetch", fetchMock);
 
 			const result = await action({

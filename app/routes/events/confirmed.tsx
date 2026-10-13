@@ -1,5 +1,5 @@
 import { data, Form, Link, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "~/components/app";
 import {
 	ApiError,
 	apiErrorData,
@@ -12,7 +12,7 @@ import {
 	type Participant,
 	type SchedulingGroup,
 	type User,
-} from "../../lib/api";
+} from "~/lib/api";
 import type { Route } from "./+types/confirmed";
 
 export function meta({ loaderData }: Route.MetaArgs) {

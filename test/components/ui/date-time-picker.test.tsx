@@ -3,7 +3,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { DateTimePicker } from "./date-time-picker";
+import { DateTimePicker } from "~/components/ui/date-time-picker";
 
 describe("DateTimePicker", () => {
 	it("opens the calendar and updates the submitted date and time", async () => {

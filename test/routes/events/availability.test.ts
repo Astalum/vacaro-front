@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clientAction, invertRangesForWindow } from "./availability";
+import {
+	clientAction,
+	invertRangesForWindow,
+} from "~/routes/events/availability";
 
 describe("availability clientAction", () => {
 	afterEach(() => vi.unstubAllGlobals());

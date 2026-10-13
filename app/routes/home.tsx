@@ -1,5 +1,5 @@
 import { Link, redirect, useSearchParams } from "react-router";
-import { AppHeader, Icon, SiteFooter } from "../components/ui";
+import { AppHeader, Icon, SiteFooter } from "~/components/app";
 import type { Route } from "./+types/home";
 
 export function meta() {

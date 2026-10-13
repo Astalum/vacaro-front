@@ -1,25 +1,20 @@
 import { type FormEvent, useState } from "react";
 import { data, Form, redirect, useNavigation } from "react-router";
-import { Icon, PageIntro, PageShell } from "../../components/ui";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "../../components/ui/card";
-import { DateTimePicker } from "../../components/ui/date-time-picker";
-import { Field, FieldGroup, FieldLabel } from "../../components/ui/field";
-import { Input } from "../../components/ui/input";
+import { Icon, PageIntro, PageShell } from "~/components/app";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { DateTimePicker } from "~/components/ui/date-time-picker";
+import { Field, FieldGroup, FieldLabel } from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "../../components/ui/select";
-import { Textarea } from "../../components/ui/textarea";
+} from "~/components/ui/select";
+import { Textarea } from "~/components/ui/textarea";
 import {
 	ApiError,
 	apiErrorData,
@@ -30,9 +25,9 @@ import {
 	localDateTimeToIso,
 	saveEventInviteUrl,
 	type User,
-} from "../../lib/api";
-import { getNewEventDefaults } from "../../lib/new-event-defaults";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
+} from "~/lib/api";
+import { getNewEventDefaults } from "~/lib/new-event-defaults";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/new";
 
 export function meta() {

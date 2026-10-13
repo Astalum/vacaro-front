@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eventDisplayStatus } from "./api";
+import { eventDisplayStatus } from "~/lib/api";
 
 describe("eventDisplayStatus", () => {
 	const now = Date.parse("2026-09-27T00:00:00Z");

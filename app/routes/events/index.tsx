@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { data, Link, useFetcher } from "react-router";
-import { Icon, PageIntro, PageShell, WeekendText } from "../../components/ui";
+import { Icon, PageIntro, PageShell, WeekendText } from "~/components/app";
 import {
 	ApiError,
 	apiErrorData,
@@ -11,7 +11,7 @@ import {
 	formatDateTime,
 	minutesLabel,
 	type User,
-} from "../../lib/api";
+} from "~/lib/api";
 import type { Route } from "./+types/index";
 
 export function meta() {

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Candidate, Event, SchedulingGroup, User } from "../../lib/api";
-import { clientAction, clientLoader, mergeCandidateIntervals } from "./results";
+import type { Candidate, Event, SchedulingGroup, User } from "~/lib/api";
+import {
+	clientAction,
+	clientLoader,
+	mergeCandidateIntervals,
+} from "~/routes/events/results";
 
 function response(data: unknown) {
 	return Promise.resolve(

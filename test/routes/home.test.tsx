@@ -3,7 +3,7 @@
 import { render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import Home from "./home";
+import Home from "~/routes/home";
 
 describe("Home OAuth notice", () => {
 	beforeEach(() => {

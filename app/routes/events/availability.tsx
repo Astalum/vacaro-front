@@ -1,6 +1,6 @@
 import { type PointerEvent, useEffect, useMemo, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "~/components/app";
 import {
 	ApiError,
 	type AvailabilityInterval,
@@ -16,8 +16,8 @@ import {
 	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
 	type User,
-} from "../../lib/api";
-import { TIME_INPUT_STEP_SECONDS } from "../../lib/time";
+} from "~/lib/api";
+import { TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/availability";
 
 type TimeRange = { id: string; start: string; end: string };

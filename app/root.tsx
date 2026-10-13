@@ -9,8 +9,8 @@ import {
 
 import type { Route } from "./+types/root";
 import "./styles/tailwind.css";
-import "./app.scss";
-import { ApiError } from "./lib/api";
+import "./styles/app.scss";
+import { ApiError } from "~/lib/api";
 
 export const links: Route.LinksFunction = () => [
 	{

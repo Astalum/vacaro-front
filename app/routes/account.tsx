@@ -6,7 +6,7 @@ import {
 	redirectDocument,
 	useNavigation,
 } from "react-router";
-import { Icon, PageIntro, PageShell } from "../components/ui";
+import { Icon, PageIntro, PageShell } from "~/components/app";
 import {
 	ApiError,
 	apiErrorData,
@@ -18,8 +18,8 @@ import {
 	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
 	type User,
-} from "../lib/api";
-import { TIME_INPUT_STEP_SECONDS } from "../lib/time";
+} from "~/lib/api";
+import { TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/account";
 
 type CalendarConnectionStatus = "connected" | "disconnected" | "unknown";

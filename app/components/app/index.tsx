@@ -7,7 +7,7 @@ import {
 	EVENT_INVITE_URLS_STORAGE_KEY,
 	savedEventInviteUrl,
 	type User,
-} from "../lib/api";
+} from "~/lib/api";
 
 type IconName =
 	| "arrow"

@@ -4,8 +4,13 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub, MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EVENT_INVITE_URLS_STORAGE_KEY, saveEventInviteUrl } from "../lib/api";
-import { AppHeader, InviteUrlReissue, PageShell, WeekendText } from "./ui";
+import {
+	AppHeader,
+	InviteUrlReissue,
+	PageShell,
+	WeekendText,
+} from "~/components/app";
+import { EVENT_INVITE_URLS_STORAGE_KEY, saveEventInviteUrl } from "~/lib/api";
 
 describe("AppHeader mobile menu", () => {
 	beforeEach(() => {

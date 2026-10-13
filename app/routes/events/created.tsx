@@ -5,7 +5,7 @@ import {
 	InviteUrlReissue,
 	PageShell,
 	WeekendText,
-} from "../../components/ui";
+} from "~/components/app";
 import {
 	ApiError,
 	apiErrorData,
@@ -16,7 +16,7 @@ import {
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
 	saveEventInviteUrl,
-} from "../../lib/api";
+} from "~/lib/api";
 import type { Route } from "./+types/created";
 
 export function meta() {

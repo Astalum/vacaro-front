@@ -5,7 +5,7 @@ import {
 	PageShell,
 	PersistentInviteUrl,
 	WeekendText,
-} from "../../components/ui";
+} from "~/components/app";
 import {
 	ApiError,
 	apiErrorData,
@@ -18,7 +18,7 @@ import {
 	reissueEventInviteUrl,
 	type SchedulingGroup,
 	savedEventInviteUrl,
-} from "../../lib/api";
+} from "~/lib/api";
 import type { Route } from "./+types/manage";
 
 export function meta({ loaderData }: Route.MetaArgs) {

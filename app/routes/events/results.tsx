@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "../../components/ui";
+import { Icon, PageShell, WeekendText } from "~/components/app";
 import {
 	ApiError,
 	apiErrorData,
@@ -14,8 +14,8 @@ import {
 	type ParticipantAvailability,
 	type SchedulingGroup,
 	type User,
-} from "../../lib/api";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
+} from "~/lib/api";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/results";
 
 export function meta({ loaderData }: Route.MetaArgs) {

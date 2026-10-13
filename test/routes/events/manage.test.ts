@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clientAction } from "./manage";
+import { clientAction } from "~/routes/events/manage";
 
 function response(data: unknown) {
 	return Promise.resolve(

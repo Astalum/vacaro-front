@@ -9,8 +9,8 @@ import type {
 	Participant,
 	SchedulingGroup,
 	User,
-} from "../../lib/api";
-import Confirmed, { clientAction } from "./confirmed";
+} from "~/lib/api";
+import Confirmed, { clientAction } from "~/routes/events/confirmed";
 
 afterEach(() => {
 	cleanup();

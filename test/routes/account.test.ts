@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { User } from "../lib/api";
-import { clientLoader } from "./account";
+import type { User } from "~/lib/api";
+import { clientLoader } from "~/routes/account";
 
 function response(data: unknown) {
 	return Promise.resolve(

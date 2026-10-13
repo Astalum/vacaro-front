@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isoToLocalDateTime, isValidTimeZone, localDateTimeToIso } from "./api";
+import {
+	isoToLocalDateTime,
+	isValidTimeZone,
+	localDateTimeToIso,
+} from "~/lib/api";
 
 describe("IANA time zone conversion", () => {
 	it("converts local wall-clock time with the zone's daylight-saving offset", () => {

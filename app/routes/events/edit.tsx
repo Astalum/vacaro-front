@@ -5,15 +5,15 @@ import {
 	PageIntro,
 	PageShell,
 	PersistentInviteUrl,
-} from "../../components/ui";
-import { DateTimePicker } from "../../components/ui/date-time-picker";
+} from "~/components/app";
+import { DateTimePicker } from "~/components/ui/date-time-picker";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "../../components/ui/select";
+} from "~/components/ui/select";
 import {
 	ApiError,
 	apiErrorData,
@@ -25,8 +25,8 @@ import {
 	localDateTimeToIso,
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
-} from "../../lib/api";
-import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "../../lib/time";
+} from "~/lib/api";
+import { isTimeValue, TIME_INPUT_STEP_SECONDS } from "~/lib/time";
 import type { Route } from "./+types/edit";
 
 export function meta({ loaderData }: Route.MetaArgs) {

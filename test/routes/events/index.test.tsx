@@ -4,8 +4,12 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Event } from "../../lib/api";
-import EventsIndex, { clientAction, clientLoader, EventList } from "./index";
+import type { Event } from "~/lib/api";
+import EventsIndex, {
+	clientAction,
+	clientLoader,
+	EventList,
+} from "~/routes/events/index";
 
 afterEach(() => {
 	cleanup();

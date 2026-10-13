@@ -1,6 +1,6 @@
-@use "./styles/foundation";
+@use "./foundation";
 @use "./routes/home";
-@use "./styles/forms";
+@use "./forms";
 @use "./routes/events/created";
 @use "./routes/events/manage";
 @use "./routes/events/results";
@@ -11,8 +11,8 @@
 @use "./routes/home-calendar";
 @use "./routes/invitations/join";
 @use "./routes/events/index";
-@use "./styles/states";
+@use "./states";
 @use "./routes/account";
-@use "./styles/responsive";
+@use "./responsive";
 @use "./routes/events/availability";
 @use "./routes/legal";

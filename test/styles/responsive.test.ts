@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const styles = readFileSync(
-	new URL("./responsive.scss", import.meta.url),
+	new URL("../../app/styles/responsive.scss", import.meta.url),
 	"utf8",
 );
 

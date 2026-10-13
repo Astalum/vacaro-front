@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clientAction } from "./edit";
+import { clientAction } from "~/routes/events/edit";
 
 describe("edit event clientAction", () => {
 	afterEach(() => vi.unstubAllGlobals());
