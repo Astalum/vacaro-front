@@ -103,7 +103,7 @@ export default function Home() {
 								<i />
 								<i />
 								<i />
-								<span>vacaro.app/invitations/7ka92</span>
+								<span>vacaro.astalum.dev/events/results</span>
 							</div>
 							<div className="mock-body">
 								<div className="mock-event-head">
