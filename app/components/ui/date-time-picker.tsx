@@ -59,7 +59,7 @@ export function DateTimePicker({
 					disabled={disabled}
 					data-required={required || undefined}
 					className={cn(
-						"border-input text-foreground flex h-14 w-full min-w-0 items-center gap-3 rounded-xl border bg-white px-4 text-left text-lg font-semibold shadow-[0_6px_18px_rgba(23,61,52,0.06)] outline-none transition-[border-color,box-shadow,background-color] hover:border-primary/50 focus-visible:border-ring focus-visible:bg-card focus-visible:ring-3 focus-visible:ring-ring/20 disabled:pointer-events-none disabled:opacity-50",
+						"border-input text-foreground flex h-14 w-full min-w-0 max-w-full items-center gap-3 rounded-xl border bg-white px-4 text-left text-lg font-semibold shadow-[0_6px_18px_rgba(23,61,52,0.06)] outline-none transition-[border-color,box-shadow,background-color] hover:border-primary/50 focus-visible:border-ring focus-visible:bg-card focus-visible:ring-3 focus-visible:ring-ring/20 disabled:pointer-events-none disabled:opacity-50",
 						className,
 					)}
 				>
@@ -108,7 +108,7 @@ export function DateTimePicker({
 						step={TIME_INPUT_STEP_SECONDS}
 						value={time}
 						onChange={(event) => setTime(event.currentTarget.value)}
-						className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-white px-3 text-base font-bold outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
+						className="h-10 min-w-0 max-w-full flex-1 rounded-lg border border-input bg-white px-3 text-base font-bold outline-none focus:border-ring focus:ring-3 focus:ring-ring/20"
 					/>
 					{!required && date && (
 						<Button

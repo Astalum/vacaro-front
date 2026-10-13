@@ -88,10 +88,16 @@
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
 	align-items: end;
+	min-width: 0;
 	gap: 10px;
 }
 .daily-window-fields > .field {
+	min-width: 0;
 	margin: 0;
+}
+.daily-window-fields input[type="time"] {
+	display: block;
+	max-width: 100%;
 }
 .daily-window-fields > span {
 	padding-bottom: 14px;
@@ -101,5 +107,14 @@
 @media (max-width: 720px) {
 	.daily-window-settings {
 		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 560px) {
+	.daily-window-fields {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.daily-window-fields > span {
+		display: none;
 	}
 }

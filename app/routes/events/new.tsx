@@ -474,7 +474,7 @@ export default function NewEvent({
 									</Field>
 								</div>
 
-								<div className="grid gap-4 rounded-xl border border-primary/20 bg-secondary/45 p-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+								<div className="new-event-time-range grid gap-4 rounded-xl border border-primary/20 bg-secondary/45 p-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
 									<Field>
 										<FieldLabel htmlFor="daily-start-time">
 											毎日の受付開始 <Badge variant="destructive">必須</Badge>

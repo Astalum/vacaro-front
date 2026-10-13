@@ -46,7 +46,9 @@
 .form-error span {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
 	gap: 3px;
+	overflow-wrap: anywhere;
 }
 .form-error strong {
 	color: var(--ink);

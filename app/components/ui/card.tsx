@@ -6,7 +6,7 @@ export function Card({ className, ...props }: React.ComponentProps<"section">) {
 		<section
 			data-slot="card"
 			className={cn(
-				"bg-card text-card-foreground flex flex-col gap-6 rounded-2xl border border-border py-7 shadow-sm",
+				"bg-card text-card-foreground flex min-w-0 flex-col gap-6 rounded-2xl border border-border py-7 shadow-sm",
 				className,
 			)}
 			{...props}
@@ -21,7 +21,7 @@ export function CardHeader({
 	return (
 		<header
 			data-slot="card-header"
-			className={cn("grid gap-2 px-7", className)}
+			className={cn("grid min-w-0 gap-2 px-7", className)}
 			{...props}
 		/>
 	);
@@ -60,7 +60,7 @@ export function CardContent({
 	return (
 		<div
 			data-slot="card-content"
-			className={cn("px-7", className)}
+			className={cn("min-w-0 px-7", className)}
 			{...props}
 		/>
 	);

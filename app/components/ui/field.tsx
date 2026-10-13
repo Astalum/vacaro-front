@@ -6,7 +6,7 @@ export function Field({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="field"
-			className={cn("grid gap-2.5", className)}
+			className={cn("grid min-w-0 gap-2.5", className)}
 			{...props}
 		/>
 	);
@@ -19,7 +19,7 @@ export function FieldGroup({
 	return (
 		<div
 			data-slot="field-group"
-			className={cn("grid gap-6", className)}
+			className={cn("grid min-w-0 gap-6", className)}
 			{...props}
 		/>
 	);

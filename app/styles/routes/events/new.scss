@@ -55,6 +55,16 @@
 	gap: clamp(18px, 2vw, 28px);
 }
 
+.new-event-time-range,
+.new-event-time-range > [data-slot="field"] {
+	min-width: 0;
+}
+
+.new-event-time-range input[type="time"] {
+	display: block;
+	max-width: 100%;
+}
+
 .new-event-results-visibility {
 	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;

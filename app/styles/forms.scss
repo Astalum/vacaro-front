@@ -64,6 +64,7 @@
 .field {
 	display: flex;
 	flex-direction: column;
+	min-width: 0;
 	gap: 8px;
 	margin-bottom: 22px;
 }
@@ -91,6 +92,8 @@
 .field input,
 .field textarea {
 	width: 100%;
+	min-width: 0;
+	max-width: 100%;
 	border: 1px solid #dedbd4;
 	border-radius: 8px;
 	background: #fdfcf9;

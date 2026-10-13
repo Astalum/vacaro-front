@@ -615,8 +615,10 @@
 	margin-top: 6px;
 }
 .schedule-time-row input {
+	display: block;
 	width: 100%;
 	min-width: 0;
+	max-width: 100%;
 	height: 40px;
 	padding: 5px 8px;
 	border: 1px solid #bfded3;
