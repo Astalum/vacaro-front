@@ -90,25 +90,6 @@
 	border-radius: 53% 47% 47% 53% / 54% 45% 55% 46%;
 	transform: rotate(-5deg);
 }
-.sun-shape::before,
-.sun-shape::after {
-	content: "";
-	position: absolute;
-	border: 2px solid var(--ink);
-	border-radius: 50%;
-}
-.sun-shape::before {
-	width: 8px;
-	height: 8px;
-	right: 7px;
-	top: -10px;
-}
-.sun-shape::after {
-	width: 16px;
-	height: 16px;
-	left: -27px;
-	bottom: 48px;
-}
 .mock-window {
 	position: relative;
 	width: 485px;
