@@ -12,11 +12,11 @@
 
 ## 開発環境
 
-先に `vacaro-back` を `http://localhost:8080` で起動します。
+先に `vacaro-back` を `http://localhost:8081` で起動します。
 
 ```bash
 cd ../vacaro-back
-docker compose up --build
+API_PORT=8081 PUBLIC_APP_URL=http://localhost:8080 docker compose up --build
 ```
 
 ### Dockerで起動する
@@ -27,19 +27,7 @@ WSL側へNode.jsをインストールしていない場合はこちらを使用�
 LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f compose.dev.yaml up --build
 ```
 
-ブラウザで `http://localhost:3000` を開きます。ソースコードの変更は自動的に反映されます。
-
-ホストの`8080`番ポートを別のアプリが使用している場合は、バックエンドと
-フロントエンドの接続先を同じ代替ポートへ変更します。
-
-```bash
-cd ../vacaro-back
-API_PORT=8081 docker compose up --build -d
-
-cd ../vacaro-front
-VACARO_API_URL=http://host.docker.internal:8081 \
-  docker compose -f compose.dev.yaml up --build -d
-```
+ブラウザで `http://localhost:8080` を開きます。ソースコードの変更は自動的に反映されます。
 
 ### ローカルのNode.jsで起動する
 
@@ -59,8 +47,8 @@ WSLから実行する場合は、Windows側のNode.jsではなくWSL内へイン
 Google Cloud ConsoleでOAuth 2.0クライアントを作成し、承認済みのリダイレクトURIへ次を登録します。
 
 ```text
-http://localhost:8080/api/v1/auth/google/callback
-http://localhost:8080/api/v1/integrations/google-calendar/callback
+http://localhost:8081/api/v1/auth/google/callback
+http://localhost:8081/api/v1/integrations/google-calendar/callback
 ```
 
 `vacaro-back`の`.env`へ`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_LOGIN_REDIRECT_URL`、`GOOGLE_CALENDAR_REDIRECT_URL`、`TOKEN_ENCRYPTION_KEY`を設定してください。フロントエンドはログイン開始、コールバック後の完了表示、ログアウト、カレンダー接続、空き時間プレビュー、確定日時の自動登録に対応しています。
@@ -74,8 +62,11 @@ cp .env.example .env
 ```
 
 ```env
-VACARO_API_URL=http://localhost:8080
+VACARO_API_URL=http://localhost:8081
 ```
+
+Dockerから接続するAPIのURLだけを変更する場合は、`DOCKER_VACARO_API_URL`を
+指定してください。
 
 ## コマンド
 
