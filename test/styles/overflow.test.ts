@@ -36,6 +36,21 @@ describe("responsive overflow safeguards", () => {
 		);
 	});
 
+	it("keeps the results calendar and empty state inside phone viewports", () => {
+		const results = read("../../app/styles/routes/events/results.scss");
+		const responsive = read("../../app/styles/responsive.scss");
+
+		expect(results).toMatch(
+			/\.candidate-options-panel\s+\.empty-state\.calendar-empty-state\s*\{[^}]*width:\s*auto[^}]*margin:\s*16px\s+0\s+0/,
+		);
+		expect(responsive).toMatch(
+			/@media\s*\(max-width:\s*680px\)[\s\S]*?\.results-two-column\s+\.schedule-calendar-shell\s+\.schedule-calendar\s*\{[^}]*width:\s*100%[^}]*min-width:\s*0/,
+		);
+		expect(responsive).toMatch(
+			/\.candidate-options-panel\s+\.empty-state\.calendar-empty-state\s*\{[^}]*width:\s*auto[^}]*margin:\s*12px\s+0\s+0/,
+		);
+	});
+
 	it.each([
 		[
 			"account",

@@ -1564,7 +1564,7 @@
 	font-size: 15px;
 	white-space: nowrap;
 }
-.calendar-empty-state {
+.candidate-options-panel .empty-state.calendar-empty-state {
 	box-sizing: border-box;
 	width: auto;
 	min-height: 220px;
@@ -1580,7 +1580,7 @@
 	background: linear-gradient(180deg, #fff 0%, #f7fcfa 100%);
 	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
-.calendar-empty-state .icon {
+.candidate-options-panel .calendar-empty-state .icon {
 	width: 52px;
 	height: 52px;
 	margin-bottom: 4px;
@@ -1589,23 +1589,23 @@
 	background: var(--primary-soft);
 	color: var(--primary-dark);
 }
-.calendar-empty-state h3 {
+.candidate-options-panel .calendar-empty-state h3 {
 	margin: 0;
 	font-size: 19px;
 	line-height: 1.5;
 }
-.calendar-empty-state p {
+.candidate-options-panel .calendar-empty-state p {
 	max-width: 360px;
 	margin: 0;
 	font-size: 14px;
 	font-weight: 600;
 	line-height: 1.75;
 }
-.calendar-empty-state .button {
+.candidate-options-panel .calendar-empty-state .button {
 	margin-top: 6px;
 }
 @media (max-width: 560px) {
-	.calendar-empty-state {
+	.candidate-options-panel .empty-state.calendar-empty-state {
 		min-height: 190px;
 		padding: 28px 20px;
 	}

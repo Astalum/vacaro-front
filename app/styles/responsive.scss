@@ -348,6 +348,71 @@
 		justify-content: flex-start;
 		flex-wrap: wrap;
 	}
+	.results-two-column > *,
+	.candidate-calendar-panel,
+	.candidate-options-panel {
+		min-width: 0;
+	}
+	.results-two-column .schedule-calendar-shell .schedule-calendar {
+		width: 100%;
+		min-width: 0;
+	}
+	.candidate-calendar-panel .schedule-calendar-scroll {
+		overflow-x: visible;
+	}
+	.candidate-calendar-panel .schedule-calendar-toolbar {
+		height: 58px;
+		gap: 10px;
+		padding-inline: 10px;
+	}
+	.candidate-calendar-panel .schedule-calendar-toolbar h3 {
+		min-width: 0;
+		font-size: 18px;
+	}
+	.candidate-calendar-panel .schedule-calendar-toolbar button {
+		width: 36px;
+		height: 36px;
+		flex: 0 0 auto;
+	}
+	.candidate-calendar-panel .schedule-weekday {
+		height: 34px;
+		font-size: 12px;
+	}
+	.candidate-calendar-panel .schedule-day {
+		min-height: 82px;
+		padding: 5px 3px;
+	}
+	.candidate-calendar-panel .schedule-day-number {
+		width: 24px;
+		height: 24px;
+		margin-bottom: 4px;
+		font-size: 13px;
+	}
+	.candidate-calendar-panel .schedule-day-candidates {
+		gap: 2px;
+	}
+	.candidate-calendar-panel .schedule-candidate {
+		min-height: 21px;
+		padding: 2px;
+		justify-content: center;
+		border-radius: 5px;
+	}
+	.candidate-calendar-panel .schedule-candidate strong {
+		font-size: 11px;
+	}
+	.candidate-calendar-panel .schedule-candidate span {
+		display: none;
+	}
+	.candidate-calendar-panel .more-candidates {
+		padding: 1px 2px;
+		font-size: 10px;
+		line-height: 1.25;
+	}
+	.candidate-calendar-panel .schedule-calendar-legend {
+		gap: 7px 12px;
+		padding: 10px 12px;
+		font-size: 12px;
+	}
 	.selected-schedule-detail {
 		grid-template-columns: 1fr;
 		align-items: start;
@@ -723,6 +788,34 @@
 	.candidate-summary,
 	.availability-board {
 		padding: 18px 14px;
+	}
+	.candidate-calendar-panel .section-title-row h2,
+	.candidate-options-panel .section-title-row h2 {
+		font-size: 22px;
+	}
+	.candidate-calendar-panel .section-title-row p,
+	.candidate-options-panel .section-title-row p {
+		font-size: 14px;
+		line-height: 1.65;
+	}
+	.candidate-options-panel .empty-state.calendar-empty-state {
+		width: auto;
+		min-height: 170px;
+		margin: 12px 0 0;
+		padding: 24px 16px;
+		gap: 8px;
+	}
+	.candidate-options-panel .calendar-empty-state .icon {
+		width: 44px;
+		height: 44px;
+		padding: 10px;
+	}
+	.candidate-options-panel .calendar-empty-state h3 {
+		font-size: 17px;
+	}
+	.candidate-options-panel .calendar-empty-state p {
+		font-size: 13px;
+		line-height: 1.65;
 	}
 	.schedule-calendar-toolbar {
 		gap: 10px;
