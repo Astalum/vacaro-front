@@ -130,7 +130,7 @@ function EventListItem({
 			<div className="event-list-body">
 				<h2>{event.title}</h2>
 				<div className="event-list-meta">
-					<span className="event-list-period">
+					<div className="event-list-period">
 						<Icon name="calendar" size={15} />
 						<span className="event-list-period-text">
 							<span>
@@ -145,14 +145,11 @@ function EventListItem({
 								</WeekendText>
 							</span>
 						</span>
-					</span>
-					<span className="event-list-meta-separator" aria-hidden="true">
-						・
-					</span>
-					<span className="event-list-duration">
+					</div>
+					<div className="event-list-duration">
 						<Icon name="clock" size={15} />
 						{minutesLabel(event.duration_minutes)}
-					</span>
+					</div>
 				</div>
 			</div>
 			<div className="event-list-actions">
