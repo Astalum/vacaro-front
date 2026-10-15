@@ -1,3 +1,4 @@
+import type { FormEvent } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import {
 	Icon,
@@ -16,7 +17,11 @@ import {
 	SelectValue,
 } from "~/components/ui/select";
 import { TimePicker } from "~/components/ui/time-picker";
-import { ValidationMessage } from "~/components/ui/validation-message";
+import { useFormErrors } from "~/components/ui/use-form-errors";
+import {
+	FieldError,
+	ValidationMessage,
+} from "~/components/ui/validation-message";
 import {
 	ApiError,
 	apiErrorData,
@@ -29,8 +34,20 @@ import {
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
 } from "~/lib/api";
+import { validateEventForm } from "~/lib/event-form-validation";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/edit";
+
+const controlIds: Record<string, string> = {
+	title: "edit-title",
+	window_start_date: "edit-window-start-date",
+	window_end_date: "edit-window-end-date",
+	daily_start_time: "edit-daily-start-time",
+	daily_end_time: "edit-daily-end-time",
+	response_deadline_at: "edit-deadline",
+	duration_minutes: "edit-duration",
+	time_zone: "edit-timezone",
+};
 
 export function meta({ loaderData }: Route.MetaArgs) {
 	return [
@@ -156,6 +173,18 @@ export default function EditEvent({
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
+	const { errors, localErrors, setErrors, clearError, inputProps } =
+		useFormErrors(
+			actionData && "error" in actionData ? actionData.error.fields : null,
+		);
+	function handleSubmit(submitEvent: FormEvent<HTMLFormElement>) {
+		const next = validateEventForm(new FormData(submitEvent.currentTarget));
+		setErrors(next);
+		const first = Object.keys(next)[0];
+		if (!first) return;
+		submitEvent.preventDefault();
+		document.getElementById(controlIds[first])?.focus();
+	}
 	const saving = navigation.state === "submitting";
 	const reissuingInviteUrl =
 		saving && navigation.formData?.get("intent") === "reissue-invite-url";
@@ -183,12 +212,23 @@ export default function EditEvent({
 					<strong>{actionData.success}</strong>
 				</div>
 			)}
-			<Form className="form-stack" method="post">
+			<Form
+				className="form-stack"
+				method="post"
+				noValidate
+				onSubmit={handleSubmit}
+			>
+				{Object.keys(localErrors).length > 0 && (
+					<ValidationMessage>
+						各入力欄のメッセージに沿って修正してください。
+					</ValidationMessage>
+				)}
 				{actionData && "error" in actionData && (
-					<ValidationMessage title={actionData.error.message}>
-						{actionData.error.fields
-							? Object.values(actionData.error.fields).join(" / ")
-							: "入力内容をもう一度ご確認ください。"}
+					<ValidationMessage
+						title={actionData.error.message}
+						fields={actionData.error.fields}
+					>
+						入力内容をもう一度ご確認ください。
 					</ValidationMessage>
 				)}
 				<section className="form-section compact-section">
@@ -199,9 +239,12 @@ export default function EditEvent({
 						<input
 							id="edit-title"
 							name="title"
+							{...inputProps("title", "edit-title")}
+							onChange={() => clearError("title")}
 							defaultValue={event.title}
 							required
 						/>
+						<FieldError id="edit-title-error">{errors.title}</FieldError>
 					</div>
 					<div className="field">
 						<label htmlFor="edit-description">
@@ -220,22 +263,32 @@ export default function EditEvent({
 							<DateTimePicker
 								id="edit-deadline"
 								name="response_deadline_at"
+								{...inputProps("response_deadline_at", "edit-deadline")}
+								onValueChange={() => clearError("response_deadline_at")}
 								defaultValue={isoToLocalDateTime(
 									event.response_deadline_at,
 									event.time_zone,
 								)}
 							/>
+							<FieldError id="edit-deadline-error">
+								{errors.response_deadline_at}
+							</FieldError>
 						</div>
 						<div className="field">
 							<label htmlFor="edit-timezone">タイムゾーン</label>
 							<input
 								id="edit-timezone"
 								name="time_zone"
+								{...inputProps("time_zone", "edit-timezone")}
+								onChange={() => clearError("time_zone")}
 								list="edit-event-time-zones"
 								defaultValue={event.time_zone}
 								placeholder="例：America/New_York"
 								required
 							/>
+							<FieldError id="edit-timezone-error">
+								{errors.time_zone}
+							</FieldError>
 							<datalist id="edit-event-time-zones">
 								{COMMON_TIME_ZONES.map((timeZone) => (
 									<option key={timeZone} value={timeZone} />
@@ -259,12 +312,20 @@ export default function EditEvent({
 							<DatePicker
 								id="edit-window-start-date"
 								name="window_start_date"
+								{...inputProps("window_start_date", "edit-window-start-date")}
+								onValueChange={() => {
+									clearError("window_start_date");
+									clearError("window_end_date");
+								}}
 								defaultValue={isoToLocalDateTime(
 									event.window_start_at,
 									event.time_zone,
 								).slice(0, 10)}
 								required
 							/>
+							<FieldError id="edit-window-start-date-error">
+								{errors.window_start_date}
+							</FieldError>
 						</div>
 						<span className="window-arrow">→</span>
 						<div className="field">
@@ -272,12 +333,17 @@ export default function EditEvent({
 							<DatePicker
 								id="edit-window-end-date"
 								name="window_end_date"
+								{...inputProps("window_end_date", "edit-window-end-date")}
+								onValueChange={() => clearError("window_end_date")}
 								defaultValue={isoToLocalDateTime(
 									event.window_end_at,
 									event.time_zone,
 								).slice(0, 10)}
 								required
 							/>
+							<FieldError id="edit-window-end-date-error">
+								{errors.window_end_date}
+							</FieldError>
 						</div>
 					</div>
 					<div className="daily-window-settings">
@@ -291,12 +357,20 @@ export default function EditEvent({
 								<TimePicker
 									id="edit-daily-start-time"
 									name="daily_start_time"
+									{...inputProps("daily_start_time", "edit-daily-start-time")}
+									onValueChange={() => {
+										clearError("daily_start_time");
+										clearError("daily_end_time");
+									}}
 									defaultValue={isoToLocalDateTime(
 										event.window_start_at,
 										event.time_zone,
 									).slice(11, 16)}
 									required
 								/>
+								<FieldError id="edit-daily-start-time-error">
+									{errors.daily_start_time}
+								</FieldError>
 							</div>
 							<span>〜</span>
 							<div className="field">
@@ -304,12 +378,17 @@ export default function EditEvent({
 								<TimePicker
 									id="edit-daily-end-time"
 									name="daily_end_time"
+									{...inputProps("daily_end_time", "edit-daily-end-time")}
+									onValueChange={() => clearError("daily_end_time")}
 									defaultValue={isoToLocalDateTime(
 										event.window_end_at,
 										event.time_zone,
 									).slice(11, 16)}
 									required
 								/>
+								<FieldError id="edit-daily-end-time-error">
+									{errors.daily_end_time}
+								</FieldError>
 							</div>
 						</div>
 					</div>
@@ -318,6 +397,8 @@ export default function EditEvent({
 						<input
 							id="edit-duration"
 							name="duration_minutes"
+							{...inputProps("duration_minutes", "edit-duration")}
+							onChange={() => clearError("duration_minutes")}
 							type="number"
 							min={5}
 							max={1440}
@@ -325,6 +406,9 @@ export default function EditEvent({
 							defaultValue={event.duration_minutes}
 							required
 						/>
+						<FieldError id="edit-duration-error">
+							{errors.duration_minutes}
+						</FieldError>
 						<small>5～1,440分の範囲で1分単位に指定できます。</small>
 					</div>
 					<div className="field">

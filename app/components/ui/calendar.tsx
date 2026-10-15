@@ -1,3 +1,4 @@
+import { ja } from "date-fns/locale";
 import {
 	ChevronDownIcon,
 	ChevronLeftIcon,
@@ -20,8 +21,9 @@ export function Calendar({
 
 	return (
 		<DayPicker
+			locale={ja}
 			showOutsideDays={showOutsideDays}
-			className={cn("p-3", className)}
+			className={cn("vacaro-calendar", className)}
 			modifiers={{
 				sunday: { dayOfWeek: [0] },
 				saturday: { dayOfWeek: [6] },
@@ -33,33 +35,28 @@ export function Calendar({
 				...modifiersClassNames,
 			}}
 			classNames={{
-				root: cn("w-fit", defaultClassNames.root),
-				months: "relative flex flex-col gap-4 sm:flex-row",
-				month: "flex w-full flex-col gap-4",
-				month_caption: "flex h-9 items-center justify-center px-10",
-				caption_label: "text-base font-extrabold text-foreground",
-				nav: "absolute inset-x-0 top-0 flex h-9 items-center justify-between",
-				button_previous:
-					"grid size-9 place-items-center rounded-lg border border-border bg-white text-primary outline-none transition-colors hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/20 disabled:opacity-40",
-				button_next:
-					"grid size-9 place-items-center rounded-lg border border-border bg-white text-primary outline-none transition-colors hover:bg-secondary focus-visible:ring-3 focus-visible:ring-ring/20 disabled:opacity-40",
-				month_grid: "w-full border-collapse",
-				weekdays: "calendar-weekdays flex",
-				weekday:
-					"calendar-weekday w-9 py-2 text-center text-sm font-bold text-muted-foreground",
-				week: "mt-1 flex w-full",
-				day: "relative size-9 p-0 text-center text-sm [&:has([aria-selected])]:rounded-lg [&:has([aria-selected])]:bg-primary [&:has([aria-selected])]:text-white",
-				day_button:
-					"grid size-9 place-items-center rounded-lg font-semibold outline-none transition-colors hover:bg-secondary hover:text-secondary-foreground focus-visible:ring-3 focus-visible:ring-ring/20",
-				today:
-					"rounded-lg bg-secondary font-extrabold text-secondary-foreground",
-				outside: "text-muted-foreground opacity-35",
-				disabled: "pointer-events-none text-muted-foreground opacity-30",
+				root: defaultClassNames.root,
+				months: "vacaro-calendar-months",
+				month: "vacaro-calendar-month",
+				month_caption: "vacaro-calendar-caption",
+				caption_label: "vacaro-calendar-caption-label",
+				nav: "vacaro-calendar-nav",
+				button_previous: "vacaro-calendar-nav-button",
+				button_next: "vacaro-calendar-nav-button",
+				month_grid: "vacaro-calendar-grid",
+				weekdays: "calendar-weekdays",
+				weekday: "calendar-weekday",
+				week: "vacaro-calendar-week",
+				day: "vacaro-calendar-day",
+				day_button: "vacaro-calendar-day-button",
+				today: "vacaro-calendar-today",
+				outside: "vacaro-calendar-outside",
+				disabled: "vacaro-calendar-disabled",
 				hidden: "invisible",
-				selected: "rounded-lg bg-primary text-white shadow-sm",
-				range_start: "rounded-l-lg bg-primary text-white",
-				range_middle: "rounded-none bg-secondary text-secondary-foreground",
-				range_end: "rounded-r-lg bg-primary text-white",
+				selected: "vacaro-calendar-selected",
+				range_start: "vacaro-calendar-range-start",
+				range_middle: "vacaro-calendar-range-middle",
+				range_end: "vacaro-calendar-range-end",
 				...classNames,
 			}}
 			components={{

@@ -1,7 +1,9 @@
 import { CheckIcon, Clock3Icon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isTimeValue } from "~/lib/time";
 import { cn } from "~/lib/utils";
 import { Button } from "./button";
+import { PickerTrigger } from "./picker-trigger";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 type TimePickerProps = {
@@ -31,21 +33,91 @@ type TimePickerPanelProps = {
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
-function timeParts(value: string) {
-	const match = value.match(/^(\d{2}):(\d{2})$/);
-	return match
-		? { hour: match[1], minute: match[2] }
-		: { hour: "09", minute: "00" };
-}
-
 function isAvailable(value: string, min?: string, max?: string) {
 	return (!min || value >= min) && (!max || value <= max);
 }
 
-function isHourAvailable(hour: string, min?: string, max?: string) {
-	const first = `${hour}:00`;
-	const last = hour === "24" ? first : `${hour}:59`;
-	return (!min || last >= min) && (!max || first <= max);
+function TimeColumn({
+	label,
+	items,
+	value,
+	onSelect,
+	isDisabled,
+}: {
+	label: string;
+	items: string[];
+	value: string;
+	onSelect: (value: string) => void;
+	isDisabled: (value: string) => boolean;
+}) {
+	const listRef = useRef<HTMLDivElement>(null);
+	const selectedRef = useRef<HTMLButtonElement>(null);
+	const firstAvailable = items.find((item) => !isDisabled(item));
+	const focusValue = isDisabled(value) ? firstAvailable : value;
+
+	useEffect(() => {
+		// Re-center the selected option whenever the controlled value changes.
+		void focusValue;
+		const list = listRef.current;
+		const selected = selectedRef.current;
+		if (list && selected) {
+			// Scroll only this column; do not move the form behind the popover.
+			list.scrollTop =
+				selected.offsetTop -
+				list.offsetTop -
+				(list.clientHeight - selected.clientHeight) / 2;
+		}
+	}, [focusValue]);
+
+	return (
+		<div className="time-picker-column">
+			<span className="time-picker-column-label" aria-hidden="true">
+				{label}
+			</span>
+			<div
+				ref={listRef}
+				role="listbox"
+				aria-label={label}
+				className="time-picker-list"
+				onKeyDown={(event) => {
+					const options = Array.from(
+						event.currentTarget.querySelectorAll<HTMLButtonElement>(
+							"button:not(:disabled)",
+						),
+					);
+					const current = options.indexOf(event.target as HTMLButtonElement);
+					let next: number;
+					if (event.key === "ArrowDown")
+						next = Math.min(current + 1, options.length - 1);
+					else if (event.key === "ArrowUp") next = Math.max(current - 1, 0);
+					else if (event.key === "Home") next = 0;
+					else if (event.key === "End") next = options.length - 1;
+					else return;
+					event.preventDefault();
+					options[next]?.focus();
+					if (options[next]) onSelect(options[next].value);
+				}}
+			>
+				{items.map((item) => (
+					<button
+						key={item}
+						ref={item === value ? selectedRef : undefined}
+						type="button"
+						role="option"
+						value={item}
+						aria-selected={item === value}
+						tabIndex={item === focusValue ? 0 : -1}
+						disabled={isDisabled(item)}
+						onClick={() => onSelect(item)}
+						className="time-picker-option"
+					>
+						{item}
+						{item === value && <CheckIcon size={14} aria-hidden="true" />}
+					</button>
+				))}
+			</div>
+		</div>
+	);
 }
 
 export function TimePickerPanel({
@@ -55,124 +127,73 @@ export function TimePickerPanel({
 	max,
 	allowEndOfDay = false,
 }: TimePickerPanelProps) {
-	const { hour, minute } = timeParts(value);
+	const current =
+		isTimeValue(value) || (allowEndOfDay && value === "24:00")
+			? value
+			: (min ?? "09:00");
+	const [hour, minute] = current.split(":");
 	const hours = Array.from({ length: allowEndOfDay ? 25 : 24 }, (_, index) =>
 		pad(index),
 	);
 	const minutes = Array.from({ length: 60 }, (_, index) => pad(index));
-	const selectedHourRef = useRef<HTMLButtonElement>(null);
-	const selectedMinuteRef = useRef<HTMLButtonElement>(null);
-
-	useEffect(() => {
-		if (!value) return;
-		selectedHourRef.current?.scrollIntoView?.({ block: "center" });
-		selectedMinuteRef.current?.scrollIntoView?.({ block: "center" });
-	}, [value]);
-
+	const hourDisabled = (item: string) =>
+		Boolean(
+			(min && `${item}:${item === "24" ? "00" : "59"}` < min) ||
+				(max && `${item}:00` > max),
+		);
+	const minuteDisabled = (item: string) =>
+		(hour === "24" && item !== "00") ||
+		!isAvailable(`${hour}:${item}`, min, max);
 	const selectHour = (nextHour: string) => {
-		let nextMinute = nextHour === "24" ? "00" : minute;
-		let next = `${nextHour}:${nextMinute}`;
-		if (!isAvailable(next, min, max) && min?.startsWith(`${nextHour}:`)) {
-			nextMinute = min.slice(3, 5);
-			next = `${nextHour}:${nextMinute}`;
-		}
-		if (!isAvailable(next, min, max) && max?.startsWith(`${nextHour}:`)) {
-			nextMinute = max.slice(3, 5);
-			next = `${nextHour}:${nextMinute}`;
-		}
+		let next = `${nextHour}:${nextHour === "24" ? "00" : minute}`;
+		if (min && next < min) next = min;
+		if (max && next > max) next = max;
 		if (isAvailable(next, min, max)) onValueChange(next);
 	};
 	const selectMinute = (nextMinute: string) => {
-		const next = `${hour}:${hour === "24" ? "00" : nextMinute}`;
-		if (isAvailable(next, min, max)) onValueChange(next);
+		if (!minuteDisabled(nextMinute)) onValueChange(`${hour}:${nextMinute}`);
 	};
 
 	return (
-		<div className="grid gap-3 p-3">
-			<div className="flex items-center justify-between rounded-xl bg-secondary px-4 py-3">
-				<span className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
-					<Clock3Icon className="size-4 text-primary" /> 選択中
+		<div className="time-picker-panel">
+			<div className="time-picker-preview">
+				<span>
+					<Clock3Icon size={16} aria-hidden="true" /> 選択中の時刻
 				</span>
-				<strong className="text-2xl tracking-tight text-foreground">
-					{value}
-				</strong>
+				<strong aria-live="polite">{current}</strong>
 			</div>
-			<div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-				<div className="grid gap-1.5">
-					<span className="text-center text-xs font-bold text-muted-foreground">
-						時
-					</span>
-					<div
-						role="listbox"
-						aria-label="時"
-						className="grid max-h-56 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-muted/40 p-1.5"
-					>
-						{hours.map((item) => {
-							const selected = item === hour;
-							return (
-								<button
-									key={item}
-									ref={selected ? selectedHourRef : undefined}
-									type="button"
-									role="option"
-									aria-selected={selected}
-									disabled={!isHourAvailable(item, min, max)}
-									onClick={() => selectHour(item)}
-									className={cn(
-										"flex min-h-10 items-center justify-center gap-2 rounded-lg text-base font-extrabold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/20 disabled:opacity-30",
-										selected
-											? "bg-primary text-white shadow-sm"
-											: "bg-white text-foreground hover:bg-secondary",
-									)}
-								>
-									{item}
-									{selected && <CheckIcon className="size-3.5" />}
-								</button>
-							);
-						})}
-					</div>
-				</div>
-				<span className="pt-10 text-xl font-extrabold text-primary">:</span>
-				<div className="grid gap-1.5">
-					<span className="text-center text-xs font-bold text-muted-foreground">
-						分
-					</span>
-					<div
-						role="listbox"
-						aria-label="分"
-						className="grid max-h-56 gap-1 overflow-y-auto overscroll-contain rounded-xl border border-border bg-muted/40 p-1.5"
-					>
-						{minutes.map((item) => {
-							const candidate = `${hour}:${hour === "24" ? "00" : item}`;
-							const selected = item === minute;
-							return (
-								<button
-									key={item}
-									ref={selected ? selectedMinuteRef : undefined}
-									type="button"
-									role="option"
-									aria-selected={selected}
-									disabled={
-										hour === "24"
-											? item !== "00"
-											: !isAvailable(candidate, min, max)
-									}
-									onClick={() => selectMinute(item)}
-									className={cn(
-										"flex min-h-10 items-center justify-center gap-2 rounded-lg text-base font-extrabold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/20 disabled:opacity-30",
-										selected
-											? "bg-primary text-white shadow-sm"
-											: "bg-white text-foreground hover:bg-secondary",
-									)}
-								>
-									{item}
-									{selected && <CheckIcon className="size-3.5" />}
-								</button>
-							);
-						})}
-					</div>
-				</div>
+			<div className="time-picker-columns">
+				<TimeColumn
+					label="時"
+					items={hours}
+					value={hour}
+					onSelect={selectHour}
+					isDisabled={hourDisabled}
+				/>
+				<span className="time-picker-separator" aria-hidden="true">
+					:
+				</span>
+				<TimeColumn
+					label="分"
+					items={minutes}
+					value={minute}
+					onSelect={selectMinute}
+					isDisabled={minuteDisabled}
+				/>
 			</div>
+			<fieldset className="time-picker-shortcuts" aria-label="よく使う分">
+				{["00", "15", "30", "45"].map((item) => (
+					<button
+						key={item}
+						type="button"
+						aria-pressed={minute === item}
+						disabled={minuteDisabled(item)}
+						onClick={() => selectMinute(item)}
+					>
+						{item}分
+					</button>
+				))}
+			</fieldset>
 		</div>
 	);
 }
@@ -203,31 +224,33 @@ export function TimePicker({
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			{name && <input type="hidden" name={name} value={currentValue} />}
-			<PopoverTrigger asChild>
-				<button
-					id={id}
-					type="button"
+			{name && (
+				<input
+					type="hidden"
+					name={name}
+					value={currentValue}
 					disabled={disabled}
+				/>
+			)}
+			<PopoverTrigger asChild>
+				<PickerTrigger
+					id={id}
+					icon={Clock3Icon}
+					disabled={disabled}
+					placeholder={!currentValue}
 					data-required={required || undefined}
 					aria-label={ariaLabel ? `${ariaLabel} ${currentValue}` : undefined}
 					aria-describedby={ariaDescribedBy}
 					aria-invalid={ariaInvalid}
-					className={cn(
-						"border-input text-foreground flex h-14 w-full min-w-0 max-w-full items-center gap-3 rounded-xl border bg-white px-4 text-left text-lg font-extrabold shadow-[0_6px_18px_rgba(23,61,52,0.06)] outline-none transition-[border-color,box-shadow,background-color] hover:border-primary/50 focus-visible:border-ring focus-visible:bg-card focus-visible:ring-3 focus-visible:ring-ring/20 aria-invalid:border-destructive aria-invalid:ring-destructive/20 disabled:pointer-events-none disabled:opacity-50",
-						className,
-					)}
+					className={cn("w-full min-w-0 max-w-full", className)}
 				>
-					<span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-primary">
-						<Clock3Icon className="size-4" />
-					</span>
-					<span className="flex-1">{currentValue}</span>
-					<span className="text-xs font-bold text-muted-foreground">変更</span>
-				</button>
+					{currentValue || "時刻を選択"}
+				</PickerTrigger>
 			</PopoverTrigger>
 			<PopoverContent
 				align="start"
-				className="w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden"
+				aria-label={ariaLabel ?? "時刻を選択"}
+				className="picker-popover w-[min(20rem,calc(100vw-1.5rem))]"
 				collisionPadding={{ top: 88, right: 12, bottom: 12, left: 12 }}
 			>
 				<TimePickerPanel
@@ -237,12 +260,15 @@ export function TimePicker({
 					max={max}
 					allowEndOfDay={allowEndOfDay}
 				/>
-				<div className="border-t border-border bg-muted/40 p-3">
+				<div className="picker-footer">
 					<Button
 						type="button"
 						size="sm"
 						className="w-full"
-						onClick={() => setOpen(false)}
+						onClick={() => {
+							if (!currentValue) updateValue(min ?? "09:00");
+							setOpen(false);
+						}}
 					>
 						この時刻にする
 					</Button>

@@ -17,6 +17,7 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { TimePicker } from "~/components/ui/time-picker";
+import { useFormErrors } from "~/components/ui/use-form-errors";
 import {
 	FieldError,
 	ValidationMessage,
@@ -32,6 +33,7 @@ import {
 	saveEventInviteUrl,
 	type User,
 } from "~/lib/api";
+import { validateEventForm } from "~/lib/event-form-validation";
 import { getNewEventDefaults } from "~/lib/new-event-defaults";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/new";
@@ -44,16 +46,17 @@ export function loader() {
 	return getNewEventDefaults();
 }
 
-type RequiredFieldName = "title" | "display_name";
-type FieldErrors = Partial<Record<RequiredFieldName, string>>;
-
-const requiredFields: Array<{
-	name: RequiredFieldName;
-	message: string;
-}> = [
-	{ name: "title", message: "イベント名を入力してください" },
-	{ name: "display_name", message: "主催者名を入力してください" },
-];
+const controlIds: Record<string, string> = {
+	title: "title",
+	display_name: "owner",
+	window_start_date: "window-start-date",
+	window_end_date: "window-end-date",
+	daily_start_time: "daily-start-time",
+	daily_end_time: "daily-end-time",
+	response_deadline_at: "deadline",
+	duration_minutes: "duration",
+	time_zone: "timezone",
+};
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
 	const formData = await request.formData();
@@ -185,79 +188,26 @@ export default function NewEvent({
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const submitting = navigation.state === "submitting";
-	const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-	const [scheduleError, setScheduleError] = useState<string | null>(null);
+	const {
+		errors: fieldErrors,
+		localErrors,
+		setErrors,
+		clearError: clearFieldError,
+		inputProps,
+	} = useFormErrors(actionData?.error.fields);
 	const [resultsVisible, setResultsVisible] = useState(true);
-	const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+	const hasFieldErrors = Object.keys(localErrors).length > 0;
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
-		const form = event.currentTarget;
-		const nextErrors: FieldErrors = {};
-
-		for (const field of requiredFields) {
-			const input = form.elements.namedItem(field.name);
-			if (input instanceof HTMLInputElement && !input.value.trim()) {
-				nextErrors[field.name] = field.message;
-			}
-		}
-
-		const startDate = form.elements.namedItem("window_start_date");
-		const endDate = form.elements.namedItem("window_end_date");
-		const startTime = form.elements.namedItem("daily_start_time");
-		const endTime = form.elements.namedItem("daily_end_time");
-		const responseDeadline = form.elements.namedItem("response_deadline_at");
-		let nextScheduleError: string | null = null;
-		if (
-			!(startDate instanceof HTMLInputElement) ||
-			!(endDate instanceof HTMLInputElement) ||
-			!startDate.value ||
-			!endDate.value ||
-			startDate.value > endDate.value
-		) {
-			nextScheduleError = "終了日は開始日以降にしてください";
-		} else if (
-			!(startTime instanceof HTMLInputElement) ||
-			!(endTime instanceof HTMLInputElement) ||
-			!isTimeValue(startTime.value) ||
-			!isTimeValue(endTime.value) ||
-			startTime.value >= endTime.value
-		) {
-			nextScheduleError = "毎日の終了時刻は開始時刻より後にしてください";
-		} else if (
-			responseDeadline instanceof HTMLInputElement &&
-			responseDeadline.value &&
-			responseDeadline.value > `${endDate.value}T${endTime.value}`
-		) {
-			nextScheduleError = "回答期限は調整期間の終了以前にしてください";
-		}
-
-		const firstInvalidField = requiredFields.find(
-			(field) => nextErrors[field.name],
+		const nextErrors = validateEventForm(
+			new FormData(event.currentTarget),
+			true,
 		);
-		if (!firstInvalidField && !nextScheduleError) {
-			setFieldErrors({});
-			setScheduleError(null);
-			return;
-		}
-
+		setErrors(nextErrors);
+		const first = Object.keys(nextErrors)[0];
+		if (!first) return;
 		event.preventDefault();
-		setFieldErrors(nextErrors);
-		setScheduleError(nextScheduleError);
-		const controlId = firstInvalidField
-			? firstInvalidField.name === "display_name"
-				? "owner"
-				: firstInvalidField.name
-			: "window-start-date";
-		document.getElementById(controlId)?.focus();
-	}
-
-	function clearFieldError(name: RequiredFieldName) {
-		setFieldErrors((current) => {
-			if (!current[name]) return current;
-			const next = { ...current };
-			delete next[name];
-			return next;
-		});
+		document.getElementById(controlIds[first])?.focus();
 	}
 
 	return (
@@ -276,15 +226,20 @@ export default function NewEvent({
 				onSubmit={handleSubmit}
 			>
 				{actionData?.error && (
-					<ValidationMessage title={actionData.error.message}>
-						{actionData.error.fields
-							? Object.values(actionData.error.fields).join(" / ")
-							: "入力内容をもう一度ご確認ください。"}
+					<ValidationMessage
+						title={actionData.error.message}
+						fields={actionData.error.fields}
+					>
+						入力内容をもう一度ご確認ください。
 					</ValidationMessage>
 				)}
 				{hasFieldErrors && (
 					<ValidationMessage>
-						未入力の項目が{Object.keys(fieldErrors).length}件あります
+						{Object.keys(localErrors).every(
+							(name) => name === "title" || name === "display_name",
+						)
+							? `未入力の項目が${Object.keys(localErrors).length}件あります`
+							: `修正が必要な項目が${Object.keys(localErrors).length}件あります。各入力欄のメッセージをご確認ください。`}
 					</ValidationMessage>
 				)}
 				<div className="new-event-card-grid">
@@ -353,11 +308,16 @@ export default function NewEvent({
 										<Input
 											id="timezone"
 											name="time_zone"
+											{...inputProps("time_zone", "timezone")}
+											onChange={() => clearFieldError("time_zone")}
 											list="new-event-time-zones"
 											defaultValue="Asia/Tokyo"
 											placeholder="例：America/New_York"
 											required
 										/>
+										<FieldError id="timezone-error">
+											{fieldErrors.time_zone}
+										</FieldError>
 										<datalist id="new-event-time-zones">
 											{COMMON_TIME_ZONES.map((timeZone) => (
 												<option key={timeZone} value={timeZone} />
@@ -432,9 +392,17 @@ export default function NewEvent({
 										<DatePicker
 											id="window-start-date"
 											name="window_start_date"
+											{...inputProps("window_start_date", "window-start-date")}
+											onValueChange={() => {
+												clearFieldError("window_start_date");
+												clearFieldError("window_end_date");
+											}}
 											defaultValue={loaderData.windowStartAt.slice(0, 10)}
 											required
 										/>
+										<FieldError id="window-start-date-error">
+											{fieldErrors.window_start_date}
+										</FieldError>
 									</Field>
 									<span className="hidden h-14 items-center justify-center px-1 text-xl font-extrabold text-primary md:flex">
 										→
@@ -446,9 +414,14 @@ export default function NewEvent({
 										<DatePicker
 											id="window-end-date"
 											name="window_end_date"
+											{...inputProps("window_end_date", "window-end-date")}
+											onValueChange={() => clearFieldError("window_end_date")}
 											defaultValue={loaderData.windowEndAt.slice(0, 10)}
 											required
 										/>
+										<FieldError id="window-end-date-error">
+											{fieldErrors.window_end_date}
+										</FieldError>
 									</Field>
 								</div>
 
@@ -460,9 +433,17 @@ export default function NewEvent({
 										<TimePicker
 											id="daily-start-time"
 											name="daily_start_time"
+											{...inputProps("daily_start_time", "daily-start-time")}
+											onValueChange={() => {
+												clearFieldError("daily_start_time");
+												clearFieldError("daily_end_time");
+											}}
 											defaultValue={loaderData.windowStartAt.slice(11, 16)}
 											required
 										/>
+										<FieldError id="daily-start-time-error">
+											{fieldErrors.daily_start_time}
+										</FieldError>
 									</Field>
 									<span className="hidden h-14 items-center justify-center px-1 text-lg font-extrabold text-primary md:flex">
 										〜
@@ -474,22 +455,19 @@ export default function NewEvent({
 										<TimePicker
 											id="daily-end-time"
 											name="daily_end_time"
+											{...inputProps("daily_end_time", "daily-end-time")}
+											onValueChange={() => clearFieldError("daily_end_time")}
 											defaultValue={loaderData.windowEndAt.slice(11, 16)}
 											required
 										/>
+										<FieldError id="daily-end-time-error">
+											{fieldErrors.daily_end_time}
+										</FieldError>
 									</Field>
 								</div>
 								<p className="text-sm font-semibold text-muted-foreground">
 									参加者は期間中の各日、この時間帯の中で回答できます。
 								</p>
-								{scheduleError && (
-									<ValidationMessage
-										compact
-										title="日時の指定を確認してください"
-									>
-										{scheduleError}
-									</ValidationMessage>
-								)}
 
 								<Field>
 									<FieldLabel htmlFor="duration">
@@ -499,6 +477,8 @@ export default function NewEvent({
 									<Input
 										id="duration"
 										name="duration_minutes"
+										{...inputProps("duration_minutes", "duration")}
+										onChange={() => clearFieldError("duration_minutes")}
 										type="number"
 										min={5}
 										max={1440}
@@ -506,6 +486,9 @@ export default function NewEvent({
 										defaultValue={60}
 										required
 									/>
+									<FieldError id="duration-error">
+										{fieldErrors.duration_minutes}
+									</FieldError>
 									<p className="text-sm text-muted-foreground">
 										5～1,440分の範囲で1分単位に指定できます。
 									</p>
@@ -537,8 +520,15 @@ export default function NewEvent({
 									<DateTimePicker
 										id="deadline"
 										name="response_deadline_at"
+										{...inputProps("response_deadline_at", "deadline")}
+										onValueChange={() =>
+											clearFieldError("response_deadline_at")
+										}
 										defaultValue={loaderData.responseDeadlineAt}
 									/>
+									<FieldError id="deadline-error">
+										{fieldErrors.response_deadline_at}
+									</FieldError>
 								</Field>
 							</FieldGroup>
 						</CardContent>

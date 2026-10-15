@@ -17,10 +17,11 @@ export default defineConfig({
 	plugins: [tailwindcss(), reactRouter()],
 	server: {
 		port: 8080,
+		strictPort: true,
 		proxy: {
 			"/api": {
 				target: process.env.VACARO_API_URL ?? "http://localhost:8081",
-				changeOrigin: true,
+				changeOrigin: false,
 			},
 		},
 	},

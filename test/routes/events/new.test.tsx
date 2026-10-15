@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,7 +21,10 @@ describe("NewEvent validation", () => {
 		);
 	});
 
-	afterEach(() => vi.unstubAllGlobals());
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
+	});
 
 	it("shows custom errors instead of the browser validation popup", async () => {
 		const user = userEvent.setup();
@@ -101,6 +104,61 @@ describe("NewEvent validation", () => {
 		expect(screen.getByRole("alert").textContent).toContain(
 			"未入力の項目が1件あります",
 		);
+	});
+
+	it("shows a time ordering error beside the end time and focuses that control", async () => {
+		const user = userEvent.setup();
+		const RouterStub = createRoutesStub([
+			{
+				path: "/events/new",
+				Component: NewEvent,
+				loader: () => ({
+					windowStartAt: "2026-10-02T09:00",
+					windowEndAt: "2026-10-09T21:00",
+					responseDeadlineAt: "2026-09-28T23:59",
+				}),
+			},
+		]);
+		render(<RouterStub initialEntries={["/events/new"]} />);
+		await user.type(
+			await screen.findByRole("textbox", { name: /イベント名/ }),
+			"秋の交流会",
+		);
+		await user.type(
+			screen.getByRole("textbox", { name: /主催者名/ }),
+			"主催者",
+		);
+		const endTime = screen.getByLabelText(/毎日の受付終了/);
+		await user.click(endTime);
+		await user.click(
+			within(screen.getByRole("listbox", { name: "時" })).getByRole("option", {
+				name: "09",
+			}),
+		);
+		await user.click(screen.getByRole("button", { name: "この時刻にする" }));
+		await user.click(
+			screen.getByRole("button", { name: /イベントを作成する/ }),
+		);
+		expect(
+			screen.getByText("毎日の終了時刻は開始時刻より後にしてください"),
+		).toBeTruthy();
+		expect(endTime.getAttribute("aria-invalid")).toBe("true");
+		expect(
+			document.getElementById(
+				endTime.getAttribute("aria-describedby") as string,
+			)?.textContent,
+		).toContain("終了時刻");
+		expect(document.activeElement).toBe(endTime);
+		await user.click(endTime);
+		await user.click(
+			within(screen.getByRole("listbox", { name: "時" })).getByRole("option", {
+				name: "10",
+			}),
+		);
+		expect(
+			screen.queryByText("毎日の終了時刻は開始時刻より後にしてください"),
+		).toBeNull();
+		expect(endTime.getAttribute("aria-invalid")).toBe("false");
 	});
 
 	it("combines the date range with the daily response window", async () => {

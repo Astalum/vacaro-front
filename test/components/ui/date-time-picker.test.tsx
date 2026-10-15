@@ -38,6 +38,7 @@ describe("DateTimePicker", () => {
 
 		await user.click(screen.getByRole("button", { name: /2026年6月15日/ }));
 		await user.click(screen.getByRole("button", { name: "時刻 09:00" }));
+		expect(screen.getAllByRole("dialog")).toHaveLength(1);
 		await user.click(
 			within(screen.getByRole("listbox", { name: "時" })).getByRole("option", {
 				name: "10",

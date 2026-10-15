@@ -85,4 +85,65 @@ describe("custom form controls", () => {
 		);
 		expect(screen.getByText("イベント名を入力してください")).toBeTruthy();
 	});
+
+	it("supports keyboard selection and enforces time boundaries including 24:00", async () => {
+		const user = userEvent.setup();
+		const { container } = render(
+			<form>
+				<TimePicker
+					id="bounded-time"
+					name="time"
+					defaultValue="23:45"
+					min="23:30"
+					max="24:00"
+					allowEndOfDay
+				/>
+			</form>,
+		);
+		await user.click(document.getElementById("bounded-time") as HTMLElement);
+		const hours = within(screen.getByRole("listbox", { name: "時" }));
+		expect(
+			(hours.getByRole("option", { name: "22" }) as HTMLButtonElement).disabled,
+		).toBe(true);
+		hours.getByRole("option", { name: "23" }).focus();
+		await user.keyboard("{ArrowDown}");
+		expect(document.activeElement).toBe(
+			hours.getByRole("option", { name: "24" }),
+		);
+		const minutes = within(screen.getByRole("listbox", { name: "分" }));
+		expect(
+			(minutes.getByRole("option", { name: "01" }) as HTMLButtonElement)
+				.disabled,
+		).toBe(true);
+		await user.click(screen.getByRole("button", { name: "この時刻にする" }));
+		expect(
+			new FormData(container.querySelector("form") as HTMLFormElement).get(
+				"time",
+			),
+		).toBe("24:00");
+	});
+
+	it("excludes disabled custom controls from form submission", () => {
+		const { container } = render(
+			<form>
+				<DatePicker
+					id="disabled-date"
+					name="date"
+					defaultValue="2026-06-14"
+					disabled
+				/>
+				<TimePicker
+					id="disabled-time"
+					name="time"
+					defaultValue="09:00"
+					disabled
+				/>
+			</form>,
+		);
+		const data = new FormData(
+			container.querySelector("form") as HTMLFormElement,
+		);
+		expect(data.has("date")).toBe(false);
+		expect(data.has("time")).toBe(false);
+	});
 });

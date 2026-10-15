@@ -47,8 +47,8 @@ WSLから実行する場合は、Windows側のNode.jsではなくWSL内へイン
 Google Cloud ConsoleでOAuth 2.0クライアントを作成し、承認済みのリダイレクトURIへ次を登録します。
 
 ```text
-http://localhost:8081/api/v1/auth/google/callback
-http://localhost:8081/api/v1/integrations/google-calendar/callback
+http://localhost:8080/api/v1/auth/google/callback
+http://localhost:8080/api/v1/integrations/google-calendar/callback
 ```
 
 `vacaro-back`の`.env`へ`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_LOGIN_REDIRECT_URL`、`GOOGLE_CALENDAR_REDIRECT_URL`、`TOKEN_ENCRYPTION_KEY`を設定してください。フロントエンドはログイン開始、コールバック後の完了表示、ログアウト、カレンダー接続、空き時間プレビュー、確定日時の自動登録に対応しています。
