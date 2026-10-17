@@ -13,20 +13,23 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
+	COMMON_TIME_ZONES,
 	clearSavedCalendarIDs,
 	type GoogleCalendar,
+	isValidTimeZone,
 	saveCalendarAvailabilityWindow,
 	saveCalendarIDs,
 	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
 	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/account";
 
 type CalendarConnectionStatus = "connected" | "disconnected" | "unknown";
 
 export function meta() {
-	return [{ title: "ユーザー設定 | vacaro" }];
+	return createPageMeta("ユーザー設定 | vacaro");
 }
 
 export async function clientLoader() {
@@ -98,6 +101,30 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 				method: "DELETE",
 			});
 			return { kind: "disconnected" as const };
+		}
+		if (intent === "update-profile") {
+			const displayName = String(formData.get("display_name") ?? "").trim();
+			const timeZone = String(formData.get("time_zone") ?? "").trim();
+			if (!displayName || !isValidTimeZone(timeZone)) {
+				return data(
+					{
+						kind: "error" as const,
+						error: {
+							code: "validation_failed",
+							message: "表示名とタイムゾーンを確認してください",
+						},
+					},
+					{ status: 422 },
+				);
+			}
+			await apiRequest<User>("/me", {
+				method: "PATCH",
+				body: JSON.stringify({
+					display_name: displayName,
+					time_zone: timeZone,
+				}),
+			});
+			return { kind: "profile-updated" as const };
 		}
 		return data(
 			{
@@ -207,6 +234,14 @@ export default function Account({
 					</div>
 				</div>
 			)}
+			{actionData?.kind === "profile-updated" && (
+				<div className="confirm-banner compact-banner">
+					<Icon name="check" />
+					<div>
+						<strong>プロフィール設定を保存しました</strong>
+					</div>
+				</div>
+			)}
 			{actionData?.kind === "error" && (
 				<ValidationMessage title={actionData.error.message}>
 					操作内容を確認して、もう一度お試しください。
@@ -270,6 +305,56 @@ export default function Account({
 								</button>
 							</Form>
 						)}
+					</section>
+
+					<section className="account-card">
+						<div className="settings-section-heading">
+							<div>
+								<span className="account-section-label">PROFILE</span>
+								<h2>表示とタイムゾーン</h2>
+								<p>
+									イベントの日時は、ここで設定したタイムゾーンで表示・入力します。
+								</p>
+							</div>
+						</div>
+						<Form className="form-stack" method="post">
+							<div className="two-cols">
+								<div className="field">
+									<label htmlFor="profile-display-name">表示名</label>
+									<input
+										id="profile-display-name"
+										name="display_name"
+										defaultValue={user.display_name}
+										required
+										maxLength={100}
+									/>
+								</div>
+								<div className="field">
+									<label htmlFor="profile-time-zone">タイムゾーン</label>
+									<input
+										id="profile-time-zone"
+										name="time_zone"
+										list="profile-time-zones"
+										defaultValue={user.time_zone}
+										required
+									/>
+									<datalist id="profile-time-zones">
+										{COMMON_TIME_ZONES.map((timeZone) => (
+											<option key={timeZone} value={timeZone} />
+										))}
+									</datalist>
+								</div>
+							</div>
+							<button
+								className="button button-primary"
+								type="submit"
+								name="intent"
+								value="update-profile"
+								disabled={navigation.state !== "idle"}
+							>
+								{intent === "update-profile" ? "保存しています…" : "設定を保存"}
+							</button>
+						</Form>
 					</section>
 
 					{user.account_type === "registered" && (

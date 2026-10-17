@@ -11,6 +11,9 @@ import type { Route } from "./+types/root";
 import "./styles/tailwind.css";
 import "./styles/app.scss";
 import { ApiError } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
+
+export const meta: Route.MetaFunction = () => createPageMeta();
 
 export const links: Route.LinksFunction = () => [
 	{

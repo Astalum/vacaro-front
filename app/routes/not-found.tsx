@@ -1,8 +1,9 @@
 import { Link } from "react-router";
 import { Icon, PageShell } from "~/components/app";
+import { createPageMeta } from "~/lib/meta";
 
 export function meta() {
-	return [{ title: "ページが見つかりません | vacaro" }];
+	return createPageMeta("ページが見つかりません | vacaro");
 }
 
 export default function NotFound() {

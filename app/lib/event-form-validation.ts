@@ -1,4 +1,3 @@
-import { isValidTimeZone } from "./api";
 import { parseDateInput } from "./date-input";
 import { isTimeValue } from "./time";
 
@@ -43,7 +42,5 @@ export function validateEventForm(form: FormData, requireDisplayName = false) {
 	const duration = Number(get("duration_minutes"));
 	if (!Number.isInteger(duration) || duration < 5 || duration > 1440)
 		errors.duration_minutes = "必要時間は5〜1,440分の整数で入力してください";
-	if (!isValidTimeZone(get("time_zone")))
-		errors.time_zone = "有効なタイムゾーンを指定してください";
 	return errors;
 }

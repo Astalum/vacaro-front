@@ -3,7 +3,10 @@ import { getNewEventDefaults } from "~/lib/new-event-defaults";
 
 describe("getNewEventDefaults", () => {
 	it("uses the current date in Asia/Tokyo and applies the requested offsets", () => {
-		const defaults = getNewEventDefaults(new Date("2026-09-25T15:30:00Z"));
+		const defaults = getNewEventDefaults(
+			new Date("2026-09-25T15:30:00Z"),
+			"Asia/Tokyo",
+		);
 
 		expect(defaults).toEqual({
 			windowStartAt: "2026-10-03T09:00",
@@ -13,7 +16,10 @@ describe("getNewEventDefaults", () => {
 	});
 
 	it("handles month and year boundaries", () => {
-		const defaults = getNewEventDefaults(new Date("2026-12-27T03:00:00Z"));
+		const defaults = getNewEventDefaults(
+			new Date("2026-12-27T03:00:00Z"),
+			"Asia/Tokyo",
+		);
 
 		expect(defaults).toEqual({
 			windowStartAt: "2027-01-03T09:00",

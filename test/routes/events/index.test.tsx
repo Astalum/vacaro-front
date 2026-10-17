@@ -23,7 +23,6 @@ function event(overrides: Partial<Event> = {}): Event {
 		created_by_user_id: "organizer-1",
 		title: "秋の交流会",
 		description: null,
-		time_zone: "Asia/Tokyo",
 		window_start_at: "2099-10-20T00:00:00Z",
 		window_end_at: "2099-10-20T09:00:00Z",
 		duration_minutes: 60,
@@ -44,7 +43,11 @@ function renderEvent(item: Event, currentUserId = "member-1") {
 		{
 			path: "/events",
 			Component: () => (
-				<EventList events={[item]} currentUserId={currentUserId} />
+				<EventList
+					events={[item]}
+					currentUserId={currentUserId}
+					timeZone="Asia/Tokyo"
+				/>
 			),
 		},
 	]);
@@ -139,10 +142,15 @@ describe("event list pagination", () => {
 			const path = String(input);
 			if (path === "/api/v1/me") {
 				return Promise.resolve(
-					new Response(JSON.stringify({ data: { id: "member-1" } }), {
-						status: 200,
-						headers: { "Content-Type": "application/json" },
-					}),
+					new Response(
+						JSON.stringify({
+							data: { id: "member-1", time_zone: "Asia/Tokyo" },
+						}),
+						{
+							status: 200,
+							headers: { "Content-Type": "application/json" },
+						},
+					),
 				);
 			}
 			return Promise.resolve(
@@ -175,10 +183,15 @@ describe("event list pagination", () => {
 			vi.fn((input: string | URL | Request) => {
 				if (String(input) === "/api/v1/me") {
 					return Promise.resolve(
-						new Response(JSON.stringify({ data: { id: "member-1" } }), {
-							status: 200,
-							headers: { "Content-Type": "application/json" },
-						}),
+						new Response(
+							JSON.stringify({
+								data: { id: "member-1", time_zone: "Asia/Tokyo" },
+							}),
+							{
+								status: 200,
+								headers: { "Content-Type": "application/json" },
+							},
+						),
 					);
 				}
 				return Promise.resolve(

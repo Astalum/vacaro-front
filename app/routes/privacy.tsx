@@ -1,14 +1,12 @@
 import { Link } from "react-router";
 import { PageIntro, PageShell } from "~/components/app";
+import { createPageMeta } from "~/lib/meta";
 
 export function meta() {
-	return [
-		{ title: "プライバシーポリシー | vacaro" },
-		{
-			name: "description",
-			content: "vacaroにおける個人情報とGoogleユーザーデータの取扱い方針です。",
-		},
-	];
+	return createPageMeta(
+		"プライバシーポリシー | vacaro",
+		"vacaroにおける個人情報とGoogleユーザーデータの取扱い方針です。",
+	);
 }
 
 export default function PrivacyPolicy() {

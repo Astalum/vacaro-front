@@ -19,30 +19,31 @@ import {
 	reissueEventInviteUrl,
 	type SchedulingGroup,
 	savedEventInviteUrl,
+	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/manage";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-	return [
-		{
-			title: loaderData
-				? `イベント管理 — ${loaderData.event.title} | vacaro`
-				: "イベント管理 | vacaro",
-		},
-	];
+	return createPageMeta(
+		loaderData
+			? `イベント管理 — ${loaderData.event.title} | vacaro`
+			: "イベント管理 | vacaro",
+	);
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	const [event, participants] = await Promise.all([
+	const [event, participants, user] = await Promise.all([
 		apiRequest<Event>(`/events/${params.eventId}`),
 		apiRequest<Participant[]>(`/events/${params.eventId}/participants`),
+		apiRequest<User>("/me"),
 	]);
 	const groups =
 		event.scheduling_mode === "groups"
 			? await apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
 			: [];
 	const inviteUrl = savedEventInviteUrl(event.id);
-	return { event, participants, groups, inviteUrl };
+	return { event, participants, groups, inviteUrl, timeZone: user.time_zone };
 }
 clientLoader.hydrate = true as const;
 
@@ -226,7 +227,7 @@ export default function ManageEvent({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { event, participants, groups, inviteUrl } = loaderData;
+	const { event, participants, groups, inviteUrl, timeZone } = loaderData;
 	const navigation = useNavigation();
 	const busy = navigation.state === "submitting";
 	const reissuingInviteUrl =
@@ -264,7 +265,7 @@ export default function ManageEvent({
 							{formatDateRange(
 								event.window_start_at,
 								event.window_end_at,
-								event.time_zone,
+								timeZone,
 							)}
 						</WeekendText>
 					</p>

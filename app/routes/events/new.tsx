@@ -26,7 +26,7 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
-	COMMON_TIME_ZONES,
+	browserTimeZone,
 	type EventWithInvite,
 	isValidTimeZone,
 	localDateTimeToIso,
@@ -34,16 +34,37 @@ import {
 	type User,
 } from "~/lib/api";
 import { validateEventForm } from "~/lib/event-form-validation";
+import { createPageMeta } from "~/lib/meta";
 import { getNewEventDefaults } from "~/lib/new-event-defaults";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/new";
 
 export function meta() {
-	return [{ title: "イベントを作る | vacaro" }];
+	return createPageMeta("イベントを作る | vacaro");
 }
 
-export function loader() {
-	return getNewEventDefaults();
+export async function clientLoader() {
+	let user: User | null = null;
+	try {
+		user = await apiRequest<User>("/me");
+	} catch (error) {
+		if (!(error instanceof ApiError) || error.status !== 401) throw error;
+	}
+	const timeZone = user?.time_zone ?? browserTimeZone();
+	return {
+		...getNewEventDefaults(new Date(), timeZone),
+		timeZone,
+		displayName: user?.display_name ?? "",
+	};
+}
+clientLoader.hydrate = true as const;
+
+export function HydrateFallback() {
+	return (
+		<PageShell>
+			<div className="page-loading">ユーザー設定を読み込んでいます…</div>
+		</PageShell>
+	);
 }
 
 const controlIds: Record<string, string> = {
@@ -55,7 +76,6 @@ const controlIds: Record<string, string> = {
 	daily_end_time: "daily-end-time",
 	response_deadline_at: "deadline",
 	duration_minutes: "duration",
-	time_zone: "timezone",
 };
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
@@ -145,14 +165,20 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 			if (displayName && me.display_name !== displayName) {
 				await apiRequest<User>("/me", {
 					method: "PATCH",
-					body: JSON.stringify({ display_name: displayName }),
+					body: JSON.stringify({
+						display_name: displayName,
+						time_zone: me.time_zone,
+					}),
 				});
 			}
 		} catch (error) {
 			if (!(error instanceof ApiError) || error.status !== 401) throw error;
 			await apiRequest<User>("/guest-sessions", {
 				method: "POST",
-				body: JSON.stringify({ display_name: displayName }),
+				body: JSON.stringify({
+					display_name: displayName,
+					time_zone: timeZone,
+				}),
 			});
 		}
 
@@ -161,7 +187,6 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 			body: JSON.stringify({
 				title: String(formData.get("title") ?? ""),
 				description: String(formData.get("description") ?? "") || null,
-				time_zone: timeZone,
 				window_start_at: windowStartIso,
 				window_end_at: windowEndIso,
 				duration_minutes: durationMinutes,
@@ -288,6 +313,7 @@ export default function NewEvent({
 										<Input
 											id="owner"
 											name="display_name"
+											defaultValue={loaderData.displayName}
 											required
 											aria-invalid={Boolean(fieldErrors.display_name)}
 											aria-describedby={
@@ -301,32 +327,11 @@ export default function NewEvent({
 											</FieldError>
 										)}
 									</Field>
-									<Field>
-										<FieldLabel htmlFor="timezone">
-											タイムゾーン <Badge variant="destructive">必須</Badge>
-										</FieldLabel>
-										<Input
-											id="timezone"
-											name="time_zone"
-											{...inputProps("time_zone", "timezone")}
-											onChange={() => clearFieldError("time_zone")}
-											list="new-event-time-zones"
-											defaultValue="Asia/Tokyo"
-											placeholder="例：America/New_York"
-											required
-										/>
-										<FieldError id="timezone-error">
-											{fieldErrors.time_zone}
-										</FieldError>
-										<datalist id="new-event-time-zones">
-											{COMMON_TIME_ZONES.map((timeZone) => (
-												<option key={timeZone} value={timeZone} />
-											))}
-										</datalist>
-										<p className="text-sm text-muted-foreground">
-											候補以外のIANAタイムゾーンも入力できます。
-										</p>
-									</Field>
+									<input
+										type="hidden"
+										name="time_zone"
+										value={loaderData.timeZone}
+									/>
 								</div>
 								<Field className="new-event-results-visibility">
 									<div>

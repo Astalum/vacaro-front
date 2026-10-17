@@ -1,11 +1,12 @@
 import { Link } from "react-router";
 import { PageIntro, PageShell } from "~/components/app";
+import { createPageMeta } from "~/lib/meta";
 
 export function meta() {
-	return [
-		{ title: "利用規約 | vacaro" },
-		{ name: "description", content: "日程調整サービスvacaroの利用条件です。" },
-	];
+	return createPageMeta(
+		"利用規約 | vacaro",
+		"日程調整サービスvacaroの利用条件です。",
+	);
 }
 
 export default function Terms() {

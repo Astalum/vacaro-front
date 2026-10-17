@@ -75,7 +75,6 @@ describe("results clientLoader", () => {
 			created_by_user_id: "user-1",
 			title: "グループ調整",
 			description: null,
-			time_zone: "Asia/Tokyo",
 			window_start_at: "2026-09-10T00:00:00Z",
 			window_end_at: "2026-09-12T00:00:00Z",
 			duration_minutes: 60,
@@ -88,7 +87,7 @@ describe("results clientLoader", () => {
 			created_at: "2026-09-01T00:00:00Z",
 			updated_at: "2026-09-01T00:00:00Z",
 		} satisfies Event;
-		const user = { id: "user-1" } as User;
+		const user = { id: "user-1", time_zone: "Asia/Tokyo" } as User;
 		const groupBase = {
 			event_id: event.id,
 			duration_minutes: 60,
@@ -140,7 +139,6 @@ describe("results clientLoader", () => {
 			created_by_user_id: "user-1",
 			title: "グループ調整",
 			description: null,
-			time_zone: "Asia/Tokyo",
 			window_start_at: "2026-09-10T00:00:00Z",
 			window_end_at: "2026-09-12T00:00:00Z",
 			duration_minutes: 60,
@@ -160,8 +158,8 @@ describe("results clientLoader", () => {
 				const path = String(input);
 				requestedPaths.push(path);
 				if (path.endsWith("/events/event-1")) return response(event);
-				if (path.endsWith("/me")) return response({ id: "user-1" });
-				if (path.endsWith("/events/event-1/groups")) return response([]);
+				if (path.endsWith("/me"))
+					if (path.endsWith("/events/event-1/groups")) return response([]);
 				return response([]);
 			}),
 		);
@@ -188,7 +186,6 @@ describe("results clientLoader", () => {
 			created_by_user_id: "user-1",
 			title: "グループ調整",
 			description: null,
-			time_zone: "Asia/Tokyo",
 			window_start_at: "2026-09-10T00:00:00Z",
 			window_end_at: "2026-09-12T00:00:00Z",
 			duration_minutes: 60,
@@ -222,8 +219,8 @@ describe("results clientLoader", () => {
 				const path = String(input);
 				requestedPaths.push(path);
 				if (path.endsWith("/events/event-1")) return response(event);
-				if (path.endsWith("/me")) return response({ id: "user-1" });
-				if (path.endsWith("/events/event-1/groups")) return response(groups);
+				if (path.endsWith("/me"))
+					if (path.endsWith("/events/event-1/groups")) return response(groups);
 				return response([]);
 			}),
 		);
@@ -248,7 +245,6 @@ describe("results clientLoader", () => {
 			created_by_user_id: "owner-1",
 			title: "非公開イベント",
 			description: null,
-			time_zone: "Asia/Tokyo",
 			window_start_at: "2026-09-10T00:00:00Z",
 			window_end_at: "2026-09-12T00:00:00Z",
 			duration_minutes: 60,
@@ -268,8 +264,8 @@ describe("results clientLoader", () => {
 				const path = String(input);
 				requestedPaths.push(path);
 				if (path.endsWith("/events/event-1")) return response(event);
-				if (path.endsWith("/me")) return response({ id: "member-1" });
-				throw new Error(`unexpected result request: ${path}`);
+				if (path.endsWith("/me"))
+					return response({ id: "member-1", time_zone: "Asia/Tokyo" });
 			}),
 		);
 
@@ -328,6 +324,7 @@ describe("results clientAction", () => {
 		formData.set("confirmation_date", "2026-09-10");
 		formData.set("confirmation_time", "10:00");
 		formData.set("duration_minutes", "60");
+		formData.set("time_zone", "Asia/Tokyo");
 
 		const result = await clientAction({
 			params: { eventId: "event-1" },

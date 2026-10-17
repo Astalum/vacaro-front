@@ -17,17 +17,16 @@ import {
 	type SchedulingGroup,
 	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/results";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-	return [
-		{
-			title: loaderData
-				? `共通候補 — ${loaderData.event.title} | vacaro`
-				: "共通候補 | vacaro",
-		},
-	];
+	return createPageMeta(
+		loaderData
+			? `共通候補 — ${loaderData.event.title} | vacaro`
+			: "共通候補 | vacaro",
+	);
 }
 export async function clientLoader({
 	params,
@@ -136,7 +135,7 @@ export async function clientAction({
 		if (intent === "confirm") {
 			const confirmationDate = String(formData.get("confirmation_date") ?? "");
 			const confirmationTime = String(formData.get("confirmation_time") ?? "");
-			const timeZone = String(formData.get("time_zone") ?? "Asia/Tokyo");
+			const timeZone = String(formData.get("time_zone") ?? "UTC");
 			const validDate = /^\d{4}-\d{2}-\d{2}$/.test(confirmationDate);
 			const validTime = isTimeValue(confirmationTime);
 			const startAt =
@@ -350,7 +349,7 @@ export default function Results({
 	const months = monthKeysBetween(
 		event.window_start_at,
 		event.window_end_at,
-		event.time_zone,
+		user.time_zone,
 	);
 	const initialCandidate =
 		candidates.find(
@@ -359,7 +358,7 @@ export default function Results({
 				candidate.end_at === confirmedEnd,
 		) ?? candidates[0];
 	const initialMonth = initialCandidate
-		? dateParts(initialCandidate.start_at, event.time_zone).key.slice(0, 7)
+		? dateParts(initialCandidate.start_at, user.time_zone).key.slice(0, 7)
 		: months[0];
 	const [activeMonth, setActiveMonth] = useState(initialMonth);
 	const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
@@ -370,11 +369,11 @@ export default function Results({
 		setExpandedDateKey(null);
 	}, [selectionContext]);
 	const activeMonthIndex = months.indexOf(activeMonth);
-	const startDateKey = dateParts(event.window_start_at, event.time_zone).key;
-	const endDateKey = dateParts(event.window_end_at, event.time_zone).key;
+	const startDateKey = dateParts(event.window_start_at, user.time_zone).key;
+	const endDateKey = dateParts(event.window_end_at, user.time_zone).key;
 	const candidatesByDate = new Map<string, Candidate[]>();
 	for (const candidate of candidates) {
-		const key = dateParts(candidate.start_at, event.time_zone).key;
+		const key = dateParts(candidate.start_at, user.time_zone).key;
 		candidatesByDate.set(key, [
 			...(candidatesByDate.get(key) ?? []),
 			candidate,
@@ -496,7 +495,7 @@ export default function Results({
 										{formatDateRange(
 											event.window_start_at,
 											event.window_end_at,
-											event.time_zone,
+											user.time_zone,
 										)}
 									</WeekendText>
 								</strong>
@@ -641,8 +640,8 @@ export default function Results({
 															key={`${interval.start_at}-${interval.end_at}-${interval.available_participant_ids.join("-")}`}
 														>
 															<strong>
-																{timeLabel(interval.start_at, event.time_zone)}
-																〜{timeLabel(interval.end_at, event.time_zone)}
+																{timeLabel(interval.start_at, user.time_zone)}〜
+																{timeLabel(interval.end_at, user.time_zone)}
 															</strong>
 															<span>
 																{interval.available_participant_count}/
@@ -721,8 +720,8 @@ export default function Results({
 												<i />
 												<div>
 													<strong>
-														{timeLabel(interval.start_at, event.time_zone)}〜
-														{timeLabel(interval.end_at, event.time_zone)}
+														{timeLabel(interval.start_at, user.time_zone)}〜
+														{timeLabel(interval.end_at, user.time_zone)}
 													</strong>
 													<small>
 														{interval.available_participant_ids
@@ -780,7 +779,7 @@ export default function Results({
 												{formatDateRange(
 													confirmedStart,
 													confirmedEnd,
-													event.time_zone,
+													user.time_zone,
 												)}
 											</WeekendText>
 										</strong>
@@ -815,7 +814,7 @@ export default function Results({
 										<input
 											type="hidden"
 											name="time_zone"
-											value={event.time_zone}
+											value={user.time_zone}
 										/>
 										<input
 											type="hidden"
@@ -929,7 +928,7 @@ export default function Results({
 															{formatDateRange(
 																interval.start_at,
 																interval.end_at,
-																event.time_zone,
+																user.time_zone,
 															)}
 														</WeekendText>
 													</time>

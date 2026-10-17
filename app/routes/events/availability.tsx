@@ -19,6 +19,7 @@ import {
 	savedCalendarIDs,
 	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/availability";
 
 type TimeRange = { id: string; start: string; end: string };
@@ -57,9 +58,9 @@ function weekendClassName(day: number) {
 }
 
 export function meta({ loaderData }: Route.MetaArgs) {
-	return [
-		{ title: `${loaderData?.event.title ?? "参加可能時間を回答"} | vacaro` },
-	];
+	return createPageMeta(
+		`${loaderData?.event.title ?? "参加可能時間を回答"} | vacaro`,
+	);
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
@@ -143,7 +144,7 @@ export async function clientAction({
 				: (JSON.parse(
 						String(formData.get("intervals") ?? "[]"),
 					) as TimeRange[]);
-		const timeZone = String(formData.get("time_zone") ?? "Asia/Tokyo");
+		const timeZone = String(formData.get("time_zone") ?? "UTC");
 		const intervals = ranges.map((range) => ({
 			start_at: localDateTimeToIso(range.start, timeZone),
 			end_at: localDateTimeToIso(range.end, timeZone),
@@ -409,8 +410,8 @@ export default function AvailabilityPage({
 		() => savedCalendarIDs(calendarOptions.calendars),
 		[calendarOptions.calendars],
 	);
-	const windowStart = localDateTime(event.window_start_at, event.time_zone);
-	const windowEnd = localDateTime(event.window_end_at, event.time_zone);
+	const windowStart = localDateTime(event.window_start_at, user.time_zone);
+	const windowEnd = localDateTime(event.window_end_at, user.time_zone);
 	const dailyStartMinute = minutes(windowStart);
 	const dailyEndMinute = windowEnd.endsWith("T00:00")
 		? DAY_MINUTES
@@ -436,8 +437,8 @@ export default function AvailabilityPage({
 	const [ranges, setRanges] = useState<TimeRange[]>(() =>
 		availability.intervals.map((interval) => ({
 			id: interval.id ?? crypto.randomUUID(),
-			start: localDateTime(interval.start_at, event.time_zone),
-			end: localDateTime(interval.end_at, event.time_zone),
+			start: localDateTime(interval.start_at, user.time_zone),
+			end: localDateTime(interval.end_at, user.time_zone),
 		})),
 	);
 	const [entryMode, setEntryMode] = useState<EntryMode>("available");
@@ -482,7 +483,7 @@ export default function AvailabilityPage({
 		if (actionData?.kind === "preview") {
 			return clipCalendarIntervals(
 				actionData.intervals,
-				event.time_zone,
+				user.time_zone,
 				importWindow,
 				windowStart,
 				windowEnd,
@@ -491,12 +492,12 @@ export default function AvailabilityPage({
 		if (actionData?.kind === "copied") {
 			return actionData.intervals.map((interval) => ({
 				id: interval.id ?? crypto.randomUUID(),
-				start: localDateTime(interval.start_at, event.time_zone),
-				end: localDateTime(interval.end_at, event.time_zone),
+				start: localDateTime(interval.start_at, user.time_zone),
+				end: localDateTime(interval.end_at, user.time_zone),
 			}));
 		}
 		return [];
-	}, [actionData, event.time_zone, importWindow, windowEnd, windowStart]);
+	}, [actionData, user.time_zone, importWindow, windowEnd, windowStart]);
 
 	useEffect(() => {
 		if (actionData?.kind !== "preview" && actionData?.kind !== "copied") return;
@@ -668,7 +669,7 @@ export default function AvailabilityPage({
 								{formatDateRange(
 									source.window_start_at,
 									source.window_end_at,
-									source.time_zone,
+									user.time_zone,
 								)}
 								）
 							</option>
@@ -704,7 +705,7 @@ export default function AvailabilityPage({
 					name="calendar_ids"
 					value={JSON.stringify(selectedCalendarIDs)}
 				/>
-				<input type="hidden" name="time_zone" value={event.time_zone} />
+				<input type="hidden" name="time_zone" value={user.time_zone} />
 				<input type="hidden" name="source_event_id" value={sourceEventID} />
 
 				<div className="schedule-mobile">
@@ -723,7 +724,7 @@ export default function AvailabilityPage({
 										{formatDateRange(
 											event.window_start_at,
 											event.window_end_at,
-											event.time_zone,
+											user.time_zone,
 										)}
 									</WeekendText>
 								</strong>
@@ -1169,7 +1170,7 @@ export default function AvailabilityPage({
 									{formatDateRange(
 										event.window_start_at,
 										event.window_end_at,
-										event.time_zone,
+										user.time_zone,
 									)}
 								</WeekendText>
 							</strong>

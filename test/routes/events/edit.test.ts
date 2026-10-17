@@ -37,7 +37,6 @@ describe("edit event clientAction", () => {
 		);
 		const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
 		expect(body).toMatchObject({
-			time_zone: "Europe/Paris",
 			window_start_at: "2026-07-01T07:00:00.000Z",
 			window_end_at: "2026-07-02T15:00:00.000Z",
 			duration_minutes: 47,

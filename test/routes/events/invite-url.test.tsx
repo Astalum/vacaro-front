@@ -18,7 +18,6 @@ const event = {
 	created_by_user_id: "owner-1",
 	title: "招待URLのテスト",
 	description: null,
-	time_zone: "Asia/Tokyo",
 	window_start_at: "2026-10-20T00:00:00Z",
 	window_end_at: "2026-10-20T09:00:00Z",
 	duration_minutes: 60,
@@ -63,11 +62,13 @@ describe("event invite URL loading", () => {
 	it("does not reissue a token when the manage screen has no locally saved URL", async () => {
 		const fetchMock = vi
 			.fn()
-			.mockImplementation((input: string | URL | Request) =>
-				String(input).endsWith("/participants")
-					? response([])
-					: response(event),
-			);
+			.mockImplementation((input: string | URL | Request) => {
+				const path = String(input);
+				if (path.endsWith("/participants")) return response([]);
+				if (path.endsWith("/me"))
+					return response({ id: "owner-1", time_zone: "Asia/Tokyo" });
+				return response(event);
+			});
 		vi.stubGlobal("fetch", fetchMock);
 
 		const result = await manageLoader({
@@ -75,7 +76,7 @@ describe("event invite URL loading", () => {
 		} as Parameters<typeof manageLoader>[0]);
 
 		expect(result.inviteUrl).toBeNull();
-		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(fetchMock).toHaveBeenCalledTimes(3);
 		expect(fetchMock.mock.calls).not.toContainEqual([
 			`/api/v1/events/${event.id}/invite-token`,
 			expect.anything(),
@@ -83,7 +84,13 @@ describe("event invite URL loading", () => {
 	});
 
 	it("does not reissue a token when the edit screen has no locally saved URL", async () => {
-		const fetchMock = vi.fn().mockImplementation(() => response(event));
+		const fetchMock = vi
+			.fn()
+			.mockImplementation((input) =>
+				String(input).endsWith("/me")
+					? response({ id: "owner-1", time_zone: "Asia/Tokyo" })
+					: response(event),
+			);
 		vi.stubGlobal("fetch", fetchMock);
 
 		const result = await editLoader({
@@ -91,12 +98,18 @@ describe("event invite URL loading", () => {
 		} as Parameters<typeof editLoader>[0]);
 
 		expect(result.inviteUrl).toBeNull();
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(fetchMock.mock.calls[0][0]).toBe(`/api/v1/events/${event.id}`);
 	});
 
 	it("does not reissue a token when the created screen is opened directly", async () => {
-		const fetchMock = vi.fn().mockImplementation(() => response(event));
+		const fetchMock = vi
+			.fn()
+			.mockImplementation((input) =>
+				String(input).endsWith("/me")
+					? response({ id: "owner-1", time_zone: "Asia/Tokyo" })
+					: response(event),
+			);
 		vi.stubGlobal("fetch", fetchMock);
 
 		const result = await createdLoader({
@@ -105,7 +118,7 @@ describe("event invite URL loading", () => {
 		} as Parameters<typeof createdLoader>[0]);
 
 		expect(result.inviteUrl).toBeNull();
-		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(fetchMock.mock.calls[0][0]).toBe(`/api/v1/events/${event.id}`);
 	});
 });

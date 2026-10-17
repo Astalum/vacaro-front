@@ -26,15 +26,16 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
-	COMMON_TIME_ZONES,
 	type Event,
 	isoToLocalDateTime,
 	isValidTimeZone,
 	localDateTimeToIso,
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
+	type User,
 } from "~/lib/api";
 import { validateEventForm } from "~/lib/event-form-validation";
+import { createPageMeta } from "~/lib/meta";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/edit";
 
@@ -46,22 +47,22 @@ const controlIds: Record<string, string> = {
 	daily_end_time: "edit-daily-end-time",
 	response_deadline_at: "edit-deadline",
 	duration_minutes: "edit-duration",
-	time_zone: "edit-timezone",
 };
 
 export function meta({ loaderData }: Route.MetaArgs) {
-	return [
-		{
-			title: loaderData
-				? `編集 — ${loaderData.event.title} | vacaro`
-				: "イベントを編集 | vacaro",
-		},
-	];
+	return createPageMeta(
+		loaderData
+			? `編集 — ${loaderData.event.title} | vacaro`
+			: "イベントを編集 | vacaro",
+	);
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	const event = await apiRequest<Event>(`/events/${params.eventId}`);
+	const [event, user] = await Promise.all([
+		apiRequest<Event>(`/events/${params.eventId}`),
+		apiRequest<User>("/me"),
+	]);
 	const inviteUrl = savedEventInviteUrl(event.id);
-	return { event, inviteUrl };
+	return { event, inviteUrl, timeZone: user.time_zone };
 }
 clientLoader.hydrate = true as const;
 export async function clientAction({
@@ -143,7 +144,6 @@ export async function clientAction({
 			body: JSON.stringify({
 				title: String(formData.get("title") ?? ""),
 				description: String(formData.get("description") ?? "") || null,
-				time_zone: timeZone,
 				window_start_at: windowStartIso,
 				window_end_at: windowEndIso,
 				duration_minutes: durationMinutes,
@@ -169,7 +169,7 @@ export function HydrateFallback() {
 }
 
 export default function EditEvent({
-	loaderData: { event, inviteUrl },
+	loaderData: { event, inviteUrl, timeZone },
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
@@ -203,7 +203,7 @@ export default function EditEvent({
 				<Icon name="info" size={17} />
 				<span>
 					<strong>調整期間を変更するときはご注意ください</strong>
-					登録済みの参加可能時間を除外する変更はAPIによって拒否されます。
+					回答済みの時間を範囲外にする変更は保存できません。
 				</span>
 			</div>
 			{actionData && "success" in actionData && (
@@ -257,46 +257,23 @@ export default function EditEvent({
 							defaultValue={event.description ?? ""}
 						/>
 					</div>
-					<div className="two-cols">
-						<div className="field">
-							<label htmlFor="edit-deadline">回答期限</label>
-							<DateTimePicker
-								id="edit-deadline"
-								name="response_deadline_at"
-								{...inputProps("response_deadline_at", "edit-deadline")}
-								onValueChange={() => clearError("response_deadline_at")}
-								defaultValue={isoToLocalDateTime(
-									event.response_deadline_at,
-									event.time_zone,
-								)}
-							/>
-							<FieldError id="edit-deadline-error">
-								{errors.response_deadline_at}
-							</FieldError>
-						</div>
-						<div className="field">
-							<label htmlFor="edit-timezone">タイムゾーン</label>
-							<input
-								id="edit-timezone"
-								name="time_zone"
-								{...inputProps("time_zone", "edit-timezone")}
-								onChange={() => clearError("time_zone")}
-								list="edit-event-time-zones"
-								defaultValue={event.time_zone}
-								placeholder="例：America/New_York"
-								required
-							/>
-							<FieldError id="edit-timezone-error">
-								{errors.time_zone}
-							</FieldError>
-							<datalist id="edit-event-time-zones">
-								{COMMON_TIME_ZONES.map((timeZone) => (
-									<option key={timeZone} value={timeZone} />
-								))}
-							</datalist>
-							<small>候補以外のIANAタイムゾーンも入力できます。</small>
-						</div>
+					<div className="field">
+						<label htmlFor="edit-deadline">回答期限</label>
+						<DateTimePicker
+							id="edit-deadline"
+							name="response_deadline_at"
+							{...inputProps("response_deadline_at", "edit-deadline")}
+							onValueChange={() => clearError("response_deadline_at")}
+							defaultValue={isoToLocalDateTime(
+								event.response_deadline_at,
+								timeZone,
+							)}
+						/>
+						<FieldError id="edit-deadline-error">
+							{errors.response_deadline_at}
+						</FieldError>
 					</div>
+					<input type="hidden" name="time_zone" value={timeZone} />
 				</section>
 				<section className="form-section">
 					<div className="form-section-title">
@@ -319,7 +296,7 @@ export default function EditEvent({
 								}}
 								defaultValue={isoToLocalDateTime(
 									event.window_start_at,
-									event.time_zone,
+									timeZone,
 								).slice(0, 10)}
 								required
 							/>
@@ -337,7 +314,7 @@ export default function EditEvent({
 								onValueChange={() => clearError("window_end_date")}
 								defaultValue={isoToLocalDateTime(
 									event.window_end_at,
-									event.time_zone,
+									timeZone,
 								).slice(0, 10)}
 								required
 							/>
@@ -349,7 +326,7 @@ export default function EditEvent({
 					<div className="daily-window-settings">
 						<div>
 							<strong>毎日の回答受付時間</strong>
-							<p>参加者は各日、この時間帯の中で回答できます。</p>
+							<p>参加者はこの時間帯の中で回答できます。</p>
 						</div>
 						<div className="daily-window-fields">
 							<div className="field">
@@ -364,7 +341,7 @@ export default function EditEvent({
 									}}
 									defaultValue={isoToLocalDateTime(
 										event.window_start_at,
-										event.time_zone,
+										timeZone,
 									).slice(11, 16)}
 									required
 								/>
@@ -382,7 +359,7 @@ export default function EditEvent({
 									onValueChange={() => clearError("daily_end_time")}
 									defaultValue={isoToLocalDateTime(
 										event.window_end_at,
-										event.time_zone,
+										timeZone,
 									).slice(11, 16)}
 									required
 								/>

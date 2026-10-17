@@ -1,12 +1,10 @@
 import { Link, redirect, useSearchParams } from "react-router";
 import { AppHeader, Icon, SiteFooter } from "~/components/app";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/home";
 
 export function meta() {
-	return [
-		{ title: "Vacaro — みんなの予定が、ひとつになる" },
-		{ name: "description", content: "シンプルな日程調整アプリ" },
-	];
+	return createPageMeta();
 }
 
 export function loader({ request }: Route.LoaderArgs) {
@@ -23,8 +21,7 @@ export default function Home() {
 		searchParams.get("google_login") === "success"
 			? {
 					kind: "success" as const,
-					message:
-						"Googleログインが完了しました。現在のイベントと回答を引き継いでいます。",
+					message: "Googleログインが完了しました。",
 				}
 			: searchParams.get("google_login") === "error"
 				? {

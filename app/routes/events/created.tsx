@@ -17,25 +17,30 @@ import {
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
 	saveEventInviteUrl,
+	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/created";
 
 export function meta() {
-	return [{ title: "イベントを作成しました | vacaro" }];
+	return createPageMeta("イベントを作成しました | vacaro");
 }
 
 export async function clientLoader({
 	params,
 	request,
 }: Route.ClientLoaderArgs) {
-	const event = await apiRequest<Event>(`/events/${params.eventId}`);
+	const [event, user] = await Promise.all([
+		apiRequest<Event>(`/events/${params.eventId}`),
+		apiRequest<User>("/me"),
+	]);
 	let inviteUrl =
 		new URL(request.url).searchParams.get("invite_url") ??
 		savedEventInviteUrl(event.id);
 	if (inviteUrl) {
 		inviteUrl = saveEventInviteUrl(event.id, inviteUrl);
 	}
-	return { event, inviteUrl };
+	return { event, inviteUrl, timeZone: user.time_zone };
 }
 clientLoader.hydrate = true as const;
 
@@ -78,7 +83,7 @@ export default function Created({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { event, inviteUrl } = loaderData;
+	const { event, inviteUrl, timeZone } = loaderData;
 	const navigation = useNavigation();
 	const reissuingInviteUrl =
 		navigation.state === "submitting" &&
@@ -116,7 +121,7 @@ export default function Created({
 											{formatDateRange(
 												event.window_start_at,
 												event.window_end_at,
-												event.time_zone,
+												timeZone,
 											)}
 										</WeekendText>
 									</strong>

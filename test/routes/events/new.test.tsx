@@ -242,7 +242,6 @@ describe("NewEvent validation", () => {
 
 		const body = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
 		expect(body).toMatchObject({
-			time_zone: "America/New_York",
 			window_start_at: "2026-07-01T13:00:00.000Z",
 			window_end_at: "2026-07-02T21:00:00.000Z",
 			duration_minutes: 37,

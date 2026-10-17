@@ -12,10 +12,11 @@ import {
 	minutesLabel,
 	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/index";
 
 export function meta() {
-	return [{ title: "イベント一覧 | vacaro" }];
+	return createPageMeta("イベント一覧 | vacaro");
 }
 type EventsPageMeta = { next_cursor: string | null };
 
@@ -32,6 +33,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 		return {
 			events: page.data,
 			currentUserId: user.id,
+			timeZone: user.time_zone,
 			nextCursor: page.meta?.next_cursor ?? null,
 			requestedCursor: cursor,
 			error: null,
@@ -42,6 +44,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 		return {
 			events: [] as Event[],
 			currentUserId: user.id,
+			timeZone: user.time_zone,
 			nextCursor: null,
 			requestedCursor: cursor,
 			error: apiErrorData(error),
@@ -83,10 +86,12 @@ export function HydrateFallback() {
 export function EventList({
 	events,
 	currentUserId,
+	timeZone,
 	onEventLeft,
 }: {
 	events: Event[];
 	currentUserId: string;
+	timeZone: string;
 	onEventLeft?: (eventID: string) => void;
 }) {
 	return (
@@ -96,6 +101,7 @@ export function EventList({
 					key={event.id}
 					event={event}
 					currentUserId={currentUserId}
+					timeZone={timeZone}
 					onEventLeft={onEventLeft}
 				/>
 			))}
@@ -106,10 +112,12 @@ export function EventList({
 function EventListItem({
 	event,
 	currentUserId,
+	timeZone,
 	onEventLeft,
 }: {
 	event: Event;
 	currentUserId: string;
+	timeZone: string;
 	onEventLeft?: (eventID: string) => void;
 }) {
 	const leaveFetcher = useFetcher<typeof clientAction>();
@@ -145,13 +153,13 @@ function EventListItem({
 						<span className="event-list-period-text">
 							<span>
 								<WeekendText>
-									{formatDateTime(event.window_start_at, event.time_zone)}
+									{formatDateTime(event.window_start_at, timeZone)}
 								</WeekendText>
 							</span>
 							<span className="event-list-period-end">
 								<span>〜</span>
 								<WeekendText>
-									{formatDateTime(event.window_end_at, event.time_zone)}
+									{formatDateTime(event.window_end_at, timeZone)}
 								</WeekendText>
 							</span>
 						</span>
@@ -244,7 +252,7 @@ function EventListItem({
 }
 
 export default function EventsIndex({ loaderData }: Route.ComponentProps) {
-	const { currentUserId } = loaderData;
+	const { currentUserId, timeZone } = loaderData;
 	const fetcher = useFetcher<typeof clientLoader>();
 	const [events, setEvents] = useState(loaderData.events);
 	const [nextCursor, setNextCursor] = useState(loaderData.nextCursor);
@@ -310,6 +318,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							<EventList
 								events={acceptingEvents}
 								currentUserId={currentUserId}
+								timeZone={timeZone}
 								onEventLeft={removeEvent}
 							/>
 						) : (
@@ -330,6 +339,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							<EventList
 								events={closedEvents}
 								currentUserId={currentUserId}
+								timeZone={timeZone}
 								onEventLeft={removeEvent}
 							/>
 						) : (

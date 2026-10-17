@@ -19,6 +19,7 @@ describe("account clientLoader", () => {
 			id: "user-1",
 			account_type: "registered",
 			display_name: "User",
+			time_zone: "Asia/Tokyo",
 		} as User;
 		vi.stubGlobal(
 			"fetch",

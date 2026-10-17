@@ -11,6 +11,7 @@ export interface User {
 	id: string;
 	account_type: AccountType;
 	display_name: string;
+	time_zone: string;
 	email: string | null;
 	guest_expires_at: string | null;
 	created_at: string;
@@ -22,7 +23,6 @@ export interface Event {
 	created_by_user_id?: string;
 	title: string;
 	description: string | null;
-	time_zone: string;
 	window_start_at: string;
 	window_end_at: string;
 	duration_minutes: number;
@@ -372,7 +372,7 @@ export function apiErrorData(error: unknown): ApiErrorBody {
 	};
 }
 
-export function formatDateTime(value: string, timeZone = "Asia/Tokyo") {
+export function formatDateTime(value: string, timeZone = "UTC") {
 	return new Intl.DateTimeFormat("ja-JP", {
 		timeZone,
 		month: "long",
@@ -383,11 +383,7 @@ export function formatDateTime(value: string, timeZone = "Asia/Tokyo") {
 	}).format(new Date(value));
 }
 
-export function formatDateRange(
-	start: string,
-	end: string,
-	timeZone = "Asia/Tokyo",
-) {
+export function formatDateRange(start: string, end: string, timeZone = "UTC") {
 	return `${formatDateTime(start, timeZone)} 〜 ${formatDateTime(end, timeZone)}`;
 }
 
@@ -431,6 +427,11 @@ export function isValidTimeZone(timeZone: string) {
 	} catch {
 		return false;
 	}
+}
+
+export function browserTimeZone() {
+	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	return timeZone && isValidTimeZone(timeZone) ? timeZone : "UTC";
 }
 
 function localDateTimeParts(value: string) {
@@ -487,7 +488,7 @@ function zonedParts(date: Date, timeZone: string) {
 
 export function localDateTimeToIso(
 	value: FormDataEntryValue | null,
-	timeZone = "Asia/Tokyo",
+	timeZone = "UTC",
 ) {
 	if (typeof value !== "string" || !value) return null;
 	const parsed = localDateTimeParts(value);
@@ -521,10 +522,7 @@ export function localDateTimeToIso(
 	return date.toISOString();
 }
 
-export function isoToLocalDateTime(
-	value: string | null,
-	timeZone = "Asia/Tokyo",
-) {
+export function isoToLocalDateTime(value: string | null, timeZone = "UTC") {
 	if (!value || !isValidTimeZone(timeZone)) return "";
 	const parts = zonedParts(new Date(value), timeZone);
 	if (parts.some((part) => !Number.isFinite(part))) return "";

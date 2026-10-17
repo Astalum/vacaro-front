@@ -13,16 +13,15 @@ import {
 	type SchedulingGroup,
 	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/confirmed";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-	return [
-		{
-			title: loaderData
-				? `日程が決まりました — ${loaderData.event.title} | vacaro`
-				: "確定した日程 | vacaro",
-		},
-	];
+	return createPageMeta(
+		loaderData
+			? `日程が決まりました — ${loaderData.event.title} | vacaro`
+			: "確定した日程 | vacaro",
+	);
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const event = await apiRequest<Event>(`/events/${params.eventId}`);
@@ -150,7 +149,7 @@ export default function Confirmed({
 									{formatDateRange(
 										event.confirmed_start_at,
 										event.confirmed_end_at,
-										event.time_zone,
+										user.time_zone,
 									)}
 								</WeekendText>
 							</strong>
@@ -205,7 +204,7 @@ export default function Confirmed({
 										{formatDateRange(
 											group.confirmed_start_at,
 											group.confirmed_end_at,
-											event.time_zone,
+											user.time_zone,
 										)}
 									</WeekendText>
 								</strong>
@@ -287,7 +286,7 @@ export default function Confirmed({
 					<div>
 						<small>
 							{new Intl.DateTimeFormat("en-US", {
-								timeZone: event.time_zone,
+								timeZone: user.time_zone,
 								month: "short",
 							})
 								.format(start)
@@ -295,7 +294,7 @@ export default function Confirmed({
 						</small>
 						<strong>
 							{new Intl.DateTimeFormat("ja-JP", {
-								timeZone: event.time_zone,
+								timeZone: user.time_zone,
 								day: "numeric",
 							}).format(start)}
 						</strong>
@@ -305,7 +304,7 @@ export default function Confirmed({
 						<b>
 							<WeekendText>
 								{new Intl.DateTimeFormat("ja-JP", {
-									timeZone: event.time_zone,
+									timeZone: user.time_zone,
 									weekday: "long",
 								}).format(start)}
 							</WeekendText>
@@ -315,7 +314,7 @@ export default function Confirmed({
 								{formatDateRange(
 									event.confirmed_start_at as string,
 									event.confirmed_end_at as string,
-									event.time_zone,
+									user.time_zone,
 								)
 									.split(" ")
 									.slice(-3)
@@ -331,7 +330,7 @@ export default function Confirmed({
 							{formatDateRange(
 								event.confirmed_start_at as string,
 								event.confirmed_end_at as string,
-								event.time_zone,
+								user.time_zone,
 							)}
 						</WeekendText>
 					</p>

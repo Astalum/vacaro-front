@@ -5,6 +5,7 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
+	browserTimeZone,
 	type Event,
 	eventDisplayStatus,
 	formatDateRange,
@@ -12,20 +13,30 @@ import {
 	type Participant,
 	type User,
 } from "~/lib/api";
+import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/join";
 
 export function meta({ loaderData }: Route.MetaArgs) {
-	return [
-		{
-			title: loaderData
-				? `招待 — ${loaderData.title} | vacaro`
-				: "イベントへの招待 | vacaro",
-		},
-	];
+	return createPageMeta(
+		loaderData
+			? `招待 — ${loaderData.event.title} | vacaro`
+			: "イベントへの招待 | vacaro",
+	);
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
-	return apiRequest<Event>(`/invitations/${params.inviteToken}`);
+	const event = await apiRequest<Event>(`/invitations/${params.inviteToken}`);
+	let user: User | null = null;
+	try {
+		user = await apiRequest<User>("/me");
+	} catch (error) {
+		if (!(error instanceof ApiError) || error.status !== 401) throw error;
+	}
+	return {
+		event,
+		timeZone: user?.time_zone ?? browserTimeZone(),
+		displayName: user?.display_name ?? "",
+	};
 }
 clientLoader.hydrate = true as const;
 
@@ -35,6 +46,7 @@ export async function clientAction({
 }: Route.ClientActionArgs) {
 	const formData = await request.formData();
 	const displayName = String(formData.get("display_name") ?? "").trim();
+	const timeZone = String(formData.get("time_zone") ?? "UTC");
 	try {
 		const event = await apiRequest<Event>(`/invitations/${params.inviteToken}`);
 		try {
@@ -42,13 +54,19 @@ export async function clientAction({
 			if (me.display_name !== displayName)
 				await apiRequest<User>("/me", {
 					method: "PATCH",
-					body: JSON.stringify({ display_name: displayName }),
+					body: JSON.stringify({
+						display_name: displayName,
+						time_zone: me.time_zone,
+					}),
 				});
 		} catch (error) {
 			if (!(error instanceof ApiError) || error.status !== 401) throw error;
 			await apiRequest<User>("/guest-sessions", {
 				method: "POST",
-				body: JSON.stringify({ display_name: displayName }),
+				body: JSON.stringify({
+					display_name: displayName,
+					time_zone: timeZone,
+				}),
 			});
 		}
 		try {
@@ -78,7 +96,7 @@ export function HydrateFallback() {
 }
 
 export default function JoinEvent({
-	loaderData: event,
+	loaderData: { event, timeZone, displayName },
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
@@ -117,7 +135,7 @@ export default function JoinEvent({
 								{formatDateRange(
 									event.window_start_at,
 									event.window_end_at,
-									event.time_zone,
+									timeZone,
 								)}
 							</WeekendText>
 						</dd>
@@ -140,7 +158,7 @@ export default function JoinEvent({
 									? formatDateRange(
 											event.response_deadline_at,
 											event.response_deadline_at,
-											event.time_zone,
+											timeZone,
 										).split(" 〜 ")[0]
 									: "指定なし"}
 							</WeekendText>
@@ -149,6 +167,7 @@ export default function JoinEvent({
 				</dl>
 			</section>
 			<Form className="join-form" method="post">
+				<input type="hidden" name="time_zone" value={timeZone} />
 				<div>
 					<h2>このイベントに参加する</h2>
 					<p>表示名を入力すると、空いている時間を回答できます。</p>
@@ -165,6 +184,7 @@ export default function JoinEvent({
 					<input
 						id="join-name"
 						name="display_name"
+						defaultValue={displayName}
 						placeholder="例）高橋 花子"
 						required
 						minLength={1}
