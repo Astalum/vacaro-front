@@ -1,4 +1,11 @@
-import { Link, redirect, useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
+import {
+	Link,
+	redirect,
+	useLocation,
+	useNavigate,
+	useSearchParams,
+} from "react-router";
 import { AppHeader, Icon, SiteFooter } from "~/components/app";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/home";
@@ -16,14 +23,30 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Home() {
-	const [searchParams, setSearchParams] = useSearchParams();
+	const [searchParams] = useSearchParams();
+	const { hash } = useLocation();
+	const navigate = useNavigate();
+	const [loginSucceeded, setLoginSucceeded] = useState(false);
+	const googleLogin = searchParams.get("google_login");
+
+	useEffect(() => {
+		if (googleLogin !== "success") return;
+		setLoginSucceeded(true);
+		const nextParams = new URLSearchParams(searchParams);
+		nextParams.delete("google_login");
+		void navigate(
+			{ search: nextParams.toString(), hash },
+			{ replace: true, preventScrollReset: true },
+		);
+	}, [googleLogin, searchParams, hash, navigate]);
+
 	const notice =
-		searchParams.get("google_login") === "success"
+		googleLogin === "success" || loginSucceeded
 			? {
 					kind: "success" as const,
 					message: "Googleログインが完了しました。",
 				}
-			: searchParams.get("google_login") === "error"
+			: googleLogin === "error"
 				? {
 						kind: "error" as const,
 						message:
@@ -45,7 +68,16 @@ export default function Home() {
 						<span>{notice.message}</span>
 						<button
 							type="button"
-							onClick={() => setSearchParams({}, { replace: true })}
+							onClick={() => {
+								setLoginSucceeded(false);
+								const nextParams = new URLSearchParams(searchParams);
+								nextParams.delete("google_login");
+								nextParams.delete("logout");
+								void navigate(
+									{ search: nextParams.toString(), hash },
+									{ replace: true, preventScrollReset: true },
+								);
+							}}
 						>
 							閉じる
 						</button>
