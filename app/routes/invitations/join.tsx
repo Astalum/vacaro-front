@@ -9,8 +9,9 @@ import {
 	type Event,
 	eventDisplayStatus,
 	formatDateRange,
+	type JoinedParticipant,
 	minutesLabel,
-	type Participant,
+	saveResponseEditUrl,
 	type User,
 } from "~/lib/api";
 import { createPageMeta } from "~/lib/meta";
@@ -70,10 +71,13 @@ export async function clientAction({
 			});
 		}
 		try {
-			await apiRequest<Participant>(
+			const participant = await apiRequest<JoinedParticipant>(
 				`/invitations/${params.inviteToken}/participants`,
 				{ method: "POST", body: JSON.stringify({ display_name: displayName }) },
 			);
+			if (participant.response_edit_url) {
+				saveResponseEditUrl(event.id, participant.response_edit_url);
+			}
 		} catch (error) {
 			if (!(error instanceof ApiError) || error.code !== "already_joined")
 				throw error;

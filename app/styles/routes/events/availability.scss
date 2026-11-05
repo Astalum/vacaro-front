@@ -176,6 +176,58 @@
 	opacity: 0.55;
 	cursor: default;
 }
+.schedule-response-link {
+	@include schedule-surface-card;
+	display: grid;
+	gap: 8px;
+	padding: 12px;
+}
+.schedule-response-link > strong {
+	color: #254f44;
+	font-size: 13px;
+}
+.schedule-response-link > p,
+.schedule-response-link > small {
+	margin: 0;
+	color: #687b75;
+	font-size: 12px;
+	line-height: 1.55;
+}
+.schedule-response-link-value {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 7px;
+}
+.schedule-response-link input,
+.schedule-response-link button {
+	min-width: 0;
+	min-height: 38px;
+	border: 1px solid #b9dace;
+	border-radius: 8px;
+	background: #fff;
+	color: #315e52;
+	font-size: 12px;
+	font-weight: 700;
+}
+.schedule-response-link input {
+	padding: 5px 8px;
+}
+.schedule-response-link button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 5px 10px;
+	cursor: pointer;
+}
+.schedule-response-link button:hover:not(:disabled) {
+	border-color: #65b99d;
+	background: #edf9f4;
+}
+.schedule-response-link button:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
 .schedule-main > .schedule-calendar {
 	@include schedule-surface-card;
 	border-radius: 0;
@@ -892,6 +944,7 @@
 }
 .schedule-sidebar > .schedule-guide,
 .schedule-sidebar > .schedule-copy-control,
+.schedule-sidebar > .schedule-response-link,
 .schedule-sidebar > .schedule-editor,
 .schedule-sidebar > .persistent-invite-dock,
 .schedule-sidebar > .schedule-message,

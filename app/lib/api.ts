@@ -63,6 +63,10 @@ export interface Participant {
 	updated_at: string;
 }
 
+export interface JoinedParticipant extends Participant {
+	response_edit_url?: string;
+}
+
 export interface SchedulingGroup {
 	id: string;
 	event_id: string;
@@ -118,6 +122,44 @@ export const CALENDAR_AVAILABILITY_WINDOW_STORAGE_KEY =
 	"vacaro.calendar-availability-window";
 export const EVENT_INVITE_URLS_STORAGE_KEY = "vacaro.event-invite-urls";
 export const EVENT_INVITE_URL_UPDATED_EVENT = "vacaro:invite-url-updated";
+export const RESPONSE_EDIT_URLS_STORAGE_KEY = "vacaro.response-edit-urls";
+
+export function savedResponseEditUrl(eventID: string) {
+	try {
+		const stored = window.localStorage.getItem(RESPONSE_EDIT_URLS_STORAGE_KEY);
+		const urls = stored ? (JSON.parse(stored) as unknown) : null;
+		if (
+			urls &&
+			typeof urls === "object" &&
+			eventID in urls &&
+			typeof (urls as Record<string, unknown>)[eventID] === "string"
+		) {
+			return (urls as Record<string, string>)[eventID];
+		}
+	} catch {
+		// The edit URL can be reissued while the current response session is valid.
+	}
+	return null;
+}
+
+export function saveResponseEditUrl(eventID: string, responseEditUrl: string) {
+	try {
+		const stored = window.localStorage.getItem(RESPONSE_EDIT_URLS_STORAGE_KEY);
+		const parsed = stored ? (JSON.parse(stored) as unknown) : null;
+		const urls =
+			parsed && typeof parsed === "object"
+				? (parsed as Record<string, string>)
+				: {};
+		urls[eventID] = responseEditUrl;
+		window.localStorage.setItem(
+			RESPONSE_EDIT_URLS_STORAGE_KEY,
+			JSON.stringify(urls),
+		);
+	} catch {
+		// The URL remains available in the current action result.
+	}
+	return responseEditUrl;
+}
 
 export function savedEventInviteUrl(eventID: string) {
 	try {

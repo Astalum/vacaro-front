@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	clientAction,
+	clientLoader,
 	invertRangesForWindow,
 } from "~/routes/events/availability";
 
@@ -11,7 +12,7 @@ describe("availability clientAction", () => {
 		{ intent: "save", expectedCount: 1 },
 		{ intent: "none", expectedCount: 0 },
 	])(
-		"redirects to the event list after $intent succeeds",
+		"reports success after $intent succeeds",
 		async ({ intent, expectedCount }) => {
 			const fetchMock = vi.fn().mockResolvedValue(
 				new Response(
@@ -35,7 +36,7 @@ describe("availability clientAction", () => {
 				]),
 			);
 
-			const response = await clientAction({
+			const result = await clientAction({
 				params: { eventId: "event-1" },
 				request: new Request("http://localhost/events/event-1/availability", {
 					method: "POST",
@@ -43,15 +44,43 @@ describe("availability clientAction", () => {
 				}),
 			} as never);
 
-			expect(response).toBeInstanceOf(Response);
-			expect((response as Response).status).toBe(302);
-			expect((response as Response).headers.get("Location")).toBe("/events");
+			expect(result).toEqual({ kind: "saved" });
 			const request = fetchMock.mock.calls[0];
 			expect(request[0]).toBe("/api/v1/events/event-1/my-availability");
 			const body = JSON.parse(String(request[1]?.body));
 			expect(body.intervals).toHaveLength(expectedCount);
 		},
 	);
+
+	it("issues and saves a response edit link", async () => {
+		const responseEditUrl =
+			"https://vacaro.test/responses/edit#abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(
+				JSON.stringify({ data: { response_edit_url: responseEditUrl } }),
+				{
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				},
+			),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "issue-response-edit-link");
+
+		const result = await clientAction({
+			params: { eventId: "event-1" },
+			request: new Request("http://localhost/events/event-1/availability", {
+				method: "POST",
+				body: formData,
+			}),
+		} as never);
+
+		expect(fetchMock.mock.calls[0][0]).toBe(
+			"/api/v1/events/event-1/response-edit-link",
+		);
+		expect(result).toEqual({ kind: "response-link", responseEditUrl });
+	});
 
 	it("copies an answer from another event", async () => {
 		const intervals = [
@@ -188,5 +217,44 @@ describe("invertRangesForWindow", () => {
 		expect(restored.map(({ start, end }) => ({ start, end }))).toEqual([
 			{ start: original[0].start, end: original[0].end },
 		]);
+	});
+});
+
+describe("availability clientLoader response identity", () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("uses the event response user when a different account is signed in", async () => {
+		const responseUser = {
+			id: "response-guest",
+			account_type: "guest",
+			time_zone: "Asia/Tokyo",
+		};
+		const fetchMock = vi
+			.fn<typeof fetch>()
+			.mockImplementation(async (input) => {
+				const path = String(input);
+				let data: unknown = [];
+				if (path.endsWith("/response-user")) data = responseUser;
+				else if (path.endsWith("/me"))
+					data = {
+						id: "other-account",
+						account_type: "registered",
+						time_zone: "America/New_York",
+					};
+				else if (path.endsWith("/calendars")) data = { calendars: [] };
+				else if (path.endsWith("/my-availability"))
+					data = { response_status: "pending", intervals: [] };
+				else if (path.endsWith("/event-1"))
+					data = { id: "event-1", title: "Event" };
+				return new Response(JSON.stringify({ data }));
+			});
+		vi.stubGlobal("fetch", fetchMock);
+		const loaded = await clientLoader({
+			params: { eventId: "event-1" },
+		} as never);
+		expect(loaded.user).toEqual(responseUser);
+		expect(
+			fetchMock.mock.calls.some(([input]) => String(input).endsWith("/me")),
+		).toBe(false);
 	});
 });

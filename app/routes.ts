@@ -14,5 +14,6 @@ export default [
 	route("events/:eventId/edit", "routes/events/edit.tsx"),
 	route("events/:eventId/confirmed", "routes/events/confirmed.tsx"),
 	route("invitations/:inviteToken", "routes/invitations/join.tsx"),
+	route("responses/edit", "routes/responses/edit.tsx"),
 	route("*", "routes/not-found.tsx"),
 ] satisfies RouteConfig;

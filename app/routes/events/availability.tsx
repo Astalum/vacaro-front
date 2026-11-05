@@ -1,5 +1,5 @@
 import { type PointerEvent, useEffect, useMemo, useState } from "react";
-import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { data, Form, Link, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
 import { ValidationMessage } from "~/components/ui/validation-message";
@@ -17,6 +17,8 @@ import {
 	minutesLabel,
 	savedCalendarAvailabilityWindow,
 	savedCalendarIDs,
+	savedResponseEditUrl,
+	saveResponseEditUrl,
 	type User,
 } from "~/lib/api";
 import { createPageMeta } from "~/lib/meta";
@@ -64,6 +66,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+	const userRequest = apiRequest<User>(
+		`/events/${params.eventId}/response-user`,
+	);
 	const [event, availability, calendarOptions, user, copySources] =
 		await Promise.all([
 			apiRequest<Event>(`/events/${params.eventId}`),
@@ -79,7 +84,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 					calendars: [] as GoogleCalendar[],
 					error: apiErrorData(error),
 				})),
-			apiRequest<User>("/me"),
+			userRequest,
 			listCopySourceEvents(params.eventId)
 				.then((events) => ({ events, error: null }))
 				.catch((error: unknown) => ({
@@ -94,6 +99,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 		user,
 		copySourceEvents: copySources.events,
 		copySourceEventsError: copySources.error,
+		responseEditUrl: savedResponseEditUrl(params.eventId),
 	};
 }
 clientLoader.hydrate = true as const;
@@ -105,6 +111,17 @@ export async function clientAction({
 	const formData = await request.formData();
 	const intent = String(formData.get("intent") ?? "");
 	try {
+		if (intent === "issue-response-edit-link") {
+			const result = await apiRequest<{ response_edit_url: string }>(
+				`/events/${params.eventId}/response-edit-link`,
+				{ method: "POST" },
+			);
+			saveResponseEditUrl(params.eventId, result.response_edit_url);
+			return {
+				kind: "response-link" as const,
+				responseEditUrl: result.response_edit_url,
+			};
+		}
 		if (intent === "copy-availability") {
 			const result = await apiRequest<{
 				response_status: string;
@@ -168,7 +185,7 @@ export async function clientAction({
 			method: "PUT",
 			body: JSON.stringify({ intervals }),
 		});
-		return redirect("/events");
+		return { kind: "saved" as const };
 	} catch (error) {
 		return data(
 			{ kind: "error" as const, error: apiErrorData(error) },
@@ -403,6 +420,7 @@ export default function AvailabilityPage({
 		user,
 		copySourceEvents,
 		copySourceEventsError,
+		responseEditUrl: savedEditUrl,
 	} = loaderData;
 	const navigation = useNavigation();
 	const [calendarWindow] = useState(() => savedCalendarAvailabilityWindow());
@@ -453,6 +471,7 @@ export default function AvailabilityPage({
 		Math.max(0, weekOptions.indexOf(weekStart(selectedDate))),
 	);
 	const [drag, setDrag] = useState<DragState | null>(null);
+	const [copiedEditLink, setCopiedEditLink] = useState(false);
 	const activeWeek = weekOptions[weekIndex] ?? weekStart(firstDate);
 	const days = useMemo(
 		() => Array.from({ length: 7 }, (_, index) => addDays(activeWeek, index)),
@@ -641,6 +660,53 @@ export default function AvailabilityPage({
 	}).format(dateFromKey(selectedDate));
 	const submitting = navigation.state === "submitting";
 	const submittingIntent = navigation.formData?.get("intent");
+	const responseEditUrl =
+		actionData?.kind === "response-link"
+			? actionData.responseEditUrl
+			: savedEditUrl;
+	const renderResponseEditLink = () => (
+		<section className="schedule-response-link">
+			<strong>この回答をあとから変更</strong>
+			<p>
+				再回答用リンクを保存すると、Cookieが失効した後や別の端末からも回答を変更できます。
+			</p>
+			{responseEditUrl && (
+				<div className="schedule-response-link-value">
+					<input
+						aria-label="再回答用リンク"
+						readOnly
+						value={responseEditUrl}
+						onFocus={(inputEvent) => inputEvent.currentTarget.select()}
+					/>
+					<button
+						type="button"
+						onClick={async () => {
+							await navigator.clipboard.writeText(responseEditUrl);
+							setCopiedEditLink(true);
+						}}
+					>
+						<Icon name="copy" size={15} />
+						{copiedEditLink ? "コピー済み" : "コピー"}
+					</button>
+				</div>
+			)}
+			<button
+				type="submit"
+				name="intent"
+				value="issue-response-edit-link"
+				disabled={submitting}
+			>
+				{submittingIntent === "issue-response-edit-link"
+					? "発行しています…"
+					: responseEditUrl
+						? "リンクを再発行"
+						: "再回答用リンクを発行"}
+			</button>
+			{responseEditUrl && (
+				<small>再発行すると以前のリンクは使えなくなります。</small>
+			)}
+		</section>
+	);
 	const renderCopyControl = (scope: "mobile" | "desktop") => (
 		<section className="schedule-copy-control">
 			<strong>別イベントの回答をコピー</strong>
@@ -787,6 +853,7 @@ export default function AvailabilityPage({
 						)}
 					</section>
 					{renderCopyControl("mobile")}
+					{user.account_type === "guest" && renderResponseEditLink()}
 
 					<nav className="schedule-mobile-dates" aria-label="回答する日付">
 						{eventDates.map((key) => {
@@ -1009,6 +1076,14 @@ export default function AvailabilityPage({
 					{actionData?.kind === "copied" && (
 						<p className="schedule-message success">
 							別イベントの回答をコピーしました
+						</p>
+					)}
+					{actionData?.kind === "saved" && (
+						<p className="schedule-message success">回答を保存しました</p>
+					)}
+					{actionData?.kind === "response-link" && (
+						<p className="schedule-message success">
+							再回答用リンクを発行しました
 						</p>
 					)}
 					{actionData?.kind === "error" && (
@@ -1240,6 +1315,7 @@ export default function AvailabilityPage({
 						)}
 					</div>
 					{renderCopyControl("desktop")}
+					{user.account_type === "guest" && renderResponseEditLink()}
 					<section className="schedule-editor">
 						<div className="schedule-editor-heading">
 							<h2>
@@ -1331,6 +1407,14 @@ export default function AvailabilityPage({
 					{actionData?.kind === "copied" && (
 						<p className="schedule-message success">
 							別イベントの回答をコピーしました
+						</p>
+					)}
+					{actionData?.kind === "saved" && (
+						<p className="schedule-message success">回答を保存しました</p>
+					)}
+					{actionData?.kind === "response-link" && (
+						<p className="schedule-message success">
+							再回答用リンクを発行しました
 						</p>
 					)}
 					{actionData?.kind === "error" && (
