@@ -56,6 +56,7 @@ services:
 
   migrate:
     image: ${VACARO_MIGRATIONS_IMAGE:?VACARO_MIGRATIONS_IMAGE must be set to an immutable image tag}
+    pull_policy: missing
     command:
       - -path=/migrations
       - -database=postgres://${POSTGRES_USER:?POSTGRES_USER must be set}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:?POSTGRES_DB must be set}?sslmode=disable
