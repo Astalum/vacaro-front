@@ -26,7 +26,7 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
-	browserTimeZone,
+	DEFAULT_TIME_ZONE,
 	type EventWithInvite,
 	isValidTimeZone,
 	localDateTimeToIso,
@@ -50,7 +50,7 @@ export async function clientLoader() {
 	} catch (error) {
 		if (!(error instanceof ApiError) || error.status !== 401) throw error;
 	}
-	const timeZone = user?.time_zone ?? browserTimeZone();
+	const timeZone = user?.time_zone ?? DEFAULT_TIME_ZONE;
 	return {
 		...getNewEventDefaults(new Date(), timeZone),
 		timeZone,

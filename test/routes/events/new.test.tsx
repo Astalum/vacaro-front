@@ -4,7 +4,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import NewEvent, { clientAction } from "~/routes/events/new";
+import NewEvent, { clientAction, clientLoader } from "~/routes/events/new";
 
 describe("NewEvent validation", () => {
 	beforeEach(() => {
@@ -320,4 +320,45 @@ describe("NewEvent validation", () => {
 			},
 		});
 	});
+});
+
+describe("new event user time zone", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it.each([null, "America/New_York", "UTC"])(
+		"uses Tokyo for a new user and preserves a saved %s zone",
+		async (savedTimeZone) => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2026-09-25T15:30:00Z"));
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () =>
+					savedTimeZone === null
+						? new Response(
+								JSON.stringify({
+									error: { code: "unauthorized", message: "No session" },
+								}),
+								{ status: 401 },
+							)
+						: new Response(
+								JSON.stringify({
+									data: { display_name: "User", time_zone: savedTimeZone },
+								}),
+							),
+				),
+			);
+			try {
+				const loaded = await clientLoader();
+				expect(loaded.timeZone).toBe(savedTimeZone ?? "Asia/Tokyo");
+				expect(loaded.windowStartAt).toBe(
+					savedTimeZone === null ? "2026-10-03T09:00" : "2026-10-02T09:00",
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
 });

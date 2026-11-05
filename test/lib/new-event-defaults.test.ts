@@ -3,10 +3,7 @@ import { getNewEventDefaults } from "~/lib/new-event-defaults";
 
 describe("getNewEventDefaults", () => {
 	it("uses the current date in Asia/Tokyo and applies the requested offsets", () => {
-		const defaults = getNewEventDefaults(
-			new Date("2026-09-25T15:30:00Z"),
-			"Asia/Tokyo",
-		);
+		const defaults = getNewEventDefaults(new Date("2026-09-25T15:30:00Z"));
 
 		expect(defaults).toEqual({
 			windowStartAt: "2026-10-03T09:00",

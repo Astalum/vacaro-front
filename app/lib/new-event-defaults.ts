@@ -1,3 +1,5 @@
+import { DEFAULT_TIME_ZONE } from "./api";
+
 type DatePart = "year" | "month" | "day";
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -31,7 +33,10 @@ function localDateTimeAfterDays(
 	return `${target.getUTCFullYear()}-${pad(target.getUTCMonth() + 1)}-${pad(target.getUTCDate())}T${time}`;
 }
 
-export function getNewEventDefaults(now = new Date(), timeZone = "UTC") {
+export function getNewEventDefaults(
+	now = new Date(),
+	timeZone = DEFAULT_TIME_ZONE,
+) {
 	return {
 		windowStartAt: localDateTimeAfterDays(now, 7, "09:00", timeZone),
 		windowEndAt: localDateTimeAfterDays(now, 14, "21:00", timeZone),

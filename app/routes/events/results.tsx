@@ -8,6 +8,7 @@ import {
 	apiErrorData,
 	apiRequest,
 	type Candidate,
+	DEFAULT_TIME_ZONE,
 	type Event,
 	eventDisplayStatus,
 	formatDateRange,
@@ -135,7 +136,7 @@ export async function clientAction({
 		if (intent === "confirm") {
 			const confirmationDate = String(formData.get("confirmation_date") ?? "");
 			const confirmationTime = String(formData.get("confirmation_time") ?? "");
-			const timeZone = String(formData.get("time_zone") ?? "UTC");
+			const timeZone = String(formData.get("time_zone") ?? DEFAULT_TIME_ZONE);
 			const validDate = /^\d{4}-\d{2}-\d{2}$/.test(confirmationDate);
 			const validTime = isTimeValue(confirmationTime);
 			const startAt =

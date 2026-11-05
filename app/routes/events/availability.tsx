@@ -10,6 +10,7 @@ import {
 	apiRequest,
 	apiRequestWithMeta,
 	type CalendarAvailabilityWindow,
+	DEFAULT_TIME_ZONE,
 	type Event,
 	formatDateRange,
 	type GoogleCalendar,
@@ -161,7 +162,7 @@ export async function clientAction({
 				: (JSON.parse(
 						String(formData.get("intervals") ?? "[]"),
 					) as TimeRange[]);
-		const timeZone = String(formData.get("time_zone") ?? "UTC");
+		const timeZone = String(formData.get("time_zone") ?? DEFAULT_TIME_ZONE);
 		const intervals = ranges.map((range) => ({
 			start_at: localDateTimeToIso(range.start, timeZone),
 			end_at: localDateTimeToIso(range.end, timeZone),

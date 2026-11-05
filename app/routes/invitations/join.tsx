@@ -5,7 +5,7 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
-	browserTimeZone,
+	DEFAULT_TIME_ZONE,
 	type Event,
 	eventDisplayStatus,
 	formatDateRange,
@@ -35,7 +35,7 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	}
 	return {
 		event,
-		timeZone: user?.time_zone ?? browserTimeZone(),
+		timeZone: user?.time_zone ?? DEFAULT_TIME_ZONE,
 		displayName: user?.display_name ?? "",
 	};
 }
@@ -47,7 +47,7 @@ export async function clientAction({
 }: Route.ClientActionArgs) {
 	const formData = await request.formData();
 	const displayName = String(formData.get("display_name") ?? "").trim();
-	const timeZone = String(formData.get("time_zone") ?? "UTC");
+	const timeZone = String(formData.get("time_zone") ?? DEFAULT_TIME_ZONE);
 	try {
 		const event = await apiRequest<Event>(`/invitations/${params.inviteToken}`);
 		try {

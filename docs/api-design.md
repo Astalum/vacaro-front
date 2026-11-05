@@ -144,7 +144,7 @@ Cookie属性：
 | フィールド | 型 | 説明 |
 |---|---|---|
 | `account_type` | string | `guest`または`registered` |
-| `time_zone` | string | 日時の入力・表示に使用するIANAタイムゾーン |
+| `time_zone` | string | 日時の入力・表示に使用するIANAタイムゾーン。初期値は`Asia/Tokyo` |
 | `email` | string/null | Google認証済みユーザーのメールアドレス |
 | `guest_expires_at` | string/null | ゲストの失効日時。登録ユーザーは`null` |
 
@@ -852,6 +852,8 @@ Googleの`sub`をアカウント識別子として使用し、メールアドレ
 ```text
 {PUBLIC_APP_URL}?google_login=success
 ```
+
+新規Googleユーザーのタイムゾーン初期値は`Asia/Tokyo`とし、再ログイン時やゲストからの昇格時は保存済みの設定を保持する。ブラウザのタイムゾーンによる自動上書きは行わない。日時の入力・表示はユーザー設定のタイムゾーンで行い、APIとの通信および内部管理ではUTCを使用する。成功通知のURL更新や通知を閉じる操作では、無関係なクエリパラメータとフラグメントを維持し、履歴を追加しない。
 
 認証を完了できなかった場合もブラウザへJSONを直接表示せず、次へ`303`でリダイレクトする。callbackレスポンスには`Cache-Control: no-store`を設定する。
 

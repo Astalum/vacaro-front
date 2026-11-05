@@ -1,5 +1,7 @@
 import { isTimeValue } from "./time";
 
+export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
+
 export type AccountType = "guest" | "registered";
 export type EventStatus = "open" | "confirmed" | "cancelled";
 export type SchedulingMode = "whole_event" | "groups";
@@ -414,7 +416,7 @@ export function apiErrorData(error: unknown): ApiErrorBody {
 	};
 }
 
-export function formatDateTime(value: string, timeZone = "UTC") {
+export function formatDateTime(value: string, timeZone = DEFAULT_TIME_ZONE) {
 	return new Intl.DateTimeFormat("ja-JP", {
 		timeZone,
 		month: "long",
@@ -425,7 +427,11 @@ export function formatDateTime(value: string, timeZone = "UTC") {
 	}).format(new Date(value));
 }
 
-export function formatDateRange(start: string, end: string, timeZone = "UTC") {
+export function formatDateRange(
+	start: string,
+	end: string,
+	timeZone = DEFAULT_TIME_ZONE,
+) {
 	return `${formatDateTime(start, timeZone)} 〜 ${formatDateTime(end, timeZone)}`;
 }
 
@@ -469,11 +475,6 @@ export function isValidTimeZone(timeZone: string) {
 	} catch {
 		return false;
 	}
-}
-
-export function browserTimeZone() {
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	return timeZone && isValidTimeZone(timeZone) ? timeZone : "UTC";
 }
 
 function localDateTimeParts(value: string) {
@@ -530,7 +531,7 @@ function zonedParts(date: Date, timeZone: string) {
 
 export function localDateTimeToIso(
 	value: FormDataEntryValue | null,
-	timeZone = "UTC",
+	timeZone = DEFAULT_TIME_ZONE,
 ) {
 	if (typeof value !== "string" || !value) return null;
 	const parsed = localDateTimeParts(value);
@@ -564,7 +565,10 @@ export function localDateTimeToIso(
 	return date.toISOString();
 }
 
-export function isoToLocalDateTime(value: string | null, timeZone = "UTC") {
+export function isoToLocalDateTime(
+	value: string | null,
+	timeZone = DEFAULT_TIME_ZONE,
+) {
 	if (!value || !isValidTimeZone(timeZone)) return "";
 	const parts = zonedParts(new Date(value), timeZone);
 	if (parts.some((part) => !Number.isFinite(part))) return "";
