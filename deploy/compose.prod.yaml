@@ -1,6 +1,7 @@
 services:
   web:
     image: ${VACARO_FRONT_IMAGE:?VACARO_FRONT_IMAGE must be set to an immutable image tag}
+    pull_policy: missing
     init: true
     restart: unless-stopped
     environment:
@@ -19,6 +20,7 @@ services:
 
   api:
     image: ${VACARO_BACK_IMAGE:?VACARO_BACK_IMAGE must be set to an immutable image tag}
+    pull_policy: missing
     init: true
     restart: unless-stopped
     environment:

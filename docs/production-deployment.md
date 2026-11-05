@@ -232,6 +232,12 @@ nano /opt/vacaro/.env.production
 
 VPSの`/opt/vacaro`には、Compose設定、`.env.production`、運用スクリプトだけを配置します。`.env.production`はGitへ追加せず、ファイル権限を`600`に維持してください。
 
+## GitHub Actionsでイメージを発行できない場合
+
+Actionsを実行できない場合は、テスト済み・push済みのコミットから、WSLで同じDockerfileの本番ステージをビルドします。コミットSHAを含む固定タグと`org.opencontainers.image.revision`ラベルを付け、`docker save`とSSH経由の`docker load`で本番VPSへイメージだけを転送します。転送元と転送先のイメージIDが一致することを確認してから、`.env.production`のイメージ指定を更新し、通常のデプロイとヘルスチェックを行います。
+
+Composeの`pull_policy: missing`により、転送済みの固定タグはローカルイメージを使用します。後でGitHub Actionsから発行された新しいSHAタグへ切り替えた場合は、VPSに存在しないイメージを通常どおり取得します。本番VPSでのビルドやソースコードの転送は行いません。
+
 ## バックエンドについて
 
 `vacaro-back`側のGitHub Actionsは、APIとマイグレーションの2種類のイメージを発行します。統合Composeは最初にPostgreSQLを起動し、マイグレーションの正常完了後にAPIを起動します。VPS上でGoのコンパイルやSQLファイルのbind mountは行いません。
