@@ -1072,9 +1072,7 @@
 	min-width: 0;
 }
 .availability-slot-list time {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
+	display: block;
 	max-width: 100%;
 	padding: 7px 10px;
 	border: 1px solid #c9e5db;
@@ -1086,7 +1084,9 @@
 	line-height: 1.4;
 }
 .availability-slot-list time svg {
-	flex: 0 0 auto;
+	display: inline-block;
+	margin-right: 6px;
+	vertical-align: middle;
 	color: var(--primary);
 }
 .availability-slot-list .availability-empty {

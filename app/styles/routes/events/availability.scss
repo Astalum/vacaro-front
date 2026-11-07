@@ -844,6 +844,9 @@
 	line-height: 1.55;
 }
 .schedule-sidebar .schedule-meta {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
 	gap: 8px;
 	margin-top: 8px;
 	padding: 9px 10px;
@@ -852,8 +855,10 @@
 	margin-top: 10px;
 }
 .schedule-sidebar .schedule-meta-label {
+	flex: 0 0 auto;
 	gap: 6px;
 	min-height: 24px;
+	white-space: nowrap;
 }
 .schedule-sidebar .schedule-meta-label .icon {
 	width: 24px;
@@ -863,6 +868,10 @@
 .schedule-sidebar .schedule-meta-label span,
 .schedule-sidebar .schedule-meta strong {
 	font-size: 13px;
+}
+.schedule-sidebar .schedule-meta strong {
+	max-width: 100%;
+	white-space: normal;
 }
 .schedule-sidebar .schedule-meta .schedule-duration-value {
 	font-size: 15px;

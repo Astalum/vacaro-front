@@ -183,6 +183,18 @@
 	max-width: 620px;
 	margin-top: 22px;
 }
+.account-card:has(.settings-time-window) {
+	container-type: inline-size;
+}
+@container (max-width: 360px) {
+	.settings-time-window {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 12px;
+	}
+	.settings-time-window .time-window-separator {
+		display: none;
+	}
+}
 .settings-time-window-field {
 	display: flex;
 	flex-direction: column;
@@ -263,6 +275,7 @@
 }
 .settings-calendar-option {
 	position: relative;
+	min-width: 0;
 	min-height: 58px;
 	padding: 12px 14px;
 	border: 1px solid #e0e4eb;
@@ -288,6 +301,7 @@
 	pointer-events: none;
 }
 .calendar-checkmark {
+	flex: 0 0 auto;
 	width: 22px;
 	height: 22px;
 	border: 1px solid #cdd3dc;
@@ -322,6 +336,7 @@
 	font-weight: 600;
 }
 .settings-calendar-option em {
+	flex: 0 0 auto;
 	padding: 3px 7px;
 	border-radius: 999px;
 	background: #eef4ff;

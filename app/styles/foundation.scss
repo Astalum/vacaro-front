@@ -181,6 +181,7 @@ button {
 }
 .brand {
 	display: inline-flex;
+	flex: 0 0 auto;
 	align-items: center;
 	gap: 9px;
 	color: var(--navy);
@@ -197,10 +198,28 @@ button {
 }
 .app-header nav {
 	display: flex;
+	min-width: 0;
 	align-items: center;
 	gap: 35px;
 	font-size: 19px;
 	font-weight: 600;
+}
+.app-header nav > a:not(.account-link) {
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+.app-header .account-link {
+	min-width: 0;
+	max-width: 240px;
+}
+.app-header .account-avatar {
+	flex: 0 0 auto;
+}
+.account-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .mobile-menu-button {
 	display: none;
