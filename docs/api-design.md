@@ -613,7 +613,7 @@ GET /api/v1/events/{event_id}/groups/{group_id}/availability
 GET /api/v1/events/{event_id}/groups/{group_id}/candidates?limit=20
 ```
 
-10.5と同じCandidate配列を返す。ただし、計算対象はグループメンバー、必要時間はグループの`duration_minutes`とする。未回答のグループメンバーも`total_participant_count`に含める。フロント側では候補を再計算しない。
+10.5と同じCandidate配列を返す。ただし、計算対象はグループメンバー、必要時間はグループの`duration_minutes`とする。未回答のグループメンバーも`total_participant_count`に含める。候補APIの計算はバックエンドで行う。
 
 ### 8.9 グループ日程確定
 
@@ -819,6 +819,8 @@ GET /api/v1/events/{event_id}/candidates?limit=20
 ```
 
 イベント全参加者を対象に、イベントの`duration_minutes`を満たす開始候補を参加可能人数の降順、同数なら開始日時の昇順で返す。`groups`モードでもresults画面の「全体」表示で利用できる。未回答者は`total_participant_count`には含むが参加可能人数には含めない。`limit`は標準20、最大100。グループ別候補には8.8のエンドポイントを使用する。
+
+結果画面のカレンダーと「集まれる時間帯」は、候補APIではなく全体またはグループの`availability`から表示用の時間帯を作る。必要時間では区切らず、参加可能人数が同じまま連続する間は1枠とする。人数が同じまま参加者が入れ替わった場合も同じ枠にし、時間ごとの参加者を内訳に示す。空きが途切れる場合と人数が変わる場合は別枠にし、日付境界はユーザーのタイムゾーンに合わせて分割する。イベント期間外と未回答者の区間は含めない。開催日時を確定する際の長さには、従来どおりイベントまたはグループの必要時間を使用する。
 
 ## 11. Google認証・Calendar連携
 

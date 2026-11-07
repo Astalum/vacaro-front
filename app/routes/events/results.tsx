@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
@@ -7,7 +7,6 @@ import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
-	type Candidate,
 	DEFAULT_TIME_ZONE,
 	type Event,
 	eventDisplayStatus,
@@ -18,6 +17,10 @@ import {
 	type SchedulingGroup,
 	type User,
 } from "~/lib/api";
+import {
+	type AvailabilityRange,
+	summarizeAvailability,
+} from "~/lib/availability-summary";
 import { createPageMeta } from "~/lib/meta";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/results";
@@ -46,7 +49,6 @@ export async function clientLoader({
 			user,
 			groups: [] as SchedulingGroup[],
 			activeGroup: null,
-			candidates: [] as Candidate[],
 			availability: [] as ParticipantAvailability[],
 			restricted: true,
 		};
@@ -78,16 +80,14 @@ export async function clientLoader({
 	const basePath = activeGroup
 		? `/events/${event.id}/groups/${activeGroup.id}`
 		: `/events/${event.id}`;
-	const [candidates, availability] = await Promise.all([
-		apiRequest<Candidate[]>(`${basePath}/candidates?limit=100`),
-		apiRequest<ParticipantAvailability[]>(`${basePath}/availability`),
-	]);
+	const availability = await apiRequest<ParticipantAvailability[]>(
+		`${basePath}/availability`,
+	);
 	return {
 		event,
 		user,
 		groups,
 		activeGroup,
-		candidates,
 		availability,
 		restricted: false,
 	};
@@ -247,7 +247,7 @@ function timeLabel(value: string, timeZone: string) {
 	}).format(new Date(value));
 }
 
-function candidateAvailabilityLevel(candidate: Candidate) {
+function candidateAvailabilityLevel(candidate: AvailabilityRange) {
 	const ratio =
 		candidate.total_participant_count > 0
 			? candidate.available_participant_count /
@@ -258,41 +258,14 @@ function candidateAvailabilityLevel(candidate: Candidate) {
 	return "partial";
 }
 
-export function mergeCandidateIntervals(candidates: Candidate[]) {
-	const sorted = [...candidates].sort(
-		(left, right) =>
-			new Date(left.start_at).getTime() - new Date(right.start_at).getTime(),
-	);
-	const intervals: Candidate[] = [];
-	for (const candidate of sorted) {
-		const previous = intervals.at(-1);
-		const sameParticipants =
-			previous &&
-			previous.available_participant_count ===
-				candidate.available_participant_count &&
-			previous.total_participant_count === candidate.total_participant_count &&
-			[...previous.available_participant_ids].sort().join("\u0000") ===
-				[...candidate.available_participant_ids].sort().join("\u0000");
-		if (
-			previous &&
-			sameParticipants &&
-			new Date(candidate.start_at).getTime() <=
-				new Date(previous.end_at).getTime()
-		) {
-			if (
-				new Date(candidate.end_at).getTime() >
-				new Date(previous.end_at).getTime()
-			) {
-				previous.end_at = candidate.end_at;
-			}
-			continue;
-		}
-		intervals.push({
-			...candidate,
-			available_participant_ids: [...candidate.available_participant_ids],
-		});
-	}
-	return intervals;
+function intervalEndLabel(
+	interval: { start_at: string; end_at: string },
+	timeZone: string,
+) {
+	return dateParts(interval.start_at, timeZone).key ===
+		dateParts(interval.end_at, timeZone).key
+		? timeLabel(interval.end_at, timeZone)
+		: "24:00";
 }
 
 export function HydrateFallback() {
@@ -307,15 +280,8 @@ export default function Results({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const {
-		event,
-		user,
-		groups,
-		activeGroup,
-		candidates,
-		availability,
-		restricted,
-	} = loaderData;
+	const { event, user, groups, activeGroup, availability, restricted } =
+		loaderData;
 	const navigation = useNavigation();
 	const submitting = navigation.state === "submitting";
 	const visibilitySubmitting =
@@ -352,14 +318,20 @@ export default function Results({
 		event.window_end_at,
 		user.time_zone,
 	);
-	const initialCandidate =
-		candidates.find(
-			(candidate) =>
-				candidate.start_at === confirmedStart &&
-				candidate.end_at === confirmedEnd,
-		) ?? candidates[0];
-	const initialMonth = initialCandidate
-		? dateParts(initialCandidate.start_at, user.time_zone).key.slice(0, 7)
+	const intervalsByDate = useMemo(
+		() =>
+			summarizeAvailability(
+				availability,
+				event.window_start_at,
+				event.window_end_at,
+				user.time_zone,
+			),
+		[availability, event.window_start_at, event.window_end_at, user.time_zone],
+	);
+	const initialStart =
+		confirmedStart ?? intervalsByDate.values().next().value?.[0]?.start_at;
+	const initialMonth = initialStart
+		? dateParts(initialStart, user.time_zone).key.slice(0, 7)
 		: months[0];
 	const [activeMonth, setActiveMonth] = useState(initialMonth);
 	const [expandedDateKey, setExpandedDateKey] = useState<string | null>(null);
@@ -372,20 +344,6 @@ export default function Results({
 	const activeMonthIndex = months.indexOf(activeMonth);
 	const startDateKey = dateParts(event.window_start_at, user.time_zone).key;
 	const endDateKey = dateParts(event.window_end_at, user.time_zone).key;
-	const candidatesByDate = new Map<string, Candidate[]>();
-	for (const candidate of candidates) {
-		const key = dateParts(candidate.start_at, user.time_zone).key;
-		candidatesByDate.set(key, [
-			...(candidatesByDate.get(key) ?? []),
-			candidate,
-		]);
-	}
-	const intervalsByDate = new Map(
-		[...candidatesByDate].map(([key, dayCandidates]) => [
-			key,
-			mergeCandidateIntervals(dayCandidates),
-		]),
-	);
 	const expandedIntervals = expandedDateKey
 		? (intervalsByDate.get(expandedDateKey) ?? [])
 		: [];
@@ -570,7 +528,7 @@ export default function Results({
 								人が回答
 							</span>
 							<p className="candidate-calendar-description">
-								参加者が集まれる連続した時間帯を、日付ごとに表示しています。
+								参加可能人数が同じ時間帯を、日付ごとにまとめて表示しています。
 							</p>
 						</div>
 						<div className="schedule-calendar-shell">
@@ -638,11 +596,11 @@ export default function Results({
 													{dayIntervals.slice(0, 2).map((interval) => (
 														<div
 															className={`schedule-gathering-interval ${candidateAvailabilityLevel(interval)}`}
-															key={`${interval.start_at}-${interval.end_at}-${interval.available_participant_ids.join("-")}`}
+															key={interval.start_at}
 														>
 															<strong>
 																{timeLabel(interval.start_at, user.time_zone)}〜
-																{timeLabel(interval.end_at, user.time_zone)}
+																{intervalEndLabel(interval, user.time_zone)}
 															</strong>
 															<span>
 																{interval.available_participant_count}/
@@ -716,20 +674,31 @@ export default function Results({
 										expandedIntervals.map((interval) => (
 											<div
 												className={`daily-interval-row ${candidateAvailabilityLevel(interval)}`}
-												key={`${interval.start_at}-${interval.end_at}-${interval.available_participant_ids.join("-")}`}
+												key={interval.start_at}
 											>
 												<i />
 												<div>
 													<strong>
 														{timeLabel(interval.start_at, user.time_zone)}〜
-														{timeLabel(interval.end_at, user.time_zone)}
+														{intervalEndLabel(interval, user.time_zone)}
 													</strong>
-													<small>
-														{interval.available_participant_ids
-															.map((id) => participantById.get(id))
-															.filter(Boolean)
-															.join("、") || "該当する参加者はいません"}
-													</small>
+													{interval.segments.map((segment) => (
+														<small
+															key={segment.start_at}
+															className={
+																interval.segments.length > 1
+																	? "changing-participants"
+																	: undefined
+															}
+														>
+															{interval.segments.length > 1 &&
+																`${timeLabel(segment.start_at, user.time_zone)}〜${intervalEndLabel(segment, user.time_zone)}：`}
+															{segment.available_participant_ids
+																.map((id) => participantById.get(id))
+																.filter(Boolean)
+																.join("、")}
+														</small>
+													))}
 												</div>
 												<b>
 													{interval.available_participant_count} /{" "}

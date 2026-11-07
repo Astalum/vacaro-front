@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Candidate, Event, SchedulingGroup, User } from "~/lib/api";
-import {
-	clientAction,
-	clientLoader,
-	mergeCandidateIntervals,
-} from "~/routes/events/results";
+import type { Event, SchedulingGroup, User } from "~/lib/api";
+import { clientAction, clientLoader } from "~/routes/events/results";
 
 function response(data: unknown) {
 	return Promise.resolve(
@@ -15,61 +11,10 @@ function response(data: unknown) {
 	);
 }
 
-describe("mergeCandidateIntervals", () => {
-	it("merges overlapping candidates with the same participants into a time range", () => {
-		const base = {
-			available_participant_count: 2,
-			total_participant_count: 3,
-			available_participant_ids: ["participant-1", "participant-2"],
-		} satisfies Omit<Candidate, "start_at" | "end_at">;
-		const intervals = mergeCandidateIntervals([
-			{
-				...base,
-				start_at: "2026-09-10T01:30:00Z",
-				end_at: "2026-09-10T03:30:00Z",
-			},
-			{
-				...base,
-				start_at: "2026-09-10T01:00:00Z",
-				end_at: "2026-09-10T03:00:00Z",
-			},
-		]);
-
-		expect(intervals).toEqual([
-			{
-				...base,
-				start_at: "2026-09-10T01:00:00Z",
-				end_at: "2026-09-10T03:30:00Z",
-			},
-		]);
-	});
-
-	it("keeps ranges separate when the available participants differ", () => {
-		const intervals = mergeCandidateIntervals([
-			{
-				start_at: "2026-09-10T01:00:00Z",
-				end_at: "2026-09-10T03:00:00Z",
-				available_participant_count: 1,
-				total_participant_count: 2,
-				available_participant_ids: ["participant-1"],
-			},
-			{
-				start_at: "2026-09-10T01:30:00Z",
-				end_at: "2026-09-10T03:30:00Z",
-				available_participant_count: 1,
-				total_participant_count: 2,
-				available_participant_ids: ["participant-2"],
-			},
-		]);
-
-		expect(intervals).toHaveLength(2);
-	});
-});
-
 describe("results clientLoader", () => {
 	afterEach(() => vi.restoreAllMocks());
 
-	it("loads candidates and availability for the group selected in the URL", async () => {
+	it("loads availability for the group selected in the URL", async () => {
 		const event = {
 			id: "event-1",
 			created_by_user_id: "user-1",
@@ -125,15 +70,15 @@ describe("results clientLoader", () => {
 		expect(loaded).not.toBeInstanceOf(Response);
 		if (loaded instanceof Response) throw new Error("unexpected redirect");
 		expect(loaded.activeGroup?.id).toBe("group-2");
-		expect(requestedPaths).toContain(
-			"/api/v1/events/event-1/groups/group-2/candidates?limit=100",
+		expect(requestedPaths.some((path) => path.includes("/candidates"))).toBe(
+			false,
 		);
 		expect(requestedPaths).toContain(
 			"/api/v1/events/event-1/groups/group-2/availability",
 		);
 	});
 
-	it("loads whole-event candidates and availability when whole is selected", async () => {
+	it("loads whole-event availability when whole is selected", async () => {
 		const event = {
 			id: "event-1",
 			created_by_user_id: "user-1",
@@ -174,8 +119,8 @@ describe("results clientLoader", () => {
 		expect(loaded).not.toBeInstanceOf(Response);
 		if (loaded instanceof Response) throw new Error("unexpected redirect");
 		expect(loaded.activeGroup).toBeNull();
-		expect(requestedPaths).toContain(
-			"/api/v1/events/event-1/candidates?limit=100",
+		expect(requestedPaths.some((path) => path.includes("/candidates"))).toBe(
+			false,
 		);
 		expect(requestedPaths).toContain("/api/v1/events/event-1/availability");
 	});
@@ -233,8 +178,8 @@ describe("results clientLoader", () => {
 		expect(loaded).not.toBeInstanceOf(Response);
 		if (loaded instanceof Response) throw new Error("unexpected redirect");
 		expect(loaded.activeGroup).toBeNull();
-		expect(requestedPaths).toContain(
-			"/api/v1/events/event-1/candidates?limit=100",
+		expect(requestedPaths.some((path) => path.includes("/candidates"))).toBe(
+			false,
 		);
 		expect(requestedPaths).toContain("/api/v1/events/event-1/availability");
 	});
@@ -277,7 +222,6 @@ describe("results clientLoader", () => {
 		expect(loaded).not.toBeInstanceOf(Response);
 		if (loaded instanceof Response) throw new Error("unexpected redirect");
 		expect(loaded.restricted).toBe(true);
-		expect(loaded.candidates).toEqual([]);
 		expect(loaded.availability).toEqual([]);
 		expect(requestedPaths).toHaveLength(2);
 	});

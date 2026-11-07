@@ -1701,6 +1701,10 @@
 	font-size: 14px;
 	white-space: nowrap;
 }
+.daily-interval-row small.changing-participants {
+	overflow: visible;
+	white-space: normal;
+}
 .daily-interval-row.all {
 	color: #22876b;
 }
