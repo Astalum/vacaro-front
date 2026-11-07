@@ -51,15 +51,7 @@ export async function clientAction({
 	try {
 		const event = await apiRequest<Event>(`/invitations/${params.inviteToken}`);
 		try {
-			const me = await apiRequest<User>("/me");
-			if (me.display_name !== displayName)
-				await apiRequest<User>("/me", {
-					method: "PATCH",
-					body: JSON.stringify({
-						display_name: displayName,
-						time_zone: me.time_zone,
-					}),
-				});
+			await apiRequest<User>("/me");
 		} catch (error) {
 			if (!(error instanceof ApiError) || error.status !== 401) throw error;
 			await apiRequest<User>("/guest-sessions", {
@@ -174,7 +166,9 @@ export default function JoinEvent({
 				<input type="hidden" name="time_zone" value={timeZone} />
 				<div>
 					<h2>このイベントに参加する</h2>
-					<p>表示名を入力すると、空いている時間を回答できます。</p>
+					<p>
+						このイベントで使う表示名を入力すると、空いている時間を回答できます。
+					</p>
 				</div>
 				{actionData?.error && (
 					<ValidationMessage title={actionData.error.message} compact>
@@ -183,11 +177,12 @@ export default function JoinEvent({
 				)}
 				<div className="field">
 					<label htmlFor="join-name">
-						お名前 <em>必須</em>
+						イベントでの表示名 <em>必須</em>
 					</label>
 					<input
 						id="join-name"
 						name="display_name"
+						autoComplete="nickname"
 						defaultValue={displayName}
 						placeholder="例）高橋 花子"
 						required

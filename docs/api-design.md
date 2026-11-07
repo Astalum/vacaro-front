@@ -667,6 +667,7 @@ POST /api/v1/invitations/{invite_token}/participants
 
 - `display_name`: 前後空白を除いて1～100文字
 - イベントは`open`であること
+- 入力した`display_name`はイベント内の参加者名として保存する。既存アカウントの表示名・タイムゾーンは維持し、アカウント名は参加フォームの編集可能な初期値としてのみ使う。
 - 同じユーザーが参加済みの場合は`409 already_joined`
 - Response: `201`、`data`は作成されたParticipant。ゲスト参加者には`response_edit_url`も返す
 

@@ -65,3 +65,71 @@ describe("invitation user time zone", () => {
 		});
 	});
 });
+
+describe("invitation display name", () => {
+	it.each(["registered", "guest"])(
+		"joins with the event nickname without updating the existing %s profile",
+		async (accountType) => {
+			const account = {
+				id: "user-1",
+				display_name: "アカウントの名前",
+				time_zone: "America/New_York",
+				account_type: accountType,
+			};
+			const original = { ...account };
+			const requests: { path: string; method: string; body: unknown }[] = [];
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async (input, init?: RequestInit) => {
+					const path = String(input);
+					const method = init?.method ?? "GET";
+					const body = init?.body ? JSON.parse(String(init.body)) : null;
+					requests.push({ path, method, body });
+					if (path.endsWith("/me")) {
+						if (method === "PATCH") Object.assign(account, body);
+						return new Response(JSON.stringify({ data: account }));
+					}
+					if (path.endsWith("/participants"))
+						return new Response(
+							JSON.stringify({
+								data: { id: "participant-1", display_name: body.display_name },
+							}),
+							{ status: 201 },
+						);
+					return new Response(JSON.stringify({ data: { id: "event-1" } }));
+				}),
+			);
+			const formData = new FormData();
+			formData.set("display_name", "  イベント用ニックネーム  ");
+			formData.set("time_zone", "Asia/Tokyo");
+			const result = await clientAction({
+				params: { inviteToken: "invite-token" },
+				request: new Request("https://vacaro.test/invitations/invite-token", {
+					method: "POST",
+					body: formData,
+				}),
+			} as never);
+			expect((result as Response).headers.get("Location")).toBe(
+				"/events/event-1/availability",
+			);
+			expect(
+				requests.find((entry) => entry.path.endsWith("/participants")),
+			).toEqual({
+				path: "/api/v1/invitations/invite-token/participants",
+				method: "POST",
+				body: { display_name: "イベント用ニックネーム" },
+			});
+			expect(account).toEqual(original);
+			expect(requests.filter((entry) => entry.method !== "GET")).toHaveLength(
+				1,
+			);
+		},
+	);
+	it("keeps the existing account name as an editable initial value", async () => {
+		mockAPI("Asia/Tokyo");
+		const loaded = await clientLoader({
+			params: { inviteToken: "invite-token" },
+		} as never);
+		expect(loaded.displayName).toBe("User");
+	});
+});
