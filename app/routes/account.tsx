@@ -530,7 +530,7 @@ export default function Account({
 										</span>
 										<h2>使用するカレンダー</h2>
 										<p>
-											空き時間の判定で「予定あり」として扱うカレンダーを選択します。
+											空き時間の判定で「予定あり」として扱うカレンダーを選択します。初期値はメインカレンダーのみです。追加のカレンダーは選択して保存してください。
 										</p>
 									</div>
 									{calendarOptions.calendars.length > 0 && (

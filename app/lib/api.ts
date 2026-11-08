@@ -274,12 +274,13 @@ export function savedCalendarIDs(calendars: GoogleCalendar[]) {
 	} catch {
 		// Storage may be unavailable in privacy-focused browser modes.
 	}
-	const preferred = calendars.filter(
-		(calendar) => calendar.primary || calendar.selected,
-	);
-	return (preferred.length > 0 ? preferred : calendars.slice(0, 1)).map(
-		(calendar) => calendar.id,
-	);
+	// Google's selected flag means visible in Google Calendar, not suitable for
+	// FreeBusy imports (for example, holiday calendars can return notFound).
+	const primary = calendars.find((calendar) => calendar.primary);
+	const fallback =
+		calendars.find((calendar) => calendar.selected) ?? calendars[0];
+	const initial = primary ?? fallback;
+	return initial ? [initial.id] : [];
 }
 
 export function saveCalendarIDs(calendarIDs: string[]) {

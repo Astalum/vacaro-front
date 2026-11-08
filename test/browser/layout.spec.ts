@@ -298,3 +298,14 @@ test("calendar import still succeeds with a valid connection", async ({
 	expect(unknownRequests).toEqual([]);
 	expect(await layoutProblems(page)).toEqual([]);
 });
+
+test("calendar import initially selects only the primary calendar", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page);
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="calendar_ids"]')).toHaveValue(
+		'["calendar-0"]',
+	);
+	expect(unknownRequests).toEqual([]);
+});
