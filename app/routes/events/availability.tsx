@@ -1089,7 +1089,14 @@ export default function AvailabilityPage({
 					)}
 					{actionData?.kind === "error" && (
 						<ValidationMessage compact title={actionData.error.message}>
-							回答時間を確認して、もう一度お試しください。
+							{actionData.error.code.startsWith("calendar_") ||
+							actionData.error.code === "oauth_failed" ? (
+								<Link to="/account#calendar-settings">
+									カレンダー設定を確認する
+								</Link>
+							) : (
+								"回答時間を確認して、もう一度お試しください。"
+							)}
 						</ValidationMessage>
 					)}
 
@@ -1420,7 +1427,14 @@ export default function AvailabilityPage({
 					)}
 					{actionData?.kind === "error" && (
 						<ValidationMessage compact title={actionData.error.message}>
-							回答時間を確認して、もう一度お試しください。
+							{actionData.error.code.startsWith("calendar_") ||
+							actionData.error.code === "oauth_failed" ? (
+								<Link to="/account#calendar-settings">
+									カレンダー設定を確認する
+								</Link>
+							) : (
+								"回答時間を確認して、もう一度お試しください。"
+							)}
 						</ValidationMessage>
 					)}
 					<footer className="schedule-submit">

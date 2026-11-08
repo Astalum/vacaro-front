@@ -5,6 +5,7 @@ import {
 	redirect,
 	redirectDocument,
 	useNavigation,
+	useSearchParams,
 } from "react-router";
 import { Icon, PageIntro, PageShell } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
@@ -154,6 +155,14 @@ export default function Account({
 	actionData,
 }: Route.ComponentProps) {
 	const { user, calendarOptions } = loaderData;
+	const [searchParams] = useSearchParams();
+	const calendarResult = searchParams.get("google_calendar");
+	const calendarConnectionError =
+		calendarResult === "permission_required"
+			? "空き時間またはカレンダー一覧の読み取り権限が不足しています。再接続して、読み取り権限を許可してください。"
+			: calendarResult === "error"
+				? "Googleカレンダーの接続を完了できませんでした。もう一度接続してください。"
+				: null;
 	const navigation = useNavigation();
 	const intent = navigation.formData?.get("intent");
 	const calendarConnectionStatus: CalendarConnectionStatus =
@@ -226,6 +235,11 @@ export default function Account({
 				description="プロフィールとカレンダーの取り込み設定を管理します。"
 			/>
 
+			{calendarConnectionError && (
+				<ValidationMessage title="Googleカレンダーに接続できませんでした">
+					{calendarConnectionError}
+				</ValidationMessage>
+			)}
 			{actionData?.kind === "disconnected" && (
 				<div className="confirm-banner compact-banner">
 					<Icon name="check" />
@@ -396,6 +410,10 @@ export default function Account({
 											</p>
 										</div>
 									)}
+								<p>
+									接続時は、カレンダー一覧と空き時間の読み取りを許可してください。
+									確定日時の自動登録には、予定の書き込み権限も必要です。
+								</p>
 								<div className="integration-actions">
 									<Form method="post">
 										<button
@@ -531,9 +549,7 @@ export default function Account({
 										<Icon name="info" size={18} />
 										<div>
 											<strong>カレンダー一覧を取得できませんでした</strong>
-											<p>
-												Googleカレンダーを接続または再接続して、一覧を読み込んでください。
-											</p>
+											<p>{calendarOptions.error.message}</p>
 										</div>
 									</div>
 								) : calendarOptions.calendars.length > 0 ? (

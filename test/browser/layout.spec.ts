@@ -8,6 +8,10 @@ const cases: { name: string; path: string; scenario?: Scenario }[] = [
 	{ name: "terms", path: "/terms" },
 	{ name: "account", path: "/account" },
 	{
+		name: "account calendar consent error",
+		path: "/account?google_calendar=permission_required",
+	},
+	{
 		name: "account signed out",
 		path: "/account",
 		scenario: { anonymous: true },
@@ -259,5 +263,38 @@ test("mobile navigation open", async ({ page }) => {
 	await page.evaluate(() => document.fonts.ready);
 	await page.getByRole("button", { name: "メニューを開く" }).click();
 	await expect(page.locator("#site-navigation")).toBeVisible();
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("calendar import failure keeps the answer and links to settings", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page, {
+		calendarImportError: "calendar_unavailable",
+	});
+	await page.goto("/events/event-1/availability");
+	const answer = page.locator('input[name="intervals"]');
+	const before = await answer.inputValue();
+	await page.locator('button[value="calendar-preview"]:visible').click();
+	await expect(
+		page
+			.getByRole("link", { name: "カレンダー設定を確認する" })
+			.filter({ visible: true }),
+	).toBeVisible();
+	await expect(answer).toHaveValue(before);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("calendar import still succeeds with a valid connection", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page);
+	await page.goto("/events/event-1/availability");
+	await page.locator('button[value="calendar-preview"]:visible').click();
+	await expect(page.locator(".schedule-message.success:visible")).toContainText(
+		"件を取り込みました",
+	);
+	expect(unknownRequests).toEqual([]);
 	expect(await layoutProblems(page)).toEqual([]);
 });

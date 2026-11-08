@@ -872,7 +872,7 @@ Googleの`sub`をアカウント識別子として使用し、メールアドレ
 POST /api/v1/integrations/google-calendar
 ```
 
-Google認証済みセッションが必要。Calendar FreeBusy権限、カレンダー一覧の読み取り権限、確定予定の書き込み権限を求める認可URLを返す。
+Google認証済みセッションが必要。アクセス可能なカレンダーのFreeBusy権限（`calendar.events.freebusy`）、カレンダー一覧の読み取り権限、確定予定の書き込み権限を求める認可URLを返す。
 
 ```json
 {
@@ -895,6 +895,8 @@ GET /api/v1/integrations/google-calendar/callback?code=<code>&state=<state>
 ```text
 {PUBLIC_APP_URL}/account?google_calendar=connected
 ```
+
+カレンダー一覧または空き時間の読み取り権限が不足する認可結果は保存せず、`/account?google_calendar=permission_required`へ戻す。書き込み権限のみ省略した接続では、取り込みを利用できる。その他のコールバック失敗は`/account?google_calendar=error`へ戻す。
 
 ### 11.5 Googleカレンダー一覧
 
@@ -944,7 +946,7 @@ POST /api/v1/events/{event_id}/google-calendar-availability/preview
 - 空文字列は不可
 - 対象イベントへの参加とCalendar連携が必要
 
-イベント期間をGoogle Calendar FreeBusy APIへ問い合わせ、予定あり区間を除いた時間を返す。予定のタイトル・説明・参加者は取得・返却しない。このAPIはプレビュー専用でDBへ保存しない。
+イベント期間をGoogle Calendar FreeBusy APIへ問い合わせ、予定あり区間を除いた時間を返す。期限切れ・取り消しは`409 calendar_reconnect_required`、読み取り権限不足は`409 calendar_read_permission_required`、選択したカレンダーの取得不可は`409 calendar_unavailable`、一時的なGoogle APIエラーは`502 calendar_temporarily_unavailable`を返す。カレンダー単位の取得失敗がある場合、部分的な空き時間は返さない。予定のタイトル・説明・参加者は取得・返却しない。このAPIはプレビュー専用でDBへ保存しない。
 
 ```json
 {

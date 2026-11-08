@@ -9,6 +9,7 @@ export type Scenario = {
 	empty?: boolean;
 	restricted?: boolean;
 	calendarDisconnected?: boolean;
+	calendarImportError?: string;
 	changingCounts?: boolean;
 };
 
@@ -164,6 +165,11 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 		if (path === "/me" || path.endsWith("/response-user")) {
 			if (scenario.anonymous) return failure(401, "unauthorized");
 			return json(user);
+		}
+		if (path.endsWith("/google-calendar-availability/preview")) {
+			if (scenario.calendarImportError)
+				return failure(409, scenario.calendarImportError);
+			return json({ intervals });
 		}
 		if (path.endsWith("/calendars")) {
 			if (scenario.calendarDisconnected || scenario.guest || scenario.anonymous)
