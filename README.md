@@ -55,7 +55,7 @@ http://localhost:8080/api/v1/integrations/google-calendar/callback
 
 日時は内部・APIではUTCで管理し、入力・表示にはユーザー設定のタイムゾーンを使用します。新規ユーザーの初期値は`Asia/Tokyo`です。Googleログイン時にブラウザのタイムゾーンで上書きせず、`/account`から変更した設定を保持します。
 
-カレンダー連携では空き時間取得用の`calendar.freebusy`、読み込み対象を選択するための`calendar.calendarlist.readonly`、確定予定を書き込むための`calendar.events`権限を使用します。権限追加前に接続済みだった場合は、`/account`からGoogleカレンダーを再接続してください。
+カレンダー連携では空き時間取得用の`calendar.events.freebusy`、読み込み対象を選択するための`calendar.calendarlist.readonly`、確定予定を書き込むための`calendar.app.created`権限を使用します。権限追加前に接続済みだった場合は、`/account`からGoogleカレンダーを再接続してください。
 
 バックエンドのURLを変更する場合：
 

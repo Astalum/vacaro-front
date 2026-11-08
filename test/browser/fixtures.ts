@@ -9,6 +9,7 @@ export type Scenario = {
 	empty?: boolean;
 	restricted?: boolean;
 	calendarDisconnected?: boolean;
+	calendarWritePermissionRequired?: boolean;
 	calendarImportError?: string;
 	changingCounts?: boolean;
 };
@@ -181,7 +182,10 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 		if (path.endsWith("/calendars")) {
 			if (scenario.calendarDisconnected || scenario.guest || scenario.anonymous)
 				return failure(409, "calendar_not_connected");
-			return json({ calendars, write_enabled: true });
+			return json({
+				calendars,
+				write_enabled: !scenario.calendarWritePermissionRequired,
+			});
 		}
 		if (path === "/events")
 			return json(
@@ -211,7 +215,9 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 			return json({
 				connection_status: scenario.calendarDisconnected
 					? "not_connected"
-					: "connected",
+					: scenario.calendarWritePermissionRequired
+						? "write_permission_required"
+						: "connected",
 				syncs: [
 					{
 						event_id: eventID,

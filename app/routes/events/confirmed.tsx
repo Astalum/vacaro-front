@@ -73,7 +73,7 @@ export async function clientAction({
 		return {
 			kind: "success" as const,
 			group_id: groupID,
-			message: "Googleカレンダーに追加しました",
+			message: "専用カレンダー「Vacaro」に追加しました",
 		};
 	} catch (error) {
 		return data(
@@ -415,8 +415,8 @@ function CalendarSyncControl({
 			<div className="calendar-sync-panel needs-connection">
 				<p>
 					{calendarStatus.connection_status === "not_connected"
-						? "Googleカレンダーを連携すると、この予定を追加できます。"
-						: "予定の追加にはGoogleカレンダーへの書き込み権限が必要です。"}
+						? "Googleカレンダーを連携すると、専用カレンダー「Vacaro」にこの予定を追加できます。"
+						: "専用カレンダー「Vacaro」への登録には、再接続して専用カレンダーの作成・管理を許可してください。"}
 				</p>
 				<Link className="button button-primary" to="/account#calendar-settings">
 					<Icon name="calendar" size={17} />
@@ -443,7 +443,7 @@ function CalendarSyncControl({
 			)}
 			{sync?.status === "synced" && !hasCurrentActionMessage && (
 				<p className="calendar-sync-message success">
-					Googleカレンダーに追加済みです。
+					専用カレンダー「Vacaro」に追加済みです。
 				</p>
 			)}
 			{isCurrentAction && actionData?.kind === "error" && (

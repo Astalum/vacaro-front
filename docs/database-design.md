@@ -380,7 +380,7 @@ Cookieには`HttpOnly`、`Secure`、`SameSite`属性を設定する。サーバ�
 - Googleの予定タイトル、説明、参加者などの不要な個人情報は保存しない。
 - FreeBusy APIなどから取得した情報を利用し、アプリ内では参加可能時間またはビジー時間との差分だけを扱う。
 - カレンダーから生成した参加可能時間を永続化する場合は、`source = 'google_calendar'`とする。
-- 確定日時は、書き込み権限を許可した参加者のメインカレンダーへ固定IDでupsertし、確定解除時に削除する。
+- 確定日時は、書き込み権限を許可した参加者の専用カレンダー「Vacaro」へ固定IDでupsertし、確定解除時に削除する。
 - OAuth Scopeは必要最小限とする。
 - Refresh Tokenは暗号化して保存し、暗号鍵はDBとは別のSecret Managerで管理する。
 - 連携解除時はGoogle側の認可を失効させ、`google_calendar_connections`を削除する。

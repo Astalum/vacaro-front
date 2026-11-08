@@ -409,13 +409,13 @@ export default function Account({
 										>
 											<Icon name="info" size={18} />
 											<p>
-												確定日時の自動登録を有効にするには、Googleカレンダーを再接続してください。
+												専用カレンダーへの自動登録を有効にするには、Googleカレンダーを再接続して、Vacaroが作成するカレンダーの管理を許可してください。
 											</p>
 										</div>
 									)}
 								<p>
 									接続時は、カレンダー一覧と空き時間の読み取りを許可してください。
-									確定日時の自動登録には、予定の書き込み権限も必要です。
+									確定日時は、Vacaroが作成する専用カレンダー「Vacaro」に登録します。自動登録には、この専用カレンダーの作成・管理の許可も必要です。
 								</p>
 								<div className="integration-actions">
 									<Form method="post">

@@ -3,6 +3,16 @@ import { installFixtures, type Scenario, token } from "./fixtures";
 import { layoutProblems } from "./geometry";
 
 const cases: { name: string; path: string; scenario?: Scenario }[] = [
+	{
+		name: "account dedicated calendar reconnect",
+		path: "/account",
+		scenario: { calendarWritePermissionRequired: true },
+	},
+	{
+		name: "confirmed dedicated calendar reconnect",
+		path: "/events/event-1/confirmed",
+		scenario: { calendarWritePermissionRequired: true },
+	},
 	{ name: "home", path: "/" },
 	{ name: "privacy", path: "/privacy" },
 	{ name: "terms", path: "/terms" },

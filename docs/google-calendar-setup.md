@@ -11,7 +11,7 @@ Google ログインの基本プロフィール権限と、カレンダーの権�
 - Data Access: アプリが要求する次のスコープを登録し、必要なブランド・スコープの確認審査を申請する。公開ステータスを変更するだけでは、未確認アプリの警告は解除されない。
   - `https://www.googleapis.com/auth/calendar.events.freebusy`: アクセス可能なカレンダーの空き時間の確認。
   - `https://www.googleapis.com/auth/calendar.calendarlist.readonly`: カレンダー一覧の取得。
-  - `https://www.googleapis.com/auth/calendar.events`: 確定した日時の登録・更新・削除。
+  - `https://www.googleapis.com/auth/calendar.app.created`: 専用カレンダー「Vacaro」の作成と、その中の確定予定の登録・更新・削除。
 - Google Calendar API が有効になっていることを確認する。
 - OAuth クライアントに次のリダイレクト URI を正確に登録する。
   - `https://vacaro.astalum.dev/api/v1/auth/google/callback`
@@ -48,3 +48,17 @@ API ログの `Google Calendar request failed` は、処理 `operation` と固�
 - [更新トークンの有効期限](https://developers.google.com/identity/protocols/oauth2#expiration)
 - [権限の一部だけが許可された場合](https://developers.google.com/identity/protocols/oauth2/resources/granular-permissions)
 - [FreeBusy API](https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query)
+
+## 確定予定の書き込み先
+
+確定予定は利用者ごとに作成するセカンダリカレンダー「Vacaro」へ登録する。メインカレンダーへの書き込みは行わない。`calendar.events` / `calendar.events.owned` は要求せず、`calendar.app.created` を使用する。Google Auth Platform のデータアクセスにも同じ変更を登録する。ログイン用の `openid`、`https://www.googleapis.com/auth/userinfo.email`、`https://www.googleapis.com/auth/userinfo.profile` と読み取り用の2スコープは引き続き登録する。
+
+既存の接続は、読み取り機能を継続できるが、専用カレンダーの管理許可を得るまで書き込みを行わない。設定画面から再接続する。過去の広い権限を認可リクエストにまとめないよう、`include_granted_scopes=true` は送らない。Google 側に以前の許可が残っていること自体は、自動で取り消さない。
+
+バックエンドのマイグレーション `000015` が必要。専用カレンダーIDはトークンとは別に保存し、連携解除・再接続でも再利用する。同名の既存カレンダーを名前で採用しない。削除済みの専用カレンダーは、次回の再接続・予定登録時に再作成する。権限不足・一時障害では再作成せず失敗として扱う。カレンダー作成とDB保存は分散トランザクションではないため、Googleでの作成直後の通信断やDB障害では、未記録のカレンダーが残る可能性がある。
+
+旧メインカレンダーへの同期記録は残すが、専用カレンダーへの登録済みとは表示しない。既存のGoogle側の予定は自動移動・削除せず、必要な場合はユーザーが旧予定を整理し、確定画面から専用カレンダーへ登録する。
+
+### `calendar.app.created` の申請説明例
+
+Vacaroは複数人の日程調整を行うアプリです。利用者の許可に基づき、利用者のGoogleアカウント内に専用カレンダー「Vacaro」を作成し、アプリ内で確定した予定を登録します。日時の変更時には該当する予定を更新し、確定解除時には削除します。読み取り専用や空き時間参照の権限では、専用カレンダーの作成と予定の登録・更新・削除を行えません。書き込み先はアプリが作成したカレンダーに限定できるため、calendar.eventsではなくcalendar.app.createdを使用します。

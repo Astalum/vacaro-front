@@ -180,7 +180,7 @@ describe("confirmed schedule clientAction", () => {
 		expect(result).toEqual({
 			kind: "success",
 			group_id: "group-1",
-			message: "Googleカレンダーに追加しました",
+			message: "専用カレンダー「Vacaro」に追加しました",
 		});
 		expect(fetchMock).toHaveBeenCalledWith(
 			"/api/v1/events/event-1/confirmation-calendar",
