@@ -14,6 +14,7 @@ import {
 	type Event,
 	formatDateRange,
 	type GoogleCalendar,
+	isGoogleHolidayCalendarID,
 	localDateTimeToIso,
 	minutesLabel,
 	savedCalendarAvailabilityWindow,
@@ -80,7 +81,12 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 			apiRequest<{ calendars: GoogleCalendar[] }>(
 				"/integrations/google-calendar/calendars",
 			)
-				.then((result) => ({ calendars: result.calendars, error: null }))
+				.then((result) => ({
+					calendars: result.calendars.filter(
+						(calendar) => !isGoogleHolidayCalendarID(calendar.id),
+					),
+					error: null,
+				}))
 				.catch((error: unknown) => ({
 					calendars: [] as GoogleCalendar[],
 					error: apiErrorData(error),
@@ -142,7 +148,9 @@ export async function clientAction({
 			const calendarIDs = Array.isArray(parsedCalendarIDs)
 				? parsedCalendarIDs.filter(
 						(calendarID): calendarID is string =>
-							typeof calendarID === "string" && calendarID.length > 0,
+							typeof calendarID === "string" &&
+							calendarID.length > 0 &&
+							!isGoogleHolidayCalendarID(calendarID),
 					)
 				: [];
 			const result = await apiRequest<{ intervals: AvailabilityInterval[] }>(

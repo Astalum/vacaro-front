@@ -17,6 +17,7 @@ import {
 	COMMON_TIME_ZONES,
 	clearSavedCalendarIDs,
 	type GoogleCalendar,
+	isGoogleHolidayCalendarID,
 	isValidTimeZone,
 	saveCalendarAvailabilityWindow,
 	saveCalendarIDs,
@@ -43,7 +44,9 @@ export async function clientLoader() {
 						write_enabled: boolean;
 					}>("/integrations/google-calendar/calendars")
 						.then((result) => ({
-							calendars: result.calendars,
+							calendars: result.calendars.filter(
+								(calendar) => !isGoogleHolidayCalendarID(calendar.id),
+							),
 							writeEnabled: result.write_enabled,
 							error: null,
 							connectionStatus: "connected" as const,
@@ -530,7 +533,7 @@ export default function Account({
 										</span>
 										<h2>使用するカレンダー</h2>
 										<p>
-											空き時間の判定で「予定あり」として扱うカレンダーを選択します。初期値はメインカレンダーのみです。追加のカレンダーは選択して保存してください。
+											空き時間の判定で「予定あり」として扱うカレンダーを選択します。初期値はメインカレンダーのみです。追加のカレンダーは選択して保存してください。祝日カレンダーは自動的に除外されます。
 										</p>
 									</div>
 									{calendarOptions.calendars.length > 0 && (

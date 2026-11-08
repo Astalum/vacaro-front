@@ -134,6 +134,13 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 		selected: true,
 		background_color: "#2da982",
 	}));
+	calendars.push({
+		id: "ja.japanese.official#holiday@group.v.calendar.google.com",
+		summary: "日本の祝日",
+		primary: false,
+		selected: true,
+		background_color: "#4285f4",
+	});
 	await page.addInitScript(
 		({ eventID, token }) => {
 			localStorage.setItem(

@@ -260,7 +260,17 @@ export function saveCalendarAvailabilityWindow(
 	}
 }
 
+export function isGoogleHolidayCalendarID(calendarID: string) {
+	return calendarID
+		.trim()
+		.toLowerCase()
+		.endsWith("#holiday@group.v.calendar.google.com");
+}
+
 export function savedCalendarIDs(calendars: GoogleCalendar[]) {
+	calendars = calendars.filter(
+		(calendar) => !isGoogleHolidayCalendarID(calendar.id),
+	);
 	const availableIDs = new Set(calendars.map((calendar) => calendar.id));
 	try {
 		const value = window.localStorage.getItem(CALENDAR_SELECTION_STORAGE_KEY);
@@ -287,7 +297,9 @@ export function saveCalendarIDs(calendarIDs: string[]) {
 	try {
 		window.localStorage.setItem(
 			CALENDAR_SELECTION_STORAGE_KEY,
-			JSON.stringify(calendarIDs),
+			JSON.stringify(
+				calendarIDs.filter((id) => !isGoogleHolidayCalendarID(id)),
+			),
 		);
 		return true;
 	} catch {

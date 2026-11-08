@@ -6,6 +6,38 @@ import {
 } from "~/routes/events/availability";
 
 describe("availability clientAction", () => {
+	it("removes holidays from submitted calendar IDs before requesting a preview", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ data: { intervals: [] } }), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				}),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "calendar-preview");
+		formData.set(
+			"calendar_ids",
+			JSON.stringify([
+				"main",
+				"ja.japanese.official#holiday@group.v.calendar.google.com",
+				"work",
+			]),
+		);
+		await clientAction({
+			params: { eventId: "event-1" },
+			request: new Request("http://localhost/events/event-1/availability", {
+				method: "POST",
+				body: formData,
+			}),
+		} as never);
+		expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+			calendar_ids: ["main", "work"],
+		});
+	});
+
 	afterEach(() => vi.unstubAllGlobals());
 
 	it.each([

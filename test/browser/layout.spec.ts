@@ -309,3 +309,43 @@ test("calendar import initially selects only the primary calendar", async ({
 	);
 	expect(unknownRequests).toEqual([]);
 });
+
+test("holiday calendars are excluded from saved selections and the settings list", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page);
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			"vacaro.calendar-selection",
+			JSON.stringify([
+				"calendar-0",
+				"calendar-1",
+				"ja.japanese.official#holiday@group.v.calendar.google.com",
+			]),
+		),
+	);
+	await page.goto("/account");
+	await expect(page.locator(".settings-calendar-option")).toHaveCount(3);
+	await expect(
+		page.locator(".settings-calendar-option input:checked"),
+	).toHaveCount(2);
+	await expect(page.getByText("日本の祝日", { exact: true })).toHaveCount(0);
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="calendar_ids"]')).toHaveValue(
+		'["calendar-0","calendar-1"]',
+	);
+	const request = page.waitForRequest(
+		(r) =>
+			r.url().endsWith("/google-calendar-availability/preview") &&
+			r.method() === "POST",
+	);
+	await page.locator('button[value="calendar-preview"]:visible').click();
+	expect((await request).postDataJSON()).toEqual({
+		calendar_ids: ["calendar-0", "calendar-1"],
+	});
+	await expect(page.locator(".schedule-message.success:visible")).toContainText(
+		"件を取り込みました",
+	);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});

@@ -923,6 +923,8 @@ GET /api/v1/integrations/google-calendar/calendars
 }
 ```
 
+Google標準の祝日カレンダーは一覧から除外する。
+
 ### 11.6 Googleカレンダー連携解除
 
 ```http
@@ -945,6 +947,8 @@ POST /api/v1/events/{event_id}/google-calendar-availability/preview
 - 最大50件
 - 空文字列は不可
 - 対象イベントへの参加とCalendar連携が必要
+
+Google標準の祝日カレンダーIDは取り込み対象から除外する。除外後のIDが空ならメインカレンダーを使用する。
 
 イベント期間をGoogle Calendar FreeBusy APIへ問い合わせ、予定あり区間を除いた時間を返す。期限切れ・取り消しは`409 calendar_reconnect_required`、読み取り権限不足は`409 calendar_read_permission_required`、選択したカレンダーの取得不可は`409 calendar_unavailable`、一時的なGoogle APIエラーは`502 calendar_temporarily_unavailable`を返す。カレンダー単位の取得失敗がある場合、部分的な空き時間は返さない。予定のタイトル・説明・参加者は取得・返却しない。このAPIはプレビュー専用でDBへ保存しない。
 
