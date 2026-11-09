@@ -17,7 +17,7 @@ export function meta() {
 export function loader({ request }: Route.LoaderArgs) {
 	const url = new URL(request.url);
 	if (url.searchParams.get("google_calendar") === "connected") {
-		return redirect("/account?google_calendar=connected");
+		return redirect("/calendars?google_calendar=connected");
 	}
 	return null;
 }

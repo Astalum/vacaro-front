@@ -16,15 +16,15 @@ export default function TimeTreeSettings() {
 				eyebrow="TIMETREE"
 				title="TimeTreeで確定予定を表示する"
 				description="GoogleカレンダーやiCloudを経由して、確定した日程をTimeTreeで確認できます。"
-				backTo="/account"
-				backLabel="ユーザー設定へ戻る"
+				backTo="/calendars"
+				backLabel="カレンダー設定へ戻る"
 			/>
 			<div className="account-stack timetree-guide">
 				<section className="account-card">
 					<h2>Googleカレンダーを使う</h2>
 					<ol>
 						<li>
-							VacaroにGoogleでログインし、ユーザー設定からGoogleカレンダーを接続します。専用カレンダーの作成・管理を許可してください。
+							VacaroにGoogleでログインし、カレンダー設定からGoogleカレンダーを接続します。専用カレンダーの作成・管理を許可してください。
 						</li>
 						<li>
 							接続後に日程が確定すると、Googleの専用カレンダー「Vacaro」に予定が自動登録されます。すでに確定済みの予定は、各イベントの確定画面から「Googleカレンダーに追加」を押してください。
@@ -36,7 +36,7 @@ export default function TimeTreeSettings() {
 							TimeTreeに端末のカレンダーへのアクセスを許可し、ホームカレンダーの表示フィルターで「Vacaro」を選択します。
 						</li>
 					</ol>
-					<Link className="button button-primary" to="/account#google-calendar">
+					<Link className="button button-primary" to="/calendars#google-calendar">
 						Googleカレンダーの接続設定
 					</Link>
 					<p className="timetree-device-help">
@@ -51,7 +51,7 @@ export default function TimeTreeSettings() {
 					<p>
 						Googleの代わりにiCloudを接続しても利用できます。iPhoneの標準カレンダーに専用カレンダー「Vacaro」が表示されることを確認し、TimeTreeにカレンダーへのアクセスを許可して、ホームカレンダーの表示対象に追加してください。
 					</p>
-					<Link className="button button-ghost" to="/account/icloud">
+					<Link className="button button-ghost" to="/calendars/icloud">
 						iCloudの接続設定
 					</Link>
 				</section>

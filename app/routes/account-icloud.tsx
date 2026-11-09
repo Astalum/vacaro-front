@@ -152,8 +152,8 @@ export default function ICloudSettings({
 					eyebrow="ICLOUD CALENDAR"
 					title="iCloudカレンダー連携"
 					description="iPhone標準カレンダーのiCloud予定から空き時間を取り込み、確定予定を自動登録します。"
-					backTo="/account"
-					backLabel="ユーザー設定へ戻る"
+					backTo="/calendars"
+					backLabel="カレンダー設定へ戻る"
 				/>
 				{actionData?.kind === "error" && (
 					<ValidationMessage title={actionData.error.message}>
