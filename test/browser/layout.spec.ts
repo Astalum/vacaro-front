@@ -766,3 +766,283 @@ test("TimeTree exports only and disabling integration stops all provider request
 	expect(unknownRequests).toEqual([]);
 	expect(await layoutProblems(page)).toEqual([]);
 });
+
+test("multi-day drag adds the same hours to each selected day and saves UTC intervals", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const columns = page.locator(
+		".schedule-grid > .schedule-day-column:not(:disabled)",
+	);
+	test.skip(
+		!(await columns.first().isVisible()),
+		"The weekly grid is shown on larger screens",
+	);
+	if ((await columns.count()) < 3)
+		await page.locator('.schedule-toolbar button[aria-label="次の週"]').click();
+	const boxes = await Promise.all(
+		[0, 1, 2].map((index) => columns.nth(index).boundingBox()),
+	);
+	const first = boxes[0]!;
+	const last = boxes[2]!;
+	const start = {
+		x: first.x + first.width / 2,
+		y: first.y + first.height * (125 / 720),
+	};
+	const end = {
+		x: last.x + last.width / 2,
+		y: last.y + last.height * (395 / 720),
+	};
+	await page.mouse.move(start.x, start.y);
+	await page.mouse.down();
+	await page.mouse.move(end.x, end.y, { steps: 12 });
+	const preview = page.locator(".schedule-drag-preview");
+	await expect(preview).toBeVisible();
+	const bounds = (await preview.boundingBox())!;
+	expect(Math.abs(bounds.x - first.x)).toBeLessThan(2);
+	expect(Math.abs(bounds.width - (last.x + last.width - first.x))).toBeLessThan(
+		2,
+	);
+	expect(
+		JSON.parse(await page.locator('input[name="intervals"]').inputValue()),
+	).toHaveLength(0);
+	await page.mouse.up();
+	await expect(preview).toHaveCount(0);
+	const ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(ranges).toHaveLength(3);
+	for (const [index, range] of ranges.entries()) {
+		const date = await columns.nth(index).getAttribute("data-date");
+		expect(range.start).toBe(`${date}T11:00`);
+		expect(range.end).toBe(`${date}T16:00`);
+	}
+	const request = page.waitForRequest(
+		(r) => r.url().endsWith("/my-availability") && r.method() === "PUT",
+	);
+	await page.locator('button[value="save"]:visible').click();
+	expect((await request).postDataJSON().intervals).toEqual(
+		ranges.map((range: { start: string; end: string }) => ({
+			start_at: new Date(range.start + "+09:00").toISOString(),
+			end_at: new Date(range.end + "+09:00").toISOString(),
+		})),
+	);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("multi-day drag supports reverse selection and merges overlaps on each day", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const columns = page.locator(
+		".schedule-grid > .schedule-day-column:not(:disabled)",
+	);
+	test.skip(
+		!(await columns.first().isVisible()),
+		"The weekly grid is shown on larger screens",
+	);
+	if ((await columns.count()) < 3)
+		await page.locator('.schedule-toolbar button[aria-label="次の週"]').click();
+	const first = (await columns.nth(0).boundingBox())!;
+	const last = (await columns.nth(2).boundingBox())!;
+	await page.mouse.move(
+		last.x + last.width / 2,
+		last.y + last.height * (395 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (125 / 720),
+		{ steps: 10 },
+	);
+	await page.mouse.up();
+	let ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(
+		ranges.map((r: { start: string; end: string }) => [
+			r.start.slice(11),
+			r.end.slice(11),
+		]),
+	).toEqual([
+		["11:00", "16:00"],
+		["11:00", "16:00"],
+		["11:00", "16:00"],
+	]);
+	const middle = (await columns.nth(1).boundingBox())!;
+	await page.mouse.move(
+		middle.x + middle.width / 2,
+		middle.y + middle.height * (305 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		middle.x + middle.width / 2,
+		middle.y + middle.height * (455 / 720),
+	);
+	await page.mouse.up();
+	ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(
+		ranges.map((r: { start: string; end: string }) => [
+			r.start.slice(11),
+			r.end.slice(11),
+		]),
+	).toEqual([
+		["11:00", "16:00"],
+		["11:00", "17:00"],
+		["11:00", "16:00"],
+	]);
+});
+
+test("cancelled multi-day drag leaves the answer unchanged", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const columns = page.locator(
+		".schedule-grid > .schedule-day-column:not(:disabled)",
+	);
+	test.skip(
+		!(await columns.first().isVisible()),
+		"The weekly grid is shown on larger screens",
+	);
+	if ((await columns.count()) < 3)
+		await page.locator('.schedule-toolbar button[aria-label="次の週"]').click();
+	const first = (await columns.nth(0).boundingBox())!;
+	const last = (await columns.nth(2).boundingBox())!;
+	await page.mouse.move(first.x + first.width / 2, first.y + 110);
+	await page.mouse.down();
+	await page.mouse.move(last.x + last.width / 2, last.y + 220);
+	await expect(page.locator(".schedule-drag-preview")).toBeVisible();
+	await columns.first().evaluate((column) => {
+		for (let id = 1; id < 10; id++)
+			if (column.hasPointerCapture(id)) column.releasePointerCapture(id);
+	});
+	await page.mouse.move(last.x + last.width / 2, last.y + 221);
+	await expect(page.locator(".schedule-drag-preview")).toHaveCount(0);
+	await page.mouse.up();
+	expect(
+		JSON.parse(await page.locator('input[name="intervals"]').inputValue()),
+	).toEqual([]);
+});
+
+test("single-day mobile drag still records only the selected date", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const column = page.locator(".schedule-mobile-day");
+	test.skip(!(await column.isVisible()), "Mobile daily grid only");
+	const bounds = (await column.boundingBox())!;
+	const date = await column.getAttribute("data-date");
+	await page.mouse.move(
+		bounds.x + bounds.width / 2,
+		bounds.y + bounds.height * (125 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		bounds.x + bounds.width / 2,
+		bounds.y + bounds.height * (215 / 720),
+	);
+	await page.mouse.up();
+	const ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(ranges).toHaveLength(1);
+	expect(ranges[0]).toMatchObject({
+		start: `${date}T11:00`,
+		end: `${date}T13:00`,
+	});
+});
+
+test("multi-day drag can enter unavailable hours for several days", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const columns = page.locator(
+		".schedule-grid > .schedule-day-column:not(:disabled)",
+	);
+	test.skip(!(await columns.first().isVisible()), "Weekly grid only");
+	if ((await columns.count()) < 3)
+		await page.locator('.schedule-toolbar button[aria-label="次の週"]').click();
+	await page
+		.locator(".schedule-sidebar .schedule-entry-mode .is-unavailable")
+		.click();
+	for (let index = 0; index < 3; index++) {
+		await page
+			.locator(".schedule-week-head > button:not(:disabled)")
+			.nth(index)
+			.click();
+		await page.locator('.schedule-sidebar button[aria-label="削除"]').click();
+	}
+	const first = (await columns.nth(0).boundingBox())!;
+	const last = (await columns.nth(2).boundingBox())!;
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (125 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		last.x + last.width / 2,
+		last.y + last.height * (395 / 720),
+		{ steps: 10 },
+	);
+	await expect(
+		page.locator(".schedule-drag-preview.is-unavailable"),
+	).toBeVisible();
+	await page.mouse.up();
+	const ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(
+		ranges.map((r: { start: string; end: string }) => [
+			r.start.slice(11),
+			r.end.slice(11),
+		]),
+	).toEqual([
+		["09:00", "11:00"],
+		["16:00", "21:00"],
+		["09:00", "11:00"],
+		["16:00", "21:00"],
+		["09:00", "11:00"],
+		["16:00", "21:00"],
+	]);
+});
+
+test("multi-day drag clamps selection to enabled event dates", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const columns = page.locator(
+		".schedule-grid > .schedule-day-column:not(:disabled)",
+	);
+	test.skip(!(await columns.first().isVisible()), "Weekly grid only");
+	if ((await columns.count()) < 3)
+		await page.locator('.schedule-toolbar button[aria-label="次の週"]').click();
+	const firstDate = await columns.first().getAttribute("data-date");
+	const third = (await columns.nth(2).boundingBox())!;
+	const grid = (await page.locator(".schedule-grid").boundingBox())!;
+	await page.mouse.move(
+		third.x + third.width / 2,
+		third.y + third.height * (125 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(grid.x - 5, third.y + third.height * (395 / 720));
+	await page.mouse.up();
+	const ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(ranges).toHaveLength(3);
+	expect(ranges[0].start).toBe(`${firstDate}T11:00`);
+});

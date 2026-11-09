@@ -1352,3 +1352,21 @@
 .schedule-sidebar > .schedule-guide.has-icloud .schedule-entry-mode { grid-column: 1 / -1; }
 .schedule-sidebar > .schedule-guide.has-icloud .schedule-import { min-width: 0; max-width: 100%; white-space: normal; }
 .schedule-sidebar > .schedule-guide.has-icloud .schedule-import:only-of-type { grid-column: 1 / -1; }
+
+.schedule-grid {
+	position: relative;
+}
+.schedule-drag-preview {
+	position: absolute;
+	grid-row: 1;
+	left: 0;
+	right: 0;
+	z-index: 3;
+	border: 2px dashed #178e70;
+	background: rgba(72, 185, 154, 0.24);
+	pointer-events: none;
+}
+.schedule-drag-preview.is-unavailable {
+	border-color: #c85d4c;
+	background: rgba(223, 128, 111, 0.24);
+}

@@ -1,4 +1,4 @@
-import { type PointerEvent, useEffect, useMemo, useState } from "react";
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { data, Form, Link, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
@@ -36,6 +36,7 @@ type TimeRange = { id: string; start: string; end: string };
 type EntryMode = "available" | "unavailable";
 type DragState = {
 	date: string;
+	endDate: string;
 	pointerId: number;
 	anchor: number;
 	start: number;
@@ -522,6 +523,12 @@ export default function AvailabilityPage({
 		Math.max(0, weekOptions.indexOf(weekStart(selectedDate))),
 	);
 	const [drag, setDrag] = useState<DragState | null>(null);
+	const activeDrag = useRef<DragState | null>(null);
+	const setActiveDrag = (next: DragState | null) => {
+		activeDrag.current = next;
+		setDrag(next);
+	};
+	const cancelDrag = () => setActiveDrag(null);
 	const [copiedEditLink, setCopiedEditLink] = useState(false);
 	const activeWeek = weekOptions[weekIndex] ?? weekStart(firstDate);
 	const days = useMemo(
@@ -605,7 +612,7 @@ export default function AvailabilityPage({
 			),
 		);
 		setEntryMode(nextMode);
-		setDrag(null);
+		cancelDrag();
 	};
 
 	const allowedRange = (_key: string) => ({
@@ -613,7 +620,13 @@ export default function AvailabilityPage({
 		end: dailyEndMinute,
 	});
 	const beginDrag = (pointer: PointerEvent<HTMLButtonElement>, key: string) => {
-		if (pointer.button !== 0 || key < firstDate || key > lastDate) return;
+		if (
+			activeDrag.current ||
+			pointer.button !== 0 ||
+			key < firstDate ||
+			key > lastDate
+		)
+			return;
 		const value = pointerMinutes(
 			pointer.clientY,
 			pointer.currentTarget,
@@ -625,42 +638,69 @@ export default function AvailabilityPage({
 		pointer.preventDefault();
 		pointer.currentTarget.setPointerCapture(pointer.pointerId);
 		setSelectedDate(key);
-		setDrag({
+		setActiveDrag({
 			date: key,
+			endDate: key,
 			pointerId: pointer.pointerId,
 			anchor: value,
 			start: value,
 			end: Math.min(value + 30, allowed.end),
 		});
 	};
-	const moveDrag = (pointer: PointerEvent<HTMLButtonElement>) => {
-		if (!drag || drag.pointerId !== pointer.pointerId) return;
+	const dragAtPointer = (
+		pointer: PointerEvent<HTMLButtonElement>,
+		current: DragState,
+	): DragState => {
 		const value = pointerMinutes(
 			pointer.clientY,
 			pointer.currentTarget,
 			dailyStartMinute,
 			dailyEndMinute,
 		);
-		const allowed = allowedRange(drag.date);
-		setDrag((current) =>
-			current
-				? {
-						...current,
-						start: Math.max(allowed.start, Math.min(current.anchor, value)),
-						end: Math.min(allowed.end, Math.max(current.anchor, value) + 30),
-					}
-				: null,
+		// Pointer capture keeps events on the starting column. Hit-test horizontally
+		// against the visible week instead of relying on the event target changing.
+		const columns = Array.from(
+			pointer.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+				":scope > .schedule-day-column:not(:disabled)",
+			) ?? [],
 		);
+		const column =
+			columns.find(
+				(column) => pointer.clientX < column.getBoundingClientRect().right,
+			) ?? columns.at(-1);
+		const endDate = column?.dataset.date ?? current.date;
+		return {
+			...current,
+			endDate,
+			start: Math.max(dailyStartMinute, Math.min(current.anchor, value)),
+			end: Math.min(dailyEndMinute, Math.max(current.anchor, value) + 30),
+		};
+	};
+	const moveDrag = (pointer: PointerEvent<HTMLButtonElement>) => {
+		const current = activeDrag.current;
+		if (!current || current.pointerId !== pointer.pointerId) return;
+		setActiveDrag(dragAtPointer(pointer, current));
 	};
 	const finishDrag = (pointer: PointerEvent<HTMLButtonElement>) => {
-		if (!drag || drag.pointerId !== pointer.pointerId) return;
-		const added = {
-			id: crypto.randomUUID(),
-			start: dateTimeAtMinute(drag.date, drag.start),
-			end: dateTimeAtMinute(drag.date, drag.end),
-		};
-		setRanges((current) => mergeRanges(current, added));
-		setDrag(null);
+		const current = activeDrag.current;
+		if (!current || current.pointerId !== pointer.pointerId) return;
+		const selected = dragAtPointer(pointer, current);
+		const first =
+			selected.date < selected.endDate ? selected.date : selected.endDate;
+		const last =
+			selected.date > selected.endDate ? selected.date : selected.endDate;
+		const added: TimeRange[] = [];
+		for (let key = first; key <= last; key = addDays(key, 1)) {
+			added.push({
+				id: crypto.randomUUID(),
+				start: dateTimeAtMinute(key, selected.start),
+				end: dateTimeAtMinute(key, selected.end),
+			});
+		}
+		setRanges((ranges) =>
+			added.reduce((current, range) => mergeRanges(current, range), ranges),
+		);
+		cancelDrag();
 	};
 	const updateTime = (
 		id: string,
@@ -994,6 +1034,7 @@ export default function AvailabilityPage({
 								<button
 									type="button"
 									className="schedule-day-column schedule-mobile-day"
+									data-date={selectedDate}
 									aria-label={
 										selectedDate +
 										"の" +
@@ -1005,7 +1046,8 @@ export default function AvailabilityPage({
 									}
 									onPointerMove={moveDrag}
 									onPointerUp={finishDrag}
-									onPointerCancel={() => setDrag(null)}
+									onPointerCancel={cancelDrag}
+									onLostPointerCapture={cancelDrag}
 								>
 									{ranges.map((range) => {
 										const segment = segmentOnDate(range, selectedDate);
@@ -1264,6 +1306,17 @@ export default function AvailabilityPage({
 										</span>
 									))}
 								</div>
+								{drag && (
+									<i
+										className={`schedule-drag-preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
+										aria-hidden="true"
+										style={{
+											gridColumn: `${days.indexOf(drag.date < drag.endDate ? drag.date : drag.endDate) + 2} / ${days.indexOf(drag.date > drag.endDate ? drag.date : drag.endDate) + 3}`,
+											top: `${((drag.start - dailyStartMinute) / visibleMinutes) * 100}%`,
+											height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
+										}}
+									/>
+								)}
 								{days.map((key) => {
 									const enabled = key >= firstDate && key <= lastDate;
 									return (
@@ -1271,12 +1324,14 @@ export default function AvailabilityPage({
 											key={key}
 											type="button"
 											className="schedule-day-column"
+											data-date={key}
 											disabled={!enabled}
 											aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
 											onPointerDown={(event) => beginDrag(event, key)}
 											onPointerMove={moveDrag}
 											onPointerUp={finishDrag}
-											onPointerCancel={() => setDrag(null)}
+											onPointerCancel={cancelDrag}
+											onLostPointerCapture={cancelDrag}
 										>
 											{ranges.map((range) => {
 												const segment = segmentOnDate(range, key);
@@ -1301,15 +1356,6 @@ export default function AvailabilityPage({
 													/>
 												);
 											})}
-											{drag?.date === key && (
-												<i
-													className={`schedule-range preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
-													style={{
-														top: `${((drag.start - dailyStartMinute) / visibleMinutes) * 100}%`,
-														height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
-													}}
-												/>
-											)}
 										</button>
 									);
 								})}
