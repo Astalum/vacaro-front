@@ -14,6 +14,7 @@ export type Scenario = {
 	calendarWritePermissionRequired?: boolean;
 	calendarImportError?: string;
 	changingCounts?: boolean;
+	endOfDay?: boolean;
 };
 
 export const eventID = "event-1";
@@ -55,7 +56,7 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 			? `${"長い説明文も枠に収まることを確認します。".repeat(12)}\nhttps://example.com/${"unbroken-path-".repeat(12)}`
 			: "みんなの予定を合わせるイベントです。",
 		window_start_at: iso(0),
-		window_end_at: iso(24 * 14 + 12),
+		window_end_at: iso(24 * 14 + (scenario.endOfDay ? 15 : 12)),
 		duration_minutes: 90,
 		scheduling_mode: scenario.groups ? "groups" : "whole_event",
 		status: "open",

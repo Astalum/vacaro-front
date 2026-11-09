@@ -1,5 +1,5 @@
 import { parseDateInput } from "./date-input";
-import { isTimeValue } from "./time";
+import { isTimeValue, normalizeLocalDateTime } from "./time";
 
 export function validateEventForm(form: FormData, requireDisplayName = false) {
 	const errors: Record<string, string> = {};
@@ -24,18 +24,20 @@ export function validateEventForm(form: FormData, requireDisplayName = false) {
 	else if (isTimeValue(startTime) && startTime >= endTime)
 		errors.daily_end_time = "毎日の終了時刻は開始時刻より後にしてください";
 	const deadline = get("response_deadline_at");
+	const normalizedDeadline = normalizeLocalDateTime(deadline);
+	const normalizedEnd = normalizeLocalDateTime(`${endDate}T${endTime}`);
 	if (
 		deadline &&
-		(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(deadline) ||
-			!parseDateInput(deadline.slice(0, 10)) ||
-			!isTimeValue(deadline.slice(11)))
+		(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(deadline) || !normalizedDeadline)
 	) {
 		errors.response_deadline_at = "回答期限の日付と時刻を選択してください";
 	} else if (
 		deadline &&
 		!errors.window_end_date &&
 		!errors.daily_end_time &&
-		deadline > `${endDate}T${endTime}`
+		normalizedDeadline &&
+		normalizedEnd &&
+		normalizedDeadline > normalizedEnd
 	) {
 		errors.response_deadline_at = "回答期限は調整期間の終了以前にしてください";
 	}

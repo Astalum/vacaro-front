@@ -118,20 +118,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 		);
 	}
 	const windowStartAt = `${windowStartDate}T${dailyStartTime}`;
-	if (responseDeadlineAt && responseDeadlineAt > windowEndAt) {
-		return data(
-			{
-				error: {
-					code: "validation_failed",
-					message: "回答期限は調整期間の終了以前にしてください",
-					fields: {
-						response_deadline_at: "調整期間の終了以前を指定してください",
-					},
-				},
-			},
-			{ status: 422 },
-		);
-	}
+
 	const windowStartIso = localDateTimeToIso(windowStartAt, timeZone);
 	const windowEndIso = localDateTimeToIso(windowEndAt, timeZone);
 	const responseDeadlineIso = responseDeadlineAt
@@ -154,6 +141,20 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 					message:
 						"タイムゾーン、必要時間、調整単位、または日時を確認してください",
 					fields: null,
+				},
+			},
+			{ status: 422 },
+		);
+	}
+	if (responseDeadlineIso && responseDeadlineIso > windowEndIso) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message: "回答期限は調整期間の終了以前にしてください",
+					fields: {
+						response_deadline_at: "調整期間の終了以前を指定してください",
+					},
 				},
 			},
 			{ status: 422 },

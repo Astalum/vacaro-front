@@ -125,10 +125,10 @@ export function TimePickerPanel({
 	onValueChange,
 	min,
 	max,
-	allowEndOfDay = false,
+	allowEndOfDay = true,
 }: TimePickerPanelProps) {
 	const current =
-		isTimeValue(value) || (allowEndOfDay && value === "24:00")
+		isTimeValue(value) && (allowEndOfDay || value !== "24:00")
 			? value
 			: (min ?? "09:00");
 	const [hour, minute] = current.split(":");
@@ -208,7 +208,7 @@ export function TimePicker({
 	max,
 	required = false,
 	disabled = false,
-	allowEndOfDay = false,
+	allowEndOfDay = true,
 	"aria-label": ariaLabel,
 	"aria-describedby": ariaDescribedBy,
 	"aria-invalid": ariaInvalid,

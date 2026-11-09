@@ -36,7 +36,7 @@ import {
 } from "~/lib/api";
 import { validateEventForm } from "~/lib/event-form-validation";
 import { createPageMeta } from "~/lib/meta";
-import { isTimeValue } from "~/lib/time";
+import { endOfDayInput, isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/edit";
 
 const controlIds: Record<string, string> = {
@@ -138,6 +138,20 @@ export async function clientAction({
 			{ status: 422 },
 		);
 	}
+	if (responseDeadlineIso && responseDeadlineIso > windowEndIso) {
+		return data(
+			{
+				error: {
+					code: "validation_failed",
+					message: "回答期限は調整期間の終了以前にしてください",
+					fields: {
+						response_deadline_at: "調整期間の終了以前を指定してください",
+					},
+				},
+			},
+			{ status: 422 },
+		);
+	}
 	try {
 		await apiRequest<Event>(`/events/${params.eventId}`, {
 			method: "PATCH",
@@ -172,6 +186,9 @@ export default function EditEvent({
 	loaderData: { event, inviteUrl, timeZone },
 	actionData,
 }: Route.ComponentProps) {
+	const windowEndInput = endOfDayInput(
+		isoToLocalDateTime(event.window_end_at, timeZone),
+	);
 	const navigation = useNavigation();
 	const { errors, localErrors, setErrors, clearError, inputProps } =
 		useFormErrors(
@@ -312,10 +329,7 @@ export default function EditEvent({
 								name="window_end_date"
 								{...inputProps("window_end_date", "edit-window-end-date")}
 								onValueChange={() => clearError("window_end_date")}
-								defaultValue={isoToLocalDateTime(
-									event.window_end_at,
-									timeZone,
-								).slice(0, 10)}
+								defaultValue={windowEndInput.slice(0, 10)}
 								required
 							/>
 							<FieldError id="edit-window-end-date-error">
@@ -357,10 +371,7 @@ export default function EditEvent({
 									name="daily_end_time"
 									{...inputProps("daily_end_time", "edit-daily-end-time")}
 									onValueChange={() => clearError("daily_end_time")}
-									defaultValue={isoToLocalDateTime(
-										event.window_end_at,
-										timeZone,
-									).slice(11, 16)}
+									defaultValue={windowEndInput.slice(11, 16)}
 									required
 								/>
 								<FieldError id="edit-daily-end-time-error">

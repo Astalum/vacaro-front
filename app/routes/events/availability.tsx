@@ -27,6 +27,7 @@ import {
 	type ICloudCalendar,
 	savedICloudCalendarIDs,
 } from "~/lib/icloud-calendar";
+import { normalizeLocalDateTime } from "~/lib/time";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/availability";
 
@@ -393,8 +394,8 @@ function clipCalendarIntervals(
 		const finalKey = intervalEnd.slice(0, 10);
 
 		while (key <= finalKey) {
-			const dailyStart = `${key}T${dailyWindow.start}`;
-			const dailyEnd = `${key}T${dailyWindow.end}`;
+			const dailyStart = normalizeLocalDateTime(`${key}T${dailyWindow.start}`)!;
+			const dailyEnd = normalizeLocalDateTime(`${key}T${dailyWindow.end}`)!;
 			const start = [intervalStart, dailyStart, eventStart].reduce(
 				(latest, value) => (value > latest ? value : latest),
 			);
@@ -667,7 +668,7 @@ export default function AvailabilityPage({
 							[field]:
 								field === "end" && (value === "00:00" || value === "24:00")
 									? `${addDays(key, 1)}T00:00`
-									: `${key}T${value}`,
+									: (normalizeLocalDateTime(`${key}T${value}`) ?? range[field]),
 						}
 					: range,
 			),

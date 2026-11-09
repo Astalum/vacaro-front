@@ -96,7 +96,6 @@ describe("custom form controls", () => {
 					defaultValue="23:45"
 					min="23:30"
 					max="24:00"
-					allowEndOfDay
 				/>
 			</form>,
 		);

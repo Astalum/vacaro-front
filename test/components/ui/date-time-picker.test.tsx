@@ -1,11 +1,48 @@
 // @vitest-environment happy-dom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+	cleanup,
+	render,
+	screen,
+	waitFor,
+	within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { DateTimePicker } from "~/components/ui/date-time-picker";
 
 describe("DateTimePicker", () => {
+	afterEach(cleanup);
+	it("selects 24:00 on the chosen date and disables later minutes", async () => {
+		const user = userEvent.setup();
+		const { container } = render(
+			<form>
+				<DateTimePicker
+					id="deadline"
+					name="deadline"
+					defaultValue="2026-12-31T23:45"
+				/>
+			</form>,
+		);
+		await user.click(document.getElementById("deadline")!);
+		await user.click(screen.getByRole("button", { name: "時刻 23:45" }));
+		await user.click(
+			within(screen.getByRole("listbox", { name: "時" })).getByRole("option", {
+				name: "24",
+			}),
+		);
+		expect(
+			(
+				within(screen.getByRole("listbox", { name: "分" })).getByRole(
+					"option",
+					{ name: "01" },
+				) as HTMLButtonElement
+			).disabled,
+		).toBe(true);
+		expect(new FormData(container.querySelector("form")!).get("deadline")).toBe(
+			"2026-12-31T24:00",
+		);
+	});
 	it("opens the calendar and updates the submitted date and time", async () => {
 		const user = userEvent.setup();
 		const { container } = render(

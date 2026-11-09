@@ -3,6 +3,16 @@ import { installFixtures, type Scenario, token } from "./fixtures";
 import { layoutProblems } from "./geometry";
 
 const cases: { name: string; path: string; scenario?: Scenario }[] = [
+	{
+		name: "edit event through midnight",
+		path: "/events/event-1/edit",
+		scenario: { endOfDay: true },
+	},
+	{
+		name: "availability through midnight",
+		path: "/events/event-1/availability",
+		scenario: { endOfDay: true },
+	},
 	{ name: "calendars", path: "/calendars" },
 	{ name: "calendars guest", path: "/calendars", scenario: { guest: true } },
 	{
@@ -221,6 +231,72 @@ test("legacy calendar links and OAuth results reach the new settings pages", asy
 	await expect(
 		page.getByText("Googleカレンダーに接続できませんでした", { exact: true }),
 	).toBeVisible();
+	expect(unknownRequests).toEqual([]);
+});
+
+test("24:00 is selectable in event times, deadlines, and calendar preferences", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page);
+	await page.goto("/events/new");
+	await page.locator("#daily-end-time").click();
+	await page
+		.getByRole("listbox", { name: "時", exact: true })
+		.getByRole("option", { name: "24", exact: true })
+		.click();
+	await expect(
+		page
+			.getByRole("listbox", { name: "分", exact: true })
+			.getByRole("option", { name: "01", exact: true }),
+	).toBeDisabled();
+	await page.getByRole("button", { name: "この時刻にする" }).click();
+	await expect(page.locator('input[name="daily_end_time"]')).toHaveValue(
+		"24:00",
+	);
+	await page.locator("#deadline").click();
+	await page.getByRole("button", { name: /^時刻 / }).click();
+	await page
+		.getByRole("listbox", { name: "時", exact: true })
+		.getByRole("option", { name: "24", exact: true })
+		.click();
+	await page.getByRole("button", { name: "この時刻にする" }).click();
+	await page.getByRole("button", { name: "決定", exact: true }).click();
+	await expect(page.locator('input[name="response_deadline_at"]')).toHaveValue(
+		/T24:00$/,
+	);
+	await page.goto("/calendars");
+	await page.locator("#calendar-window-end").click();
+	await page
+		.getByRole("listbox", { name: "時", exact: true })
+		.getByRole("option", { name: "24", exact: true })
+		.click();
+	await page.getByRole("button", { name: "この時刻にする" }).click();
+	await page.getByRole("button", { name: "取り込み範囲を保存" }).click();
+	await page.reload();
+	await expect(page.locator("#calendar-window-end")).toContainText("24:00");
+	expect(unknownRequests).toEqual([]);
+});
+
+test("editing a midnight event preserves its end instant", async ({ page }) => {
+	const { unknownRequests } = await installFixtures(page, { endOfDay: true });
+	const eventResponse = page.waitForResponse(
+		(r) =>
+			r.url().endsWith("/api/v1/events/event-1") &&
+			r.request().method() === "GET",
+	);
+	await page.goto("/events/event-1/edit");
+	const { data: event } = await (await eventResponse).json();
+	await expect(page.locator('input[name="daily_end_time"]')).toHaveValue(
+		"24:00",
+	);
+	const submitted = page.waitForRequest(
+		(r) => r.url().endsWith("/api/v1/events/event-1") && r.method() === "PATCH",
+	);
+	await page.locator('form.form-stack button[type="submit"]').last().click();
+	const body = (await submitted).postDataJSON();
+	expect(new Date(body.window_end_at).toISOString()).toBe(
+		new Date(event.window_end_at).toISOString(),
+	);
 	expect(unknownRequests).toEqual([]);
 });
 

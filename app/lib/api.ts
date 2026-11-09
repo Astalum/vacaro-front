@@ -1,4 +1,4 @@
-import { isTimeValue } from "./time";
+import { isTimeValue, normalizeLocalDateTime } from "./time";
 
 export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
 
@@ -494,21 +494,17 @@ export function isValidTimeZone(timeZone: string) {
 }
 
 function localDateTimeParts(value: string) {
+	const normalized = normalizeLocalDateTime(value);
+	if (!normalized) return null;
 	const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
-		value,
+		normalized,
 	);
 	if (!match) return null;
 	const [, year, month, day, hour, minute, second = "00"] = match;
 	const values = [year, month, day, hour, minute, second].map(Number);
-	const utc = Date.UTC(
-		values[0],
-		values[1] - 1,
-		values[2],
-		values[3],
-		values[4],
-		values[5],
-	);
-	const date = new Date(utc);
+	const date = new Date(0);
+	date.setUTCFullYear(values[0], values[1] - 1, values[2]);
+	date.setUTCHours(values[3], values[4], values[5], 0);
 	if (
 		date.getUTCFullYear() !== values[0] ||
 		date.getUTCMonth() !== values[1] - 1 ||
@@ -519,7 +515,7 @@ function localDateTimeParts(value: string) {
 	) {
 		return null;
 	}
-	return { values, wallClockUtc: utc };
+	return { values, wallClockUtc: date.getTime() };
 }
 
 function zonedParts(date: Date, timeZone: string) {
