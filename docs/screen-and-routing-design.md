@@ -46,10 +46,10 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 | 区分 | 画面 | ルート | 主な役割 |
 | --- | --- | --- | --- |
 | 共通 | トップ | `/` | サービス説明、イベント作成への導線 |
-| 共通 | ユーザー設定 | `/account` | Googleログイン、ログアウト、プロフィール・表示設定、カレンダー設定への導線 |
-| 共通 | カレンダー設定 | `/calendars` | カレンダー連携・取り込み対象管理、各サービスの設定への導線 |
-| 共通 | iCloud設定 | `/calendars/icloud` | Apple Accountの接続・取り込み対象管理 |
-| 共通 | TimeTree表示手順 | `/calendars/timetree` | Google・iCloudを経由した確定予定の表示方法 |
+| 共通 | ユーザー設定 | `/account` | Googleログイン、ログアウト、プロフィール・表示設定、カレンダー連携・取り込み対象管理 |
+| 共通 | カレンダー設定 | `/account#calendar-settings` | ユーザーページ内のサービス選択・接続・取り込み設定 |
+| 共通 | iCloud設定 | `/account#calendar-settings` | Apple Accountの接続・取り込み対象管理 |
+| 共通 | TimeTree表示手順 | `/account#timetree-guide` | Google・iCloudを経由した確定予定の表示方法 |
 | 主催者 | イベント作成 | `/events/new` | 調整対象期間と必要時間を設定 |
 | 主催者 | 作成完了 | `/events/:eventId/created` | 招待URLを共有 |
 | 共通 | イベント一覧 | `/events` | 自分が参加しているイベントを表示 |
@@ -98,21 +98,20 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 - Google認証済みユーザーの表示名とメールアドレスを表示
 - 表示名と日時の入力・表示に使用するタイムゾーンを設定
 - ユーザー設定のタイムゾーン初期値は`Asia/Tokyo`とする。Googleログイン時は保存済みの設定を保持し、ブラウザのタイムゾーンでは上書きしない。日時は内部・APIではUTCで管理し、画面ではユーザー設定に従って入力・表示する
-- カレンダー設定 `/calendars` へのリンク（接続状態やカレンダー一覧はこのページでは取得・表示しない）
+- ページ内にカレンダー設定を表示し、選択したサービスの接続状態と取り込み対象を管理する
 - セッションからのログアウト
 
-Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブラウザ遷移で開く。Googleカレンダー接続後に旧URL `/account?google_calendar=connected` へ戻った場合は、フロントエンドが `/calendars?google_calendar=connected` に転送し、専用ページの連携カードへ反映する。独立した接続完了ポップアップは表示しない。
+Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブラウザ遷移で開く。Googleカレンダー接続後は `/account?google_calendar=connected` に戻り、ページ内のカレンダー設定に認可結果を反映する。独立した接続完了ポップアップは表示しない。
 
-### 4.1.2 カレンダー設定 `/calendars`
+### 4.1.2 ユーザーページ内のカレンダー設定 `/account#calendar-settings`
 
-- Googleカレンダーの接続・再接続・解除、書き込み権限の案内
-- 空き時間を取り込む時間帯と対象カレンダーの選択
-- iCloudの接続・取り込み設定 `/calendars/icloud` へのリンク
-- TimeTreeの表示手順 `/calendars/timetree` へのリンク
-- iCloud・TimeTreeの詳細ページからはカレンダー設定へ戻る
-- 未ログイン・ゲストにはGoogleログインを案内し、iCloud・TimeTreeの導線も表示する
-- 旧 `/account/icloud`・`/account/timetree` は新URLへ転送する。旧Google認可結果のクエリとカレンダー設定のハッシュも `/calendars` へ転送する
-- ブラウザに保存済みのカレンダー選択・取り込み時間帯のキーは変更しない
+- 使用しない・Google・iCloud・TimeTreeから連携サービスを1つ選択する
+- Googleの接続・再接続・解除、取り込み時間帯、複数の対象カレンダーの選択をページ内で行う
+- iCloudを選択した場合は、Apple Accountの接続・解除と複数の対象カレンダーの選択をページ内に表示する
+- TimeTreeの表示手順は同じページ内の開閉パネルで確認できる
+- 旧 `/calendars`、`/calendars/icloud`、`/calendars/timetree`、`/account/icloud`、`/account/timetree` はユーザーページ内へ転送し、OAuth結果のクエリを保持する
+- 保存済みのサービス選択、カレンダー選択・取り込み時間帯は引き継ぐ
+- カレンダー設定を取得できない場合もプロフィール設定を表示する
 
 ### 4.2 作成完了 `/events/:eventId/created`
 

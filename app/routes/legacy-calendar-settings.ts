@@ -9,7 +9,7 @@ export function loader({ params, request }: Route.LoaderArgs) {
 		throw new Response("Not Found", { status: 404 });
 	}
 	return redirect(
-		`/calendars/${params.calendarProvider}${new URL(request.url).search}`,
+		`/account${new URL(request.url).search}#${params.calendarProvider === "timetree" ? "timetree-guide" : "calendar-settings"}`,
 		302,
 	);
 }

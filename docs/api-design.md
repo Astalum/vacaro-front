@@ -896,7 +896,7 @@ GET /api/v1/integrations/google-calendar/callback?code=<code>&state=<state>
 {PUBLIC_APP_URL}/account?google_calendar=connected
 ```
 
-カレンダー一覧または空き時間の読み取り権限が不足する認可結果は保存せず、`/account?google_calendar=permission_required`へ戻す。書き込み権限のみ省略した接続では、取り込みを利用できる。その他のコールバック失敗は`/account?google_calendar=error`へ戻す。フロントエンドはこれらの戻り先を、結果のクエリを保持して専用ページ `/calendars` へ転送する。
+カレンダー一覧または空き時間の読み取り権限が不足する認可結果は保存せず、`/account?google_calendar=permission_required`へ戻す。書き込み権限のみ省略した接続では、取り込みを利用できる。その他のコールバック失敗は`/account?google_calendar=error`へ戻す。フロントエンドはユーザーページ内に認可結果を表示する。
 
 ### 11.5 Googleカレンダー一覧
 
@@ -1005,4 +1005,4 @@ stateDiagram-v2
 
 ## iCloud連携
 
-`/calendars/icloud`でiCloudカレンダーを設定する。接続・カレンダー一覧・解除は`/api/v1/integrations/icloud-calendar`系API、回答の取り込みは`/icloud-calendar-availability/preview`、確定予定の登録は`/icloud-confirmation-calendar`を利用する。GoogleとiCloudの同期状態は別に表示し、失敗メッセージは対象プロバイダーだけに表示する。詳細は[設定ガイド](icloud-calendar-setup.md)を参照。
+`/account#calendar-settings`でiCloudカレンダーを設定する。接続・カレンダー一覧・解除は`/api/v1/integrations/icloud-calendar`系API、回答の取り込みは`/icloud-calendar-availability/preview`、確定予定の登録は`/icloud-confirmation-calendar`を利用する。GoogleとiCloudの同期状態は別に表示し、失敗メッセージは対象プロバイダーだけに表示する。詳細は[設定ガイド](icloud-calendar-setup.md)を参照。

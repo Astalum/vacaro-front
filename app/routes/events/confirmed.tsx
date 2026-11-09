@@ -420,7 +420,7 @@ function TimeTreeGuideLink() {
 	return (
 		<p className="timetree-confirmed-help">
 			TimeTreeをお使いの方へ：
-			<Link to="/calendars/timetree">
+			<Link to="/account#timetree-guide">
 				Google・iCloud経由で確定予定を表示する
 			</Link>
 		</p>
@@ -464,7 +464,7 @@ function CalendarSyncControls(props: {
 	)
 		return (
 			<p>
-				予定の書き出し先を<Link to="/calendars">カレンダー設定</Link>
+				予定の書き出し先を<Link to="/account#calendar-settings">カレンダー設定</Link>
 				で選択してください。
 			</p>
 		);
@@ -502,8 +502,8 @@ function CalendarSyncControl({
 	const isICloud = provider === "icloud";
 	const calendarLabel = isICloud ? "iCloudカレンダー" : "Googleカレンダー";
 	const settingsPath = isICloud
-		? "/calendars/icloud"
-		: "/calendars#calendar-settings";
+		? "/account#calendar-settings"
+		: "/account#calendar-settings";
 	const sync = calendarStatus.syncs.find((item) => item.group_id === groupID);
 	const isSubmitting = submittingGroupID === groupID;
 	const isCurrentAction =

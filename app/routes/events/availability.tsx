@@ -904,7 +904,7 @@ export default function AvailabilityPage({
 						) : icloudOptions.calendars.length === 0 ? (
 							<Link
 								className="schedule-settings-link"
-								to="/calendars#calendar-settings"
+								to="/account#calendar-settings"
 							>
 								カレンダー設定
 							</Link>
@@ -1167,8 +1167,8 @@ export default function AvailabilityPage({
 								<Link
 									to={
 										actionData.error.code.startsWith("icloud_")
-											? "/calendars/icloud"
-											: "/calendars#calendar-settings"
+											? "/account#calendar-settings"
+											: "/account#calendar-settings"
 									}
 								>
 									カレンダー設定を確認する
@@ -1403,7 +1403,7 @@ export default function AvailabilityPage({
 						) : icloudOptions.calendars.length === 0 ? (
 							<Link
 								className="schedule-settings-link"
-								to="/calendars#calendar-settings"
+								to="/account#calendar-settings"
 							>
 								カレンダー設定
 							</Link>
@@ -1535,8 +1535,8 @@ export default function AvailabilityPage({
 								<Link
 									to={
 										actionData.error.code.startsWith("icloud_")
-											? "/calendars/icloud"
-											: "/calendars#calendar-settings"
+											? "/account#calendar-settings"
+											: "/account#calendar-settings"
 									}
 								>
 									カレンダー設定を確認する

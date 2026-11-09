@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { User } from "~/lib/api";
-import { clientLoader } from "~/routes/calendars";
+import { loadCalendarSettings } from "~/components/calendar-settings";
 
 function response(data: unknown) {
 	return Promise.resolve(
@@ -11,7 +11,7 @@ function response(data: unknown) {
 	);
 }
 
-describe("calendar settings clientLoader", () => {
+describe("calendar settings data", () => {
 	afterEach(() => vi.restoreAllMocks());
 
 	it("reports when an existing calendar connection needs write permission", async () => {
@@ -41,7 +41,7 @@ describe("calendar settings clientLoader", () => {
 			}),
 		);
 
-		const loaded = await clientLoader();
+		const loaded = await loadCalendarSettings(user);
 
 		expect(loaded.calendarOptions.connectionStatus).toBe("connected");
 		expect(loaded.calendarOptions.writeEnabled).toBe(false);

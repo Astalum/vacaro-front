@@ -4,15 +4,6 @@
 	gap: 16px;
 }
 
-.calendar-settings-link {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	margin-top: 16px;
-}
-.calendar-settings-link > span {
-	flex: 1;
-}
 .calendar-settings-stack > .account-card > .button {
 	margin-top: 16px;
 }
@@ -552,3 +543,18 @@
 .icloud-connect-form p { overflow-wrap: anywhere; line-height: 1.7; }
 .icloud-connect-form .button { justify-self: start; }
 .icloud-disconnect { margin-top: 18px; }
+
+.account-calendar-settings {
+	margin-top: 24px;
+	scroll-margin-top: 24px;
+}
+.account-calendar-settings > .settings-section-heading {
+	margin-bottom: 16px;
+}
+.timetree-inline-guide > summary {
+	cursor: pointer;
+	font-weight: 700;
+}
+.timetree-inline-guide[open] > summary {
+	margin-bottom: 20px;
+}

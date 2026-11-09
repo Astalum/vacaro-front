@@ -1,6 +1,6 @@
 # Google カレンダー連携の設定と障害調査
 
-カレンダー設定は `/calendars` に集約する。ユーザー設定 `/account` には専用ページへのリンクだけを表示し、接続・再接続・解除、取り込み時間帯、取り込み対象の選択は専用ページで行う。iCloudは `/calendars/icloud`、TimeTreeの表示手順は `/calendars/timetree` から開く。
+カレンダー設定はユーザー設定 `/account#calendar-settings` 内に集約する。利用サービスの選択、Google・iCloudの接続・再接続・解除、取り込み時間帯、取り込み対象を同じページで設定する。TimeTreeの表示手順もページ内に表示する。
 
 ## Google の「このアプリは確認されていません」という警告
 

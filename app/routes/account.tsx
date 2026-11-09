@@ -1,11 +1,10 @@
+import { useEffect } from "react";
 import {
 	data,
 	Form,
-	Link,
-	Navigate,
 	redirect,
-	useLocation,
 	useNavigation,
+	useSearchParams,
 } from "react-router";
 import { Icon, PageIntro, PageShell } from "~/components/app";
 import { ValidationMessage } from "~/components/ui/validation-message";
@@ -17,30 +16,46 @@ import {
 	isValidTimeZone,
 	type User,
 } from "~/lib/api";
+import CalendarSettings, {
+	loadCalendarSettings,
+	handleCalendarAction,
+} from "~/components/calendar-settings";
+import { handleICloudAction } from "~/components/icloud-settings";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/account";
 
 export function meta() {
 	return createPageMeta("ユーザー設定 | vacaro");
 }
-export async function clientLoader({ request }: Route.ClientLoaderArgs) {
-	const result = new URL(request.url).searchParams.get("google_calendar");
-	if (result)
-		return redirect(
-			`/calendars?${new URLSearchParams({ google_calendar: result })}`,
-		);
+export async function clientLoader(_args: Route.ClientLoaderArgs) {
+	let user: User | null;
 	try {
-		return { user: await apiRequest<User>("/me") };
+		user = await apiRequest<User>("/me");
 	} catch (error) {
-		if (error instanceof ApiError && error.status === 401)
-			return { user: null };
-		throw error;
+		if (error instanceof ApiError && error.status === 401) user = null;
+		else throw error;
 	}
+	const calendar = await loadCalendarSettings(user)
+		.then((settings) => ({ settings, error: null }))
+		.catch((error: unknown) => ({
+			settings: null,
+			error: apiErrorData(error),
+		}));
+	return { user, calendar };
 }
+
 clientLoader.hydrate = true as const;
 export async function clientAction({ request }: Route.ClientActionArgs) {
 	const formData = await request.formData();
 	const intent = formData.get("intent");
+	if (
+		intent === "select-provider" ||
+		intent === "calendar-connect" ||
+		intent === "calendar-disconnect"
+	)
+		return handleCalendarAction(formData);
+	if (intent === "icloud-connect" || intent === "icloud-disconnect")
+		return handleICloudAction(formData);
 	try {
 		if (intent === "logout") {
 			await apiRequest<void>("/session", { method: "DELETE" });
@@ -53,6 +68,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 				return data(
 					{
 						kind: "error" as const,
+						scope: "profile" as const,
 						error: {
 							code: "validation_failed",
 							message: "表示名とタイムゾーンを確認してください",
@@ -73,13 +89,18 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 		return data(
 			{
 				kind: "error" as const,
+				scope: "profile" as const,
 				error: { code: "invalid_intent", message: "操作を確認してください" },
 			},
 			{ status: 400 },
 		);
 	} catch (error) {
 		return data(
-			{ kind: "error" as const, error: apiErrorData(error) },
+			{
+				kind: "error" as const,
+				scope: "profile" as const,
+				error: apiErrorData(error),
+			},
 			{ status: error instanceof ApiError ? error.status : 500 },
 		);
 	}
@@ -97,18 +118,24 @@ export default function Account({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { user } = loaderData;
+	const { user, calendar } = loaderData;
 	const navigation = useNavigation();
 	const intent = navigation.formData?.get("intent");
-	const { hash } = useLocation();
-	if (hash === "#calendar-settings" || hash === "#google-calendar")
-		return <Navigate to={`/calendars${hash}`} replace />;
+	const [searchParams] = useSearchParams();
+	const calendarResult = searchParams.get("google_calendar");
+	useEffect(() => {
+		if (calendarResult)
+			document
+				.getElementById("calendar-settings")
+				?.scrollIntoView({ block: "start" });
+	}, [calendarResult]);
+
 	return (
 		<PageShell>
 			<PageIntro
 				eyebrow="USER SETTINGS"
 				title="ユーザー設定"
-				description="プロフィールと日時の表示設定を管理します。"
+				description="プロフィール、日時の表示、カレンダー連携をまとめて設定できます。"
 			/>
 			{actionData?.kind === "profile-updated" && (
 				<div className="confirm-banner compact-banner">
@@ -118,7 +145,7 @@ export default function Account({
 					</div>
 				</div>
 			)}
-			{actionData?.kind === "error" && (
+			{actionData?.kind === "error" && actionData.scope === "profile" && (
 				<ValidationMessage title={actionData.error.message}>
 					操作内容を確認して、もう一度お試しください。
 				</ValidationMessage>
@@ -233,11 +260,30 @@ export default function Account({
 					</section>
 				</div>
 			)}
-			<Link className="account-card calendar-settings-link" to="/calendars">
-				<Icon name="calendar" />
-				<span>カレンダー設定</span>
-				<Icon name="chevron" />
-			</Link>
+			{calendar.settings ? (
+				<CalendarSettings
+					loaderData={calendar.settings}
+					actionData={
+						actionData &&
+						"scope" in actionData &&
+						actionData.scope === "calendar"
+							? actionData
+							: undefined
+					}
+					icloudActionData={
+						actionData && "scope" in actionData && actionData.scope === "icloud"
+							? actionData
+							: undefined
+					}
+				/>
+			) : (
+				<section id="calendar-settings" className="account-card">
+					<h2>カレンダー設定</h2>
+					<ValidationMessage title="カレンダー設定を読み込めませんでした">
+						{calendar.error?.message}
+					</ValidationMessage>
+				</section>
+			)}
 		</PageShell>
 	);
 }

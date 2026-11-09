@@ -9,7 +9,7 @@ const timeInputFiles = [
 	"../../app/routes/events/edit.tsx",
 	"../../app/routes/events/availability.tsx",
 	"../../app/routes/events/results.tsx",
-	"../../app/routes/calendars.tsx",
+	"../../app/components/calendar-settings.tsx",
 	"../../app/components/ui/date-time-picker.tsx",
 ];
 describe("time input validation", () => {

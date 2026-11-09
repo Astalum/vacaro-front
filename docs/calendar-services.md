@@ -1,6 +1,6 @@
 # カレンダーサービスの選択
 
-`/calendars` で「使用しない」「Googleカレンダー」「iCloudカレンダー」「TimeTree（Google経由）」から1つを選び、保存する。同じサービス内の取り込み対象は引き続き複数選択できる。祝日カレンダーの除外も継続する。
+`/account#calendar-settings` で「使用しない」「Googleカレンダー」「iCloudカレンダー」「TimeTree（Google経由）」から1つを選び、保存する。同じサービス内の取り込み対象は引き続き複数選択できる。祝日カレンダーの除外も継続する。
 
 サービスの選択は認証済みの `GET/PUT /api/v1/integrations/calendar-preference` でサーバーに保存する。取り込み対象のカレンダーと時間帯は従来どおりブラウザに保存する。
 
