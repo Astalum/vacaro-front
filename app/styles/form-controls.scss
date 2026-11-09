@@ -101,7 +101,9 @@
 		&[aria-pressed="true"] { background: white; color: var(--primary-dark); box-shadow: 0 1px 4px #173d3410; }
 	}
 }
-.picker-panel-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+// Let the popover scroll as a whole when the viewport cannot fit the panel and
+// its controls; shrinking the panel to zero makes its options unreachable.
+.picker-panel-scroll { flex: 0 0 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .vacaro-calendar {
 	width: 100%;
 	min-width: 0;
