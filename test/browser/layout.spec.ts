@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import { installFixtures, type Scenario, token } from "./fixtures";
 import { layoutProblems } from "./geometry";
 
@@ -932,6 +932,19 @@ test("cancelled multi-day drag leaves the answer unchanged", async ({
 	).toEqual([]);
 });
 
+// Center the gesture's start time, rather than the entire tall timeline. On a
+// short landscape screen the latter puts pointerdown behind the fixed header.
+async function scrollScheduleTimeIntoView(column: Locator) {
+	await column.evaluate((element) => {
+		element.scrollIntoView({ block: "center", behavior: "instant" });
+		const bounds = element.getBoundingClientRect();
+		window.scrollBy({
+			top: bounds.top + bounds.height * (125 / 720) - 120,
+			behavior: "instant",
+		});
+	});
+}
+
 test("single-day mobile drag still records only the selected date", async ({
 	page,
 }) => {
@@ -940,9 +953,7 @@ test("single-day mobile drag still records only the selected date", async ({
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const column = page.locator(".schedule-mobile-day");
 	test.skip(!(await column.isVisible()), "Mobile daily grid only");
-	await column.evaluate((element) =>
-		element.scrollIntoView({ block: "center", behavior: "instant" }),
-	);
+	await scrollScheduleTimeIntoView(column);
 	const bounds = (await column.boundingBox())!;
 	const date = await column.getAttribute("data-date");
 	await page.mouse.move(
@@ -1059,8 +1070,8 @@ test("existing interval click selects only that interval and Delete removes it",
 	const grid = page.locator(
 		".schedule-grid:visible, .schedule-mobile-grid:visible",
 	);
-	await grid.evaluate((element) =>
-		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	await scrollScheduleTimeIntoView(
+		grid.locator(".schedule-day-column:not([data-disabled=true])").first(),
 	);
 	const columns = grid.locator(
 		".schedule-day-column:not([data-disabled=true])",
@@ -1100,8 +1111,8 @@ test("existing interval drag moves it while preserving duration and keyboard sel
 	const grid = page.locator(
 		".schedule-grid:visible, .schedule-mobile-grid:visible",
 	);
-	await grid.evaluate((element) =>
-		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	await scrollScheduleTimeIntoView(
+		grid.locator(".schedule-day-column:not([data-disabled=true])").first(),
 	);
 	const columns = grid.locator(
 		".schedule-day-column:not([data-disabled=true])",
@@ -1160,8 +1171,8 @@ test("existing interval cancelled move and Escape keep its times", async ({
 	const grid = page.locator(
 		".schedule-grid:visible, .schedule-mobile-grid:visible",
 	);
-	await grid.evaluate((element) =>
-		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	await scrollScheduleTimeIntoView(
+		grid.locator(".schedule-day-column:not([data-disabled=true])").first(),
 	);
 	const column = grid
 		.locator(".schedule-day-column:not([data-disabled=true])")
@@ -1212,8 +1223,8 @@ test("existing interval touch selection uses the editor delete button", async ({
 	await page.goto("/events/event-1/availability");
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const grid = page.locator(".schedule-mobile-grid");
-	await grid.evaluate((element) =>
-		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	await scrollScheduleTimeIntoView(
+		grid.locator(".schedule-day-column:not([data-disabled=true])").first(),
 	);
 	const column = (await grid.locator(".schedule-day-column").boundingBox())!;
 	await page.mouse.move(
