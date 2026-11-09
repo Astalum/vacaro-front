@@ -182,7 +182,7 @@ export function HydrateFallback() {
 	);
 }
 
-export default function EditEvent({
+function useEditEvent({
 	loaderData: { event, inviteUrl, timeZone },
 	actionData,
 }: Route.ComponentProps) {
@@ -207,6 +207,71 @@ export default function EditEvent({
 		saving && navigation.formData?.get("intent") === "reissue-invite-url";
 	const currentInviteUrl =
 		actionData && "inviteUrl" in actionData ? actionData.inviteUrl : inviteUrl;
+
+	function clearDateErrors() {
+		clearError("window_start_date");
+		clearError("window_end_date");
+	}
+
+	function clearTimeErrors() {
+		clearError("daily_start_time");
+		clearError("daily_end_time");
+	}
+
+	const deadlineInput = isoToLocalDateTime(
+		event.response_deadline_at,
+		timeZone,
+	);
+	const windowStartDate = isoToLocalDateTime(
+		event.window_start_at,
+		timeZone,
+	).slice(0, 10);
+	const dailyStartTime = isoToLocalDateTime(
+		event.window_start_at,
+		timeZone,
+	).slice(11, 16);
+	return {
+		event,
+		timeZone,
+		actionData,
+		windowEndInput,
+		errors,
+		localErrors,
+		clearError,
+		inputProps,
+		handleSubmit,
+		saving,
+		reissuingInviteUrl,
+		currentInviteUrl,
+		clearDateErrors,
+		clearTimeErrors,
+		deadlineInput,
+		windowStartDate,
+		dailyStartTime,
+	};
+}
+
+export default function EditEvent(props: Route.ComponentProps) {
+	const {
+		event,
+		timeZone,
+		actionData,
+		windowEndInput,
+		errors,
+		localErrors,
+		clearError,
+		inputProps,
+		handleSubmit,
+		saving,
+		reissuingInviteUrl,
+		currentInviteUrl,
+		clearDateErrors,
+		clearTimeErrors,
+		deadlineInput,
+		windowStartDate,
+		dailyStartTime,
+	} = useEditEvent(props);
+
 	return (
 		<PageShell showPersistentInviteUrl={false}>
 			<PageIntro
@@ -281,10 +346,7 @@ export default function EditEvent({
 							name="response_deadline_at"
 							{...inputProps("response_deadline_at", "edit-deadline")}
 							onValueChange={() => clearError("response_deadline_at")}
-							defaultValue={isoToLocalDateTime(
-								event.response_deadline_at,
-								timeZone,
-							)}
+							defaultValue={deadlineInput}
 						/>
 						<FieldError id="edit-deadline-error">
 							{errors.response_deadline_at}
@@ -307,14 +369,8 @@ export default function EditEvent({
 								id="edit-window-start-date"
 								name="window_start_date"
 								{...inputProps("window_start_date", "edit-window-start-date")}
-								onValueChange={() => {
-									clearError("window_start_date");
-									clearError("window_end_date");
-								}}
-								defaultValue={isoToLocalDateTime(
-									event.window_start_at,
-									timeZone,
-								).slice(0, 10)}
+								onValueChange={clearDateErrors}
+								defaultValue={windowStartDate}
 								required
 							/>
 							<FieldError id="edit-window-start-date-error">
@@ -349,14 +405,8 @@ export default function EditEvent({
 									id="edit-daily-start-time"
 									name="daily_start_time"
 									{...inputProps("daily_start_time", "edit-daily-start-time")}
-									onValueChange={() => {
-										clearError("daily_start_time");
-										clearError("daily_end_time");
-									}}
-									defaultValue={isoToLocalDateTime(
-										event.window_start_at,
-										timeZone,
-									).slice(11, 16)}
+									onValueChange={clearTimeErrors}
+									defaultValue={dailyStartTime}
 									required
 								/>
 								<FieldError id="edit-daily-start-time-error">

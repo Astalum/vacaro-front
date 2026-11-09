@@ -124,7 +124,7 @@ export async function handleCalendarAction(formData: FormData) {
 	}
 }
 
-export default function CalendarSettings({
+function useCalendarSettings({
 	loaderData,
 	actionData,
 	icloudActionData,
@@ -134,9 +134,8 @@ export default function CalendarSettings({
 	icloudActionData?: SettingsActionData;
 }) {
 	const { user, calendarOptions, provider, icloud } = loaderData;
-	const [providerChoice, setProviderChoice] =
-		useState<CalendarProvider>(provider);
-	useEffect(() => setProviderChoice(provider), [provider]);
+	const [providerChoice, chooseProvider] = useState<CalendarProvider>(provider);
+	useEffect(() => chooseProvider(provider), [provider]);
 	const [searchParams] = useSearchParams();
 	const { hash } = useLocation();
 	const calendarResult = searchParams.get("google_calendar");
@@ -213,6 +212,78 @@ export default function CalendarSettings({
 		});
 	};
 
+	function changeStartTime(value: string) {
+		setAvailabilityWindowMessage(null);
+		setAvailabilityWindow((current) => ({
+			...current,
+			start: value,
+		}));
+	}
+
+	function changeEndTime(value: string) {
+		setAvailabilityWindowMessage(null);
+		setAvailabilityWindow((current) => ({
+			...current,
+			end: value,
+		}));
+	}
+
+	return {
+		actionData,
+		icloudActionData,
+		user,
+		calendarOptions,
+		provider,
+		icloud,
+		providerChoice,
+		chooseProvider,
+		hash,
+		calendarConnectionError,
+		navigation,
+		intent,
+		calendarConnectionStatus,
+		selectedCalendarIDs,
+		availabilityWindow,
+		preferenceMessage,
+		availabilityWindowMessage,
+		toggleCalendar,
+		saveCalendarPreference,
+		saveAvailabilityWindow,
+		changeStartTime,
+		changeEndTime,
+	};
+}
+
+export default function CalendarSettings(props: {
+	loaderData: Awaited<ReturnType<typeof loadCalendarSettings>>;
+	actionData?: SettingsActionData;
+	icloudActionData?: SettingsActionData;
+}) {
+	const {
+		actionData,
+		icloudActionData,
+		user,
+		calendarOptions,
+		provider,
+		icloud,
+		providerChoice,
+		chooseProvider,
+		hash,
+		calendarConnectionError,
+		navigation,
+		intent,
+		calendarConnectionStatus,
+		selectedCalendarIDs,
+		availabilityWindow,
+		preferenceMessage,
+		availabilityWindowMessage,
+		toggleCalendar,
+		saveCalendarPreference,
+		saveAvailabilityWindow,
+		changeStartTime,
+		changeEndTime,
+	} = useCalendarSettings(props);
+
 	return (
 		<section
 			id="calendar-settings"
@@ -263,7 +334,7 @@ export default function CalendarSettings({
 									name="provider"
 									value={option.value}
 									checked={providerChoice === option.value}
-									onChange={() => setProviderChoice(option.value)}
+									onChange={() => chooseProvider(option.value)}
 								/>
 								<span>
 									<strong>{option.label}</strong>
@@ -418,13 +489,7 @@ export default function CalendarSettings({
 												<TimePicker
 													id="calendar-window-start"
 													value={availabilityWindow.start}
-													onValueChange={(value) => {
-														setAvailabilityWindowMessage(null);
-														setAvailabilityWindow((current) => ({
-															...current,
-															start: value,
-														}));
-													}}
+													onValueChange={changeStartTime}
 												/>
 											</div>
 											<span
@@ -441,13 +506,7 @@ export default function CalendarSettings({
 												<TimePicker
 													id="calendar-window-end"
 													value={availabilityWindow.end}
-													onValueChange={(value) => {
-														setAvailabilityWindowMessage(null);
-														setAvailabilityWindow((current) => ({
-															...current,
-															end: value,
-														}));
-													}}
+													onValueChange={changeEndTime}
 												/>
 											</div>
 										</div>

@@ -114,10 +114,7 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Account({
-	loaderData,
-	actionData,
-}: Route.ComponentProps) {
+function useAccount({ loaderData, actionData }: Route.ComponentProps) {
 	const { user, calendar } = loaderData;
 	const navigation = useNavigation();
 	const intent = navigation.formData?.get("intent");
@@ -129,6 +126,36 @@ export default function Account({
 				.getElementById("calendar-settings")
 				?.scrollIntoView({ block: "start" });
 	}, [calendarResult]);
+
+	const calendarActionData =
+		actionData && "scope" in actionData && actionData.scope === "calendar"
+			? actionData
+			: undefined;
+	const icloudActionData =
+		actionData && "scope" in actionData && actionData.scope === "icloud"
+			? actionData
+			: undefined;
+	return {
+		actionData,
+		user,
+		calendar,
+		navigation,
+		intent,
+		calendarActionData,
+		icloudActionData,
+	};
+}
+
+export default function Account(props: Route.ComponentProps) {
+	const {
+		actionData,
+		user,
+		calendar,
+		navigation,
+		intent,
+		calendarActionData,
+		icloudActionData,
+	} = useAccount(props);
 
 	return (
 		<PageShell>
@@ -263,18 +290,8 @@ export default function Account({
 			{calendar.settings ? (
 				<CalendarSettings
 					loaderData={calendar.settings}
-					actionData={
-						actionData &&
-						"scope" in actionData &&
-						actionData.scope === "calendar"
-							? actionData
-							: undefined
-					}
-					icloudActionData={
-						actionData && "scope" in actionData && actionData.scope === "icloud"
-							? actionData
-							: undefined
-					}
+					actionData={calendarActionData}
+					icloudActionData={icloudActionData}
 				/>
 			) : (
 				<section id="calendar-settings" className="account-card">

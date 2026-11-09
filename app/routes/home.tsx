@@ -22,7 +22,7 @@ export function loader({ request }: Route.LoaderArgs) {
 	return null;
 }
 
-export default function Home() {
+function useHome() {
 	const [searchParams] = useSearchParams();
 	const { hash } = useLocation();
 	const navigate = useNavigate();
@@ -55,6 +55,24 @@ export default function Home() {
 				: searchParams.get("logout") === "success"
 					? { kind: "success" as const, message: "ログアウトしました。" }
 					: null;
+
+	function dismissNotice() {
+		setLoginSucceeded(false);
+		const nextParams = new URLSearchParams(searchParams);
+		nextParams.delete("google_login");
+		nextParams.delete("logout");
+		void navigate(
+			{ search: nextParams.toString(), hash },
+			{ replace: true, preventScrollReset: true },
+		);
+	}
+
+	return { notice, dismissNotice };
+}
+
+export default function Home() {
+	const { notice, dismissNotice } = useHome();
+
 	return (
 		<div className="site-shell landing-shell">
 			<AppHeader />
@@ -66,19 +84,7 @@ export default function Home() {
 					>
 						<Icon name={notice.kind === "error" ? "info" : "check"} size={18} />
 						<span>{notice.message}</span>
-						<button
-							type="button"
-							onClick={() => {
-								setLoginSucceeded(false);
-								const nextParams = new URLSearchParams(searchParams);
-								nextParams.delete("google_login");
-								nextParams.delete("logout");
-								void navigate(
-									{ search: nextParams.toString(), hash },
-									{ replace: true, preventScrollReset: true },
-								);
-							}}
-						>
+						<button type="button" onClick={dismissNotice}>
 							閉じる
 						</button>
 					</div>

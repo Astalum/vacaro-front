@@ -37,7 +37,7 @@ function isAvailable(value: string, min?: string, max?: string) {
 	return (!min || value >= min) && (!max || value <= max);
 }
 
-function TimeColumn({
+function useTimeColumn({
 	label,
 	items,
 	value,
@@ -69,6 +69,57 @@ function TimeColumn({
 		}
 	}, [focusValue]);
 
+	function handleListKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+		const options = Array.from(
+			event.currentTarget.querySelectorAll<HTMLButtonElement>(
+				"button:not(:disabled)",
+			),
+		);
+		const current = options.indexOf(event.target as HTMLButtonElement);
+		let next: number;
+		if (event.key === "ArrowDown")
+			next = Math.min(current + 1, options.length - 1);
+		else if (event.key === "ArrowUp") next = Math.max(current - 1, 0);
+		else if (event.key === "Home") next = 0;
+		else if (event.key === "End") next = options.length - 1;
+		else return;
+		event.preventDefault();
+		options[next]?.focus();
+		if (options[next]) onSelect(options[next].value);
+	}
+
+	return {
+		label,
+		items,
+		value,
+		onSelect,
+		isDisabled,
+		listRef,
+		selectedRef,
+		focusValue,
+		handleListKeyDown,
+	};
+}
+
+function TimeColumn(props: {
+	label: string;
+	items: string[];
+	value: string;
+	onSelect: (value: string) => void;
+	isDisabled: (value: string) => boolean;
+}) {
+	const {
+		label,
+		items,
+		value,
+		onSelect,
+		isDisabled,
+		listRef,
+		selectedRef,
+		focusValue,
+		handleListKeyDown,
+	} = useTimeColumn(props);
+
 	return (
 		<div className="time-picker-column">
 			<span className="time-picker-column-label" aria-hidden="true">
@@ -79,24 +130,7 @@ function TimeColumn({
 				role="listbox"
 				aria-label={label}
 				className="time-picker-list"
-				onKeyDown={(event) => {
-					const options = Array.from(
-						event.currentTarget.querySelectorAll<HTMLButtonElement>(
-							"button:not(:disabled)",
-						),
-					);
-					const current = options.indexOf(event.target as HTMLButtonElement);
-					let next: number;
-					if (event.key === "ArrowDown")
-						next = Math.min(current + 1, options.length - 1);
-					else if (event.key === "ArrowUp") next = Math.max(current - 1, 0);
-					else if (event.key === "Home") next = 0;
-					else if (event.key === "End") next = options.length - 1;
-					else return;
-					event.preventDefault();
-					options[next]?.focus();
-					if (options[next]) onSelect(options[next].value);
-				}}
+				onKeyDown={handleListKeyDown}
 			>
 				{items.map((item) => (
 					<button
@@ -120,7 +154,7 @@ function TimeColumn({
 	);
 }
 
-export function TimePickerPanel({
+function getTimePickerPanel({
 	value,
 	onValueChange,
 	min,
@@ -153,6 +187,32 @@ export function TimePickerPanel({
 	const selectMinute = (nextMinute: string) => {
 		if (!minuteDisabled(nextMinute)) onValueChange(`${hour}:${nextMinute}`);
 	};
+
+	return {
+		current,
+		hour,
+		minute,
+		hours,
+		minutes,
+		hourDisabled,
+		minuteDisabled,
+		selectHour,
+		selectMinute,
+	};
+}
+
+export function TimePickerPanel(props: TimePickerPanelProps) {
+	const {
+		current,
+		hour,
+		minute,
+		hours,
+		minutes,
+		hourDisabled,
+		minuteDisabled,
+		selectHour,
+		selectMinute,
+	} = getTimePickerPanel(props);
 
 	return (
 		<div className="time-picker-panel">
@@ -198,7 +258,7 @@ export function TimePickerPanel({
 	);
 }
 
-export function TimePicker({
+function useTimePicker({
 	id,
 	name,
 	value,
@@ -221,6 +281,51 @@ export function TimePicker({
 		if (value === undefined) setInternalValue(next);
 		onValueChange?.(next);
 	};
+
+	function confirmTime() {
+		if (!currentValue) updateValue(min ?? "09:00");
+		setOpen(false);
+	}
+
+	return {
+		id,
+		name,
+		min,
+		max,
+		required,
+		disabled,
+		allowEndOfDay,
+		ariaLabel,
+		ariaDescribedBy,
+		ariaInvalid,
+		className,
+		open,
+		setOpen,
+		currentValue,
+		updateValue,
+		confirmTime,
+	};
+}
+
+export function TimePicker(props: TimePickerProps) {
+	const {
+		id,
+		name,
+		min,
+		max,
+		required,
+		disabled,
+		allowEndOfDay,
+		ariaLabel,
+		ariaDescribedBy,
+		ariaInvalid,
+		className,
+		open,
+		setOpen,
+		currentValue,
+		updateValue,
+		confirmTime,
+	} = useTimePicker(props);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -265,10 +370,7 @@ export function TimePicker({
 						type="button"
 						size="sm"
 						className="w-full"
-						onClick={() => {
-							if (!currentValue) updateValue(min ?? "09:00");
-							setOpen(false);
-						}}
+						onClick={confirmTime}
 					>
 						この時刻にする
 					</Button>

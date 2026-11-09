@@ -109,7 +109,7 @@ export function EventList({
 	);
 }
 
-function EventListItem({
+function useEventListItem({
 	event,
 	currentUserId,
 	timeZone,
@@ -132,7 +132,49 @@ function EventListItem({
 	useEffect(() => {
 		if (leftEventID) onEventLeft?.(leftEventID);
 	}, [leftEventID, onEventLeft]);
+
+	function confirmLeave(submitEvent: React.FormEvent<HTMLFormElement>) {
+		if (
+			!window.confirm(
+				`「${event.title}」から退出しますか？回答内容も削除されます。`,
+			)
+		) {
+			submitEvent.preventDefault();
+		}
+	}
+	return {
+		event,
+		timeZone,
+		leaveFetcher,
+		displayStatus,
+		canManage,
+		canViewResults,
+		leaving,
+		leftEventID,
+		confirmLeave,
+	};
+}
+
+function EventListItem(props: {
+	event: Event;
+	currentUserId: string;
+	timeZone: string;
+	onEventLeft?: (eventID: string) => void;
+}) {
+	const {
+		event,
+		timeZone,
+		leaveFetcher,
+		displayStatus,
+		canManage,
+		canViewResults,
+		leaving,
+		leftEventID,
+		confirmLeave,
+	} = useEventListItem(props);
+
 	if (leftEventID) return null;
+
 	return (
 		<article>
 			<div className="event-list-body">
@@ -215,15 +257,7 @@ function EventListItem({
 					<leaveFetcher.Form
 						method="post"
 						className="event-leave-form"
-						onSubmit={(submitEvent) => {
-							if (
-								!window.confirm(
-									`「${event.title}」から退出しますか？回答内容も削除されます。`,
-								)
-							) {
-								submitEvent.preventDefault();
-							}
-						}}
+						onSubmit={confirmLeave}
 					>
 						<input type="hidden" name="event_id" value={event.id} />
 						<button
@@ -251,7 +285,7 @@ function EventListItem({
 	);
 }
 
-export default function EventsIndex({ loaderData }: Route.ComponentProps) {
+function useEventsIndex({ loaderData }: Route.ComponentProps) {
 	const { currentUserId, timeZone } = loaderData;
 	const fetcher = useFetcher<typeof clientLoader>();
 	const [events, setEvents] = useState(loaderData.events);
@@ -289,6 +323,37 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 		(event) => eventDisplayStatus(event) !== "open",
 	);
 	const hasEvents = events.length > 0;
+
+	const loadMore = () => {
+		if (!nextCursor) return;
+		return fetcher.load(`/events?cursor=${encodeURIComponent(nextCursor)}`);
+	};
+	return {
+		currentUserId,
+		timeZone,
+		fetcher,
+		nextCursor,
+		removeEvent,
+		acceptingEvents,
+		closedEvents,
+		hasEvents,
+		loadMore,
+	};
+}
+
+export default function EventsIndex(props: Route.ComponentProps) {
+	const {
+		currentUserId,
+		timeZone,
+		fetcher,
+		nextCursor,
+		removeEvent,
+		acceptingEvents,
+		closedEvents,
+		hasEvents,
+		loadMore,
+	} = useEventsIndex(props);
+
 	return (
 		<PageShell>
 			<PageIntro eyebrow="MY EVENTS" title="参加中のイベント" />
@@ -358,11 +423,7 @@ export default function EventsIndex({ loaderData }: Route.ComponentProps) {
 							<button
 								className="button button-ghost"
 								disabled={fetcher.state !== "idle"}
-								onClick={() =>
-									fetcher.load(
-										`/events?cursor=${encodeURIComponent(nextCursor)}`,
-									)
-								}
+								onClick={loadMore}
 								type="button"
 							>
 								{fetcher.state !== "idle"

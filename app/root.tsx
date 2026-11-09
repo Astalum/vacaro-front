@@ -57,7 +57,7 @@ export default function App() {
 	return <Outlet />;
 }
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+function errorPresentation(error: unknown) {
 	let message = "エラーが発生しました";
 	let details = "時間をおいて、もう一度お試しください。";
 	let stack: string | undefined;
@@ -82,15 +82,19 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 		stack = error.stack;
 	}
 
+	const status = isRouteErrorResponse(error)
+		? error.status
+		: error instanceof ApiError
+			? error.status
+			: "!";
+	return { message, details, stack, status };
+}
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+	const { message, details, stack, status } = errorPresentation(error);
 	return (
 		<main className="root-error">
-			<span>
-				{isRouteErrorResponse(error)
-					? error.status
-					: error instanceof ApiError
-						? error.status
-						: "!"}
-			</span>
+			<span>{status}</span>
 			<h1>{message}</h1>
 			<p>{details}</p>
 			<a className="button button-primary" href="/">

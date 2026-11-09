@@ -79,10 +79,7 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Created({
-	loaderData,
-	actionData,
-}: Route.ComponentProps) {
+function useCreatedEvent({ loaderData, actionData }: Route.ComponentProps) {
 	const { event, inviteUrl, timeZone } = loaderData;
 	const navigation = useNavigation();
 	const reissuingInviteUrl =
@@ -97,6 +94,29 @@ export default function Created({
 		setCopied(true);
 		window.setTimeout(() => setCopied(false), 1800);
 	};
+
+	return {
+		actionData,
+		event,
+		timeZone,
+		reissuingInviteUrl,
+		currentInviteUrl,
+		copied,
+		copy,
+	};
+}
+
+export default function Created(props: Route.ComponentProps) {
+	const {
+		actionData,
+		event,
+		timeZone,
+		reissuingInviteUrl,
+		currentInviteUrl,
+		copied,
+		copy,
+	} = useCreatedEvent(props);
+
 	return (
 		<PageShell showPersistentInviteUrl={false}>
 			<div className="success-hero">

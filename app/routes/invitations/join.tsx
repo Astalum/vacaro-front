@@ -91,13 +91,21 @@ export function HydrateFallback() {
 	);
 }
 
-export default function JoinEvent({
+function useJoinEvent({
 	loaderData: { event, timeZone, displayName },
 	actionData,
 }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const joining = navigation.state === "submitting";
 	const displayStatus = eventDisplayStatus(event);
+
+	return { event, timeZone, displayName, actionData, joining, displayStatus };
+}
+
+export default function JoinEvent(props: Route.ComponentProps) {
+	const { event, timeZone, displayName, actionData, joining, displayStatus } =
+		useJoinEvent(props);
+
 	return (
 		<PageShell>
 			<div className="invite-heading">

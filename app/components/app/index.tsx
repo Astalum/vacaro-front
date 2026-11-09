@@ -133,7 +133,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 	);
 }
 
-export function WeekendText({ children }: { children: string }) {
+function weekendTextParts(children: string) {
 	let offset = 0;
 	const parts = children
 		.split(/(\(土\)|\(日\)|（土）|（日）|土曜日|日曜日)/g)
@@ -141,21 +141,23 @@ export function WeekendText({ children }: { children: string }) {
 		.map((text) => {
 			const start = offset;
 			offset += text.length;
-			return { start, text };
+			const className = /(?:\(土\)|（土）|土曜日)$/.test(text)
+				? "weekday-saturday"
+				: /^(?:\(日\)|（日）|日曜日)$/.test(text)
+					? "weekday-sunday"
+					: undefined;
+			return { start, text, className };
 		});
+
+	return parts;
+}
+
+export function WeekendText({ children }: { children: string }) {
+	const parts = weekendTextParts(children);
 	return (
 		<>
-			{parts.map(({ start, text }) => (
-				<span
-					key={`${start}-${text}`}
-					className={
-						/(?:\(土\)|（土）|土曜日)$/.test(text)
-							? "weekday-saturday"
-							: /^(?:\(日\)|（日）|日曜日)$/.test(text)
-								? "weekday-sunday"
-								: undefined
-					}
-				>
+			{parts.map(({ start, text, className }) => (
+				<span key={`${start}-${text}`} className={className}>
 					{text}
 				</span>
 			))}
@@ -190,7 +192,7 @@ export function SiteFooter() {
 	);
 }
 
-function AccountNavigation() {
+function useAccountNavigation() {
 	const [user, setUser] = useState<User | null>();
 
 	useEffect(() => {
@@ -205,6 +207,12 @@ function AccountNavigation() {
 			active = false;
 		};
 	}, []);
+
+	return { user };
+}
+
+function AccountNavigation() {
+	const { user } = useAccountNavigation();
 
 	if (user?.account_type === "registered") {
 		return (
@@ -227,7 +235,7 @@ function AccountNavigation() {
 	);
 }
 
-export function AppHeader({ compact = false }: { compact?: boolean }) {
+function useAppHeader({ compact = false }: { compact?: boolean }) {
 	const [menuOpen, setMenuOpen] = useState(false);
 
 	useEffect(() => {
@@ -239,6 +247,19 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
 		return () => window.removeEventListener("keydown", closeOnEscape);
 	}, [menuOpen]);
 
+	function closeMenuOnKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+		if (event.key === "Enter" || event.key === " ") setMenuOpen(false);
+	}
+
+	const toggleMenu = () => setMenuOpen((open) => !open);
+	const closeMenu = () => setMenuOpen(false);
+	return { compact, menuOpen, closeMenuOnKeyDown, toggleMenu, closeMenu };
+}
+
+export function AppHeader(props: { compact?: boolean }) {
+	const { compact, menuOpen, closeMenuOnKeyDown, toggleMenu, closeMenu } =
+		useAppHeader(props);
+
 	return (
 		<header className={`app-header ${compact ? "compact" : ""}`}>
 			<div className="wrap header-inner">
@@ -249,7 +270,7 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
 					aria-label={menuOpen ? "メニューを閉じる" : "メニューを開く"}
 					aria-expanded={menuOpen}
 					aria-controls="site-navigation"
-					onClick={() => setMenuOpen((open) => !open)}
+					onClick={toggleMenu}
 				>
 					<span />
 					<span />
@@ -258,10 +279,8 @@ export function AppHeader({ compact = false }: { compact?: boolean }) {
 				<nav
 					id="site-navigation"
 					className={menuOpen ? "open" : ""}
-					onClick={() => setMenuOpen(false)}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" || event.key === " ") setMenuOpen(false);
-					}}
+					onClick={closeMenu}
+					onKeyDown={closeMenuOnKeyDown}
 				>
 					<Link
 						className="button event-create-button button-small"
@@ -282,7 +301,7 @@ type InviteUrlUpdatedDetail = {
 	inviteUrl: string;
 };
 
-export function PersistentInviteUrl({
+function usePersistentInviteUrl({
 	inviteUrl: controlledInviteUrl,
 }: {
 	inviteUrl?: string | null;
@@ -320,6 +339,18 @@ export function PersistentInviteUrl({
 		};
 	}, [eventID]);
 
+	async function copyInviteUrl() {
+		if (!inviteUrl) return;
+		await navigator.clipboard.writeText(inviteUrl);
+		setCopied(true);
+		window.setTimeout(() => setCopied(false), 1800);
+	}
+	return { copied, inviteUrl, copyInviteUrl };
+}
+
+export function PersistentInviteUrl(props: { inviteUrl?: string | null } = {}) {
+	const { copied, inviteUrl, copyInviteUrl } = usePersistentInviteUrl(props);
+
 	if (!inviteUrl) return null;
 
 	return (
@@ -332,14 +363,7 @@ export function PersistentInviteUrl({
 					{inviteUrl}
 				</a>
 			</div>
-			<button
-				type="button"
-				onClick={async () => {
-					await navigator.clipboard.writeText(inviteUrl);
-					setCopied(true);
-					window.setTimeout(() => setCopied(false), 1800);
-				}}
-			>
+			<button type="button" onClick={copyInviteUrl}>
 				<Icon name={copied ? "check" : "copy"} size={16} />
 				{copied ? "コピー済み" : "コピー"}
 			</button>
@@ -356,6 +380,15 @@ export function InviteUrlReissue({
 	canReissue: boolean;
 	busy?: boolean;
 }) {
+	function confirmInviteReissue(submitEvent: React.FormEvent<HTMLFormElement>) {
+		if (
+			!window.confirm(
+				"招待URLを再発行しますか？\n現在共有済みの招待URLは直ちに無効になります。",
+			)
+		) {
+			submitEvent.preventDefault();
+		}
+	}
 	return (
 		<div className="invite-url-reissue">
 			<p
@@ -371,18 +404,7 @@ export function InviteUrlReissue({
 				</span>
 			</p>
 			{canReissue ? (
-				<Form
-					method="post"
-					onSubmit={(submitEvent) => {
-						if (
-							!window.confirm(
-								"招待URLを再発行しますか？\n現在共有済みの招待URLは直ちに無効になります。",
-							)
-						) {
-							submitEvent.preventDefault();
-						}
-					}}
-				>
+				<Form method="post" onSubmit={confirmInviteReissue}>
 					<button
 						className="button button-ghost button-small"
 						type="submit"

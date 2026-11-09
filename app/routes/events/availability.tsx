@@ -469,10 +469,7 @@ export function HydrateFallback() {
 	);
 }
 
-export default function AvailabilityPage({
-	loaderData,
-	actionData,
-}: Route.ComponentProps) {
+function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 	const {
 		event,
 		availability,
@@ -841,7 +838,7 @@ export default function AvailabilityPage({
 		}
 		cancelDrag();
 	};
-	const renderRange = (range: TimeRange, key: string, preview = false) => {
+	const getRangePresentation = (range: TimeRange, key: string) => {
 		const segment = segmentOnDate(range, key);
 		if (!segment) return null;
 		const start = Math.max(segment.start, dailyStartMinute),
@@ -852,60 +849,38 @@ export default function AvailabilityPage({
 			height: `${((end - start) / visibleMinutes) * 100}%`,
 		};
 		const className = `schedule-range${entryMode === "unavailable" ? " is-unavailable" : ""}${selectedRangeID === range.id ? " is-selected" : ""}${movingRange?.id === range.id ? " is-moving" : ""}`;
-		if (preview)
-			return (
-				<i
-					key="moving-preview"
-					className={`schedule-range move-preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
-					style={style}
-					aria-hidden="true"
-				/>
-			);
-		return (
-			<button
-				key={range.id}
-				type="button"
-				className={`${className} schedule-range-button`}
-				style={style}
-				title="クリックで選択、ドラッグで移動。Deleteキーで削除できます"
-				aria-keyshortcuts="Delete Backspace"
-				data-range-id={range.id}
-				data-range-date={key}
-				aria-pressed={selectedRangeID === range.id}
-				aria-label={`${key} ${time(start)}〜${time(end)}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間`}
-				onPointerDown={(pointer) => beginMove(pointer, range, key)}
-				onPointerMove={moveExistingRange}
-				onPointerUp={finishMove}
-				onPointerCancel={(event) => {
-					event.stopPropagation();
-					cancelDrag();
-				}}
-				onLostPointerCapture={(event) => {
-					event.stopPropagation();
-					cancelDrag();
-				}}
-				onClick={(event) => {
-					if (event.detail === 0) {
-						setSelectedDate(key);
-						setSelectedRangeID(range.id);
-					}
-				}}
-				onKeyDown={(event) => {
-					if (event.key === "Escape") {
-						event.preventDefault();
-						cancelDrag();
-						setSelectedRangeID(null);
-					}
-					if (
-						(event.key === "Delete" || event.key === "Backspace") &&
-						selectedRangeID === range.id
-					) {
-						event.preventDefault();
-						removeRange(range.id);
-					}
-				}}
-			/>
-		);
+		return { start, end, style, className };
+	};
+	const cancelRangePointer = (event: PointerEvent<HTMLElement>) => {
+		event.stopPropagation();
+		cancelDrag();
+	};
+	const selectRange = (
+		event: React.MouseEvent<HTMLElement>,
+		rangeID: string,
+		key: string,
+	) => {
+		if (event.detail === 0) {
+			setSelectedDate(key);
+			setSelectedRangeID(rangeID);
+		}
+	};
+	const handleRangeKeyDown = (
+		event: React.KeyboardEvent<HTMLElement>,
+		rangeID: string,
+	) => {
+		if (event.key === "Escape") {
+			event.preventDefault();
+			cancelDrag();
+			setSelectedRangeID(null);
+		}
+		if (
+			(event.key === "Delete" || event.key === "Backspace") &&
+			selectedRangeID === rangeID
+		) {
+			event.preventDefault();
+			removeRange(rangeID);
+		}
 	};
 	const updateTime = (
 		id: string,
@@ -960,99 +935,162 @@ export default function AvailabilityPage({
 		actionData?.kind === "response-link"
 			? actionData.responseEditUrl
 			: savedEditUrl;
-	const renderResponseEditLink = () => (
-		<section className="schedule-response-link">
-			<strong>この回答をあとから変更</strong>
-			<p>
-				再回答用リンクを保存すると、Cookieが失効した後や別の端末からも回答を変更できます。
-			</p>
-			{responseEditUrl && (
-				<div className="schedule-response-link-value">
-					<input
-						aria-label="再回答用リンク"
-						readOnly
-						value={responseEditUrl}
-						onFocus={(inputEvent) => inputEvent.currentTarget.select()}
-					/>
-					<button
-						type="button"
-						onClick={async () => {
-							await navigator.clipboard.writeText(responseEditUrl);
-							setCopiedEditLink(true);
-						}}
-					>
-						<Icon name="copy" size={15} />
-						{copiedEditLink ? "コピー済み" : "コピー"}
-					</button>
-				</div>
-			)}
-			<button
-				type="submit"
-				name="intent"
-				value="issue-response-edit-link"
-				disabled={submitting}
-			>
-				{submittingIntent === "issue-response-edit-link"
-					? "発行しています…"
-					: responseEditUrl
-						? "リンクを再発行"
-						: "再回答用リンクを発行"}
-			</button>
-			{responseEditUrl && (
-				<small>再発行すると以前のリンクは使えなくなります。</small>
-			)}
-		</section>
-	);
-	const renderCopyControl = (scope: "mobile" | "desktop") => (
-		<section className="schedule-copy-control">
-			<strong>別イベントの回答をコピー</strong>
-			{user.account_type !== "registered" ? (
-				<p>
-					Googleログインすると、日時が重なる別イベントの回答をコピーできます。
-					<a href="/api/v1/auth/google/start">Googleでログイン</a>
-				</p>
-			) : copySourceEventsError ? (
-				<p>コピー元イベントを読み込めませんでした。</p>
-			) : copyCandidates.length === 0 ? (
-				<p>日時が重なるコピー元イベントはありません。</p>
-			) : (
-				<div>
-					<label htmlFor={`copy-source-${scope}`}>コピー元</label>
-					<select
-						id={`copy-source-${scope}`}
-						value={sourceEventID}
-						onChange={(inputEvent) =>
-							setSourceEventID(inputEvent.currentTarget.value)
-						}
-					>
-						{copyCandidates.map((source) => (
-							<option key={source.id} value={source.id}>
-								{source.title}（
-								{formatDateRange(
-									source.window_start_at,
-									source.window_end_at,
-									user.time_zone,
-								)}
-								）
-							</option>
-						))}
-					</select>
-					<button
-						type="submit"
-						name="intent"
-						value="copy-availability"
-						disabled={submitting || !sourceEventID}
-						title="現在の回答を残したまま、重なる日時の回答を追加します"
-					>
-						<Icon name="copy" size={15} />
-						{submittingIntent === "copy-availability"
-							? "コピー中…"
-							: "回答をコピー"}
-					</button>
-				</div>
-			)}
-		</section>
-	);
+	const copyEditLink = async () => {
+		if (!responseEditUrl) return;
+		await navigator.clipboard.writeText(responseEditUrl);
+		setCopiedEditLink(true);
+	};
+
+	function selectMobileDate(key: string) {
+		setSelectedDate(key);
+		setSelectedRangeID(null);
+		setWeekIndex(Math.max(0, weekOptions.indexOf(weekStart(key))));
+	}
+
+	function previousWeek() {
+		cancelDrag();
+		setSelectedRangeID(null);
+		setWeekIndex((value) => value - 1);
+	}
+
+	function nextWeek() {
+		cancelDrag();
+		setSelectedRangeID(null);
+		setWeekIndex((value) => value + 1);
+	}
+
+	function selectDate(key: string) {
+		setSelectedDate(key);
+		setSelectedRangeID(null);
+	}
+
+	const mobileDates = eventDates.map((key) => {
+		const date = dateFromKey(key);
+
+		return { key, date };
+	});
+
+	const weekDays = days.map((key, index) => {
+		const enabled = key >= firstDate && key <= lastDate;
+
+		return { key, index, enabled };
+	});
+
+	return {
+		actionData,
+		event,
+		availability,
+		calendarOptions,
+		icloudOptions,
+		user,
+		copySourceEventsError,
+		calendarWindow,
+		selectedCalendarIDs,
+		selectedICloudCalendarIDs,
+		dailyStartMinute,
+		dailyStartTime,
+		dailyEndTime,
+		ranges,
+		entryMode,
+		selectedDate,
+		weekOptions,
+		weekIndex,
+		selectedRangeID,
+		movingRange,
+		drag,
+		cancelDrag,
+		copiedEditLink,
+		days,
+		copyCandidates,
+		sourceEventID,
+		setSourceEventID,
+		importedRanges,
+		submissionRanges,
+		changeEntryMode,
+		beginDrag,
+		moveDrag,
+		finishDrag,
+		removeRange,
+		beginMove,
+		moveExistingRange,
+		finishMove,
+		getRangePresentation,
+		cancelRangePointer,
+		selectRange,
+		handleRangeKeyDown,
+		updateTime,
+		addDailyRange,
+		selectedRanges,
+		visibleMinutes,
+		scheduleGridHeight,
+		mobileGridHeight,
+		axisMarks,
+		weekTitle,
+		selectedTitle,
+		submitting,
+		submittingIntent,
+		responseEditUrl,
+		copyEditLink,
+		selectMobileDate,
+		previousWeek,
+		nextWeek,
+		selectDate,
+		mobileDates,
+		weekDays,
+	};
+}
+
+export default function AvailabilityPage(props: Route.ComponentProps) {
+	const model = useAvailability(props);
+	const {
+		actionData,
+		event,
+		availability,
+		calendarOptions,
+		icloudOptions,
+		user,
+		calendarWindow,
+		selectedCalendarIDs,
+		selectedICloudCalendarIDs,
+		dailyStartMinute,
+		dailyStartTime,
+		dailyEndTime,
+		ranges,
+		entryMode,
+		selectedDate,
+		weekOptions,
+		weekIndex,
+		selectedRangeID,
+		movingRange,
+		drag,
+		cancelDrag,
+		days,
+		sourceEventID,
+		importedRanges,
+		submissionRanges,
+		changeEntryMode,
+		beginDrag,
+		moveDrag,
+		finishDrag,
+		removeRange,
+		updateTime,
+		addDailyRange,
+		selectedRanges,
+		visibleMinutes,
+		scheduleGridHeight,
+		mobileGridHeight,
+		axisMarks,
+		weekTitle,
+		selectedTitle,
+		submitting,
+		submittingIntent,
+		selectMobileDate,
+		previousWeek,
+		nextWeek,
+		selectDate,
+		mobileDates,
+		weekDays,
+	} = model;
 
 	return (
 		<PageShell fullScreen showHeader showPersistentInviteUrl={false}>
@@ -1170,37 +1208,28 @@ export default function AvailabilityPage({
 							</button>
 						)}
 					</section>
-					{renderCopyControl("mobile")}
-					{user.account_type === "guest" && renderResponseEditLink()}
+					{<CopyControl scope="mobile" model={model} />}
+					{user.account_type === "guest" && <ResponseEditLink model={model} />}
 
 					<nav className="schedule-mobile-dates" aria-label="回答する日付">
-						{eventDates.map((key) => {
-							const date = dateFromKey(key);
-							return (
-								<button
-									key={key}
-									type="button"
-									className={
-										selectedDate === key
-											? "schedule-mobile-date is-selected"
-											: "schedule-mobile-date"
-									}
-									aria-pressed={selectedDate === key}
-									onClick={() => {
-										setSelectedDate(key);
-										setSelectedRangeID(null);
-										setWeekIndex(
-											Math.max(0, weekOptions.indexOf(weekStart(key))),
-										);
-									}}
-								>
-									<small className={weekendClassName(date.getDay())}>
-										{WEEKDAYS[date.getDay()]}
-									</small>
-									<strong>{date.getDate()}</strong>
-								</button>
-							);
-						})}
+						{mobileDates.map(({ key, date }) => (
+							<button
+								key={key}
+								type="button"
+								className={
+									selectedDate === key
+										? "schedule-mobile-date is-selected"
+										: "schedule-mobile-date"
+								}
+								aria-pressed={selectedDate === key}
+								onClick={() => selectMobileDate(key)}
+							>
+								<small className={weekendClassName(date.getDay())}>
+									{WEEKDAYS[date.getDay()]}
+								</small>
+								<strong>{date.getDate()}</strong>
+							</button>
+						))}
 					</nav>
 
 					<div className="schedule-mobile-answer-grid">
@@ -1259,8 +1288,22 @@ export default function AvailabilityPage({
 										className="schedule-day-surface"
 										aria-label={`${selectedDate}の時間を追加`}
 									/>
-									{ranges.map((range) => renderRange(range, selectedDate))}
-									{movingRange && renderRange(movingRange, selectedDate, true)}
+									{ranges.map((range) => (
+										<ScheduleRange
+											key={range.id}
+											range={range}
+											date={selectedDate}
+											model={model}
+										/>
+									))}
+									{movingRange && (
+										<ScheduleRange
+											range={movingRange}
+											date={selectedDate}
+											preview
+											model={model}
+										/>
+									)}
 
 									{drag?.date === selectedDate && (
 										<i
@@ -1436,11 +1479,7 @@ export default function AvailabilityPage({
 								type="button"
 								aria-label="前の週"
 								disabled={weekIndex === 0}
-								onClick={() => {
-									cancelDrag();
-									setSelectedRangeID(null);
-									setWeekIndex((value) => value - 1);
-								}}
+								onClick={previousWeek}
 							>
 								<Icon name="back" size={12} />
 							</button>
@@ -1449,37 +1488,27 @@ export default function AvailabilityPage({
 								type="button"
 								aria-label="次の週"
 								disabled={weekIndex === weekOptions.length - 1}
-								onClick={() => {
-									cancelDrag();
-									setSelectedRangeID(null);
-									setWeekIndex((value) => value + 1);
-								}}
+								onClick={nextWeek}
 							>
 								<Icon name="chevron" size={12} />
 							</button>
 						</header>
 						<div className="schedule-week-head">
 							<div />
-							{days.map((key, index) => {
-								const enabled = key >= firstDate && key <= lastDate;
-								return (
-									<button
-										key={key}
-										type="button"
-										className={selectedDate === key ? "is-selected" : ""}
-										disabled={!enabled}
-										onClick={() => {
-											setSelectedDate(key);
-											setSelectedRangeID(null);
-										}}
-									>
-										<span className={weekendClassName(index)}>
-											{WEEKDAYS[index]}
-										</span>
-										<strong>{dateFromKey(key).getDate()}</strong>
-									</button>
-								);
-							})}
+							{weekDays.map(({ key, index, enabled }) => (
+								<button
+									key={key}
+									type="button"
+									className={selectedDate === key ? "is-selected" : ""}
+									disabled={!enabled}
+									onClick={() => selectDate(key)}
+								>
+									<span className={weekendClassName(index)}>
+										{WEEKDAYS[index]}
+									</span>
+									<strong>{dateFromKey(key).getDate()}</strong>
+								</button>
+							))}
 						</div>
 						<div className="schedule-scroll">
 							<div
@@ -1509,32 +1538,43 @@ export default function AvailabilityPage({
 										}}
 									/>
 								)}
-								{days.map((key) => {
-									const enabled = key >= firstDate && key <= lastDate;
-									return (
-										<div
-											key={key}
-											className="schedule-day-column"
-											data-date={key}
-											data-disabled={!enabled ? "true" : undefined}
-											aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
-											onPointerDown={(event) => beginDrag(event, key)}
-											onPointerMove={moveDrag}
-											onPointerUp={finishDrag}
-											onPointerCancel={cancelDrag}
-											onLostPointerCapture={cancelDrag}
-										>
-											<button
-												type="button"
-												className="schedule-day-surface"
-												disabled={!enabled}
-												aria-label={`${key}の時間を追加`}
+								{weekDays.map(({ key, enabled }) => (
+									<div
+										key={key}
+										className="schedule-day-column"
+										data-date={key}
+										data-disabled={!enabled ? "true" : undefined}
+										aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
+										onPointerDown={(event) => beginDrag(event, key)}
+										onPointerMove={moveDrag}
+										onPointerUp={finishDrag}
+										onPointerCancel={cancelDrag}
+										onLostPointerCapture={cancelDrag}
+									>
+										<button
+											type="button"
+											className="schedule-day-surface"
+											disabled={!enabled}
+											aria-label={`${key}の時間を追加`}
+										/>
+										{ranges.map((range) => (
+											<ScheduleRange
+												key={range.id}
+												range={range}
+												date={key}
+												model={model}
 											/>
-											{ranges.map((range) => renderRange(range, key))}
-											{movingRange && renderRange(movingRange, key, true)}
-										</div>
-									);
-								})}
+										))}
+										{movingRange && (
+											<ScheduleRange
+												range={movingRange}
+												date={key}
+												preview
+												model={model}
+											/>
+										)}
+									</div>
+								))}
 							</div>
 						</div>
 					</div>
@@ -1646,8 +1686,8 @@ export default function AvailabilityPage({
 							</button>
 						)}
 					</div>
-					{renderCopyControl("desktop")}
-					{user.account_type === "guest" && renderResponseEditLink()}
+					{<CopyControl scope="desktop" model={model} />}
+					{user.account_type === "guest" && <ResponseEditLink model={model} />}
 					<section className="schedule-editor">
 						<div className="schedule-editor-heading">
 							<h2>
@@ -1795,5 +1835,182 @@ export default function AvailabilityPage({
 				</aside>
 			</Form>
 		</PageShell>
+	);
+}
+
+function ScheduleRange({
+	range,
+	date: key,
+	preview = false,
+	model,
+}: {
+	range: TimeRange;
+	date: string;
+	preview?: boolean;
+	model: ReturnType<typeof useAvailability>;
+}) {
+	const {
+		getRangePresentation,
+		entryMode,
+		selectedRangeID,
+		beginMove,
+		moveExistingRange,
+		finishMove,
+		cancelRangePointer,
+		selectRange,
+		handleRangeKeyDown,
+	} = model;
+	const presentation = getRangePresentation(range, key);
+	if (!presentation) return null;
+	const { start, end, style, className } = presentation;
+
+	if (preview)
+		return (
+			<i
+				key="moving-preview"
+				className={`schedule-range move-preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
+				style={style}
+				aria-hidden="true"
+			/>
+		);
+	return (
+		<button
+			key={range.id}
+			type="button"
+			className={`${className} schedule-range-button`}
+			style={style}
+			title="クリックで選択、ドラッグで移動。Deleteキーで削除できます"
+			aria-keyshortcuts="Delete Backspace"
+			data-range-id={range.id}
+			data-range-date={key}
+			aria-pressed={selectedRangeID === range.id}
+			aria-label={`${key} ${time(start)}〜${time(end)}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間`}
+			onPointerDown={(pointer) => beginMove(pointer, range, key)}
+			onPointerMove={moveExistingRange}
+			onPointerUp={finishMove}
+			onPointerCancel={cancelRangePointer}
+			onLostPointerCapture={cancelRangePointer}
+			onClick={(event) => selectRange(event, range.id, key)}
+			onKeyDown={(event) => handleRangeKeyDown(event, range.id)}
+		/>
+	);
+}
+
+function ResponseEditLink({
+	model,
+}: {
+	model: ReturnType<typeof useAvailability>;
+}) {
+	const {
+		responseEditUrl,
+		copiedEditLink,
+		submitting,
+		submittingIntent,
+		copyEditLink,
+	} = model;
+	return (
+		<section className="schedule-response-link">
+			<strong>この回答をあとから変更</strong>
+			<p>
+				再回答用リンクを保存すると、Cookieが失効した後や別の端末からも回答を変更できます。
+			</p>
+			{responseEditUrl && (
+				<div className="schedule-response-link-value">
+					<input
+						aria-label="再回答用リンク"
+						readOnly
+						value={responseEditUrl}
+						onFocus={(inputEvent) => inputEvent.currentTarget.select()}
+					/>
+					<button type="button" onClick={copyEditLink}>
+						<Icon name="copy" size={15} />
+						{copiedEditLink ? "コピー済み" : "コピー"}
+					</button>
+				</div>
+			)}
+			<button
+				type="submit"
+				name="intent"
+				value="issue-response-edit-link"
+				disabled={submitting}
+			>
+				{submittingIntent === "issue-response-edit-link"
+					? "発行しています…"
+					: responseEditUrl
+						? "リンクを再発行"
+						: "再回答用リンクを発行"}
+			</button>
+			{responseEditUrl && (
+				<small>再発行すると以前のリンクは使えなくなります。</small>
+			)}
+		</section>
+	);
+}
+
+function CopyControl({
+	scope,
+	model,
+}: {
+	scope: "mobile" | "desktop";
+	model: ReturnType<typeof useAvailability>;
+}) {
+	const {
+		user,
+		copySourceEventsError,
+		copyCandidates,
+		sourceEventID,
+		setSourceEventID,
+		submitting,
+		submittingIntent,
+	} = model;
+	return (
+		<section className="schedule-copy-control">
+			<strong>別イベントの回答をコピー</strong>
+			{user.account_type !== "registered" ? (
+				<p>
+					Googleログインすると、日時が重なる別イベントの回答をコピーできます。
+					<a href="/api/v1/auth/google/start">Googleでログイン</a>
+				</p>
+			) : copySourceEventsError ? (
+				<p>コピー元イベントを読み込めませんでした。</p>
+			) : copyCandidates.length === 0 ? (
+				<p>日時が重なるコピー元イベントはありません。</p>
+			) : (
+				<div>
+					<label htmlFor={`copy-source-${scope}`}>コピー元</label>
+					<select
+						id={`copy-source-${scope}`}
+						value={sourceEventID}
+						onChange={(inputEvent) =>
+							setSourceEventID(inputEvent.currentTarget.value)
+						}
+					>
+						{copyCandidates.map((source) => (
+							<option key={source.id} value={source.id}>
+								{source.title}（
+								{formatDateRange(
+									source.window_start_at,
+									source.window_end_at,
+									user.time_zone,
+								)}
+								）
+							</option>
+						))}
+					</select>
+					<button
+						type="submit"
+						name="intent"
+						value="copy-availability"
+						disabled={submitting || !sourceEventID}
+						title="現在の回答を残したまま、重なる日時の回答を追加します"
+					>
+						<Icon name="copy" size={15} />
+						{submittingIntent === "copy-availability"
+							? "コピー中…"
+							: "回答をコピー"}
+					</button>
+				</div>
+			)}
+		</section>
 	);
 }

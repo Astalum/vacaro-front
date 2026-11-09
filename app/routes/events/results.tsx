@@ -276,10 +276,7 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Results({
-	loaderData,
-	actionData,
-}: Route.ComponentProps) {
+function useResults({ loaderData, actionData }: Route.ComponentProps) {
 	const { event, user, groups, activeGroup, availability, restricted } =
 		loaderData;
 	const navigation = useNavigation();
@@ -366,6 +363,109 @@ export default function Results({
 			),
 		),
 	);
+
+	const calendarCells = monthCells(activeMonth).map((cell, cellIndex) => {
+		const dayIntervals = cell.inMonth
+			? (intervalsByDate.get(cell.key) ?? [])
+			: [];
+		const outsideWindow = cell.key < startDateKey || cell.key > endDateKey;
+		const clickableDate = cell.inMonth && !outsideWindow;
+		const openDateCandidates = () => {
+			if (!clickableDate) return;
+			setExpandedDateKey(cell.key);
+		};
+
+		return {
+			cell,
+			cellIndex,
+			dayIntervals,
+			outsideWindow,
+			clickableDate,
+			openDateCandidates,
+		};
+	});
+
+	const closeDateCandidates = () => setExpandedDateKey(null);
+	const participantNames = (ids: string[]) =>
+		ids
+			.map((id) => participantById.get(id))
+			.filter(Boolean)
+			.join("、");
+	const expandedDateTitle = expandedDateKey
+		? new Intl.DateTimeFormat("ja-JP", {
+				month: "long",
+				day: "numeric",
+				weekday: "short",
+				timeZone: "UTC",
+			}).format(new Date(expandedDateKey + "T00:00:00Z"))
+		: "";
+	const confirmationDateTitle = expandedDateKey
+		? new Intl.DateTimeFormat("ja-JP", {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+				weekday: "short",
+				timeZone: "UTC",
+			}).format(new Date(expandedDateKey + "T00:00:00Z"))
+		: "カレンダーから日付を選択";
+	return {
+		actionData,
+		event,
+		user,
+		groups,
+		activeGroup,
+		availability,
+		restricted,
+		submitting,
+		visibilitySubmitting,
+		isOrganizer,
+		submitted,
+		confirmedStart,
+		confirmedEnd,
+		resultStatus,
+		months,
+		expandedDateKey,
+		activeMonthIndex,
+		expandedIntervals,
+		changeMonth,
+		monthTitle,
+		calendarCells,
+		closeDateCandidates,
+		participantNames,
+		expandedDateTitle,
+		confirmationDateTitle,
+	};
+}
+
+export default function Results(props: Route.ComponentProps) {
+	const {
+		actionData,
+		event,
+		user,
+		groups,
+		activeGroup,
+		availability,
+		restricted,
+		submitting,
+		visibilitySubmitting,
+		isOrganizer,
+		submitted,
+		confirmedStart,
+		confirmedEnd,
+		resultStatus,
+		months,
+		expandedDateKey,
+		activeMonthIndex,
+		expandedIntervals,
+		changeMonth,
+		monthTitle,
+		calendarCells,
+		closeDateCandidates,
+		participantNames,
+		expandedDateTitle,
+		confirmationDateTitle,
+	} = useResults(props);
+
 	if (restricted) {
 		return (
 			<PageShell showPersistentInviteUrl={false}>
@@ -563,18 +663,15 @@ export default function Results({
 											</div>
 										),
 									)}
-									{monthCells(activeMonth).map((cell, cellIndex) => {
-										const dayIntervals = cell.inMonth
-											? (intervalsByDate.get(cell.key) ?? [])
-											: [];
-										const outsideWindow =
-											cell.key < startDateKey || cell.key > endDateKey;
-										const clickableDate = cell.inMonth && !outsideWindow;
-										const openDateCandidates = () => {
-											if (!clickableDate) return;
-											setExpandedDateKey(cell.key);
-										};
-										return (
+									{calendarCells.map(
+										({
+											cell,
+											cellIndex,
+											dayIntervals,
+											outsideWindow,
+											clickableDate,
+											openDateCandidates,
+										}) => (
 											<div
 												className={`schedule-day ${!cell.inMonth ? "other-month" : ""} ${outsideWindow ? "outside-window" : ""} ${expandedDateKey === cell.key ? "date-expanded" : ""} ${clickableDate ? "clickable-date" : ""}`}
 												key={cell.key}
@@ -615,8 +712,8 @@ export default function Results({
 													)}
 												</div>
 											</div>
-										);
-									})}
+										),
+									)}
 								</div>
 							</div>
 							<div className="schedule-calendar-legend">
@@ -647,21 +744,11 @@ export default function Results({
 								<div className="daily-candidate-heading">
 									<div>
 										<strong>
-											<WeekendText>
-												{new Intl.DateTimeFormat("ja-JP", {
-													month: "long",
-													day: "numeric",
-													weekday: "short",
-													timeZone: "UTC",
-												}).format(new Date(`${expandedDateKey}T00:00:00Z`))}
-											</WeekendText>
+											<WeekendText>{expandedDateTitle}</WeekendText>
 										</strong>
 										<span>{expandedIntervals.length}件の時間帯</span>
 									</div>
-									<button
-										type="button"
-										onClick={() => setExpandedDateKey(null)}
-									>
+									<button type="button" onClick={closeDateCandidates}>
 										閉じる
 									</button>
 								</div>
@@ -693,10 +780,9 @@ export default function Results({
 														>
 															{interval.segments.length > 1 &&
 																`${timeLabel(segment.start_at, user.time_zone)}〜${intervalEndLabel(segment, user.time_zone)}：`}
-															{segment.available_participant_ids
-																.map((id) => participantById.get(id))
-																.filter(Boolean)
-																.join("、")}
+															{participantNames(
+																segment.available_participant_ids,
+															)}
 														</small>
 													))}
 												</div>
@@ -801,19 +887,7 @@ export default function Results({
 										<div className="manual-confirmation-date">
 											<span>開催日</span>
 											<strong>
-												<WeekendText>
-													{expandedDateKey
-														? new Intl.DateTimeFormat("ja-JP", {
-																year: "numeric",
-																month: "long",
-																day: "numeric",
-																weekday: "short",
-																timeZone: "UTC",
-															}).format(
-																new Date(`${expandedDateKey}T00:00:00Z`),
-															)
-														: "カレンダーから日付を選択"}
-												</WeekendText>
+												<WeekendText>{confirmationDateTitle}</WeekendText>
 											</strong>
 										</div>
 										<label htmlFor="confirmation-time">開始時刻</label>

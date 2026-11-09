@@ -129,10 +129,7 @@ export function HydrateFallback() {
 	);
 }
 
-export default function Confirmed({
-	loaderData,
-	actionData,
-}: Route.ComponentProps) {
+function useConfirmedEvent({ loaderData, actionData }: Route.ComponentProps) {
 	const {
 		event,
 		user,
@@ -149,9 +146,38 @@ export default function Confirmed({
 	const canViewResults =
 		event.created_by_user_id === user.id ||
 		event.results_visible_to_participants;
+	const allConfirmed =
+		groups.length > 0 && groups.every((group) => group.confirmed_start_at);
+
+	return {
+		actionData,
+		event,
+		user,
+		participants,
+		groups,
+		calendarStatus,
+		icloudCalendarStatus,
+		submittingGroupID,
+		canViewResults,
+		allConfirmed,
+	};
+}
+
+export default function Confirmed(props: Route.ComponentProps) {
+	const {
+		actionData,
+		event,
+		user,
+		participants,
+		groups,
+		calendarStatus,
+		icloudCalendarStatus,
+		submittingGroupID,
+		canViewResults,
+		allConfirmed,
+	} = useConfirmedEvent(props);
+
 	if (event.scheduling_mode === "groups") {
-		const allConfirmed =
-			groups.length > 0 && groups.every((group) => group.confirmed_start_at);
 		return (
 			<PageShell>
 				<div className="confirmed-hero">
@@ -450,7 +476,7 @@ function ParticipantList({
 	);
 }
 
-function CalendarSyncControls(props: {
+function useCalendarSyncControls(props: {
 	calendarStatus: ConfirmationCalendarStatus;
 	icloudCalendarStatus: ConfirmationCalendarStatus;
 	groupID: string | null;
@@ -458,20 +484,34 @@ function CalendarSyncControls(props: {
 	actionData: Route.ComponentProps["actionData"];
 }) {
 	const navigation = useNavigation();
+	const icloudSubmitting =
+		navigation.formData?.get("intent") === "sync-icloud-calendar"
+			? String(navigation.formData.get("group_id") ?? "") || null
+			: undefined;
+
+	return { props, icloudSubmitting };
+}
+
+function CalendarSyncControls(input: {
+	calendarStatus: ConfirmationCalendarStatus;
+	icloudCalendarStatus: ConfirmationCalendarStatus;
+	groupID: string | null;
+	submittingGroupID: string | null | undefined;
+	actionData: Route.ComponentProps["actionData"];
+}) {
+	const { props, icloudSubmitting } = useCalendarSyncControls(input);
+
 	if (
 		props.calendarStatus.connection_status === "inactive" &&
 		props.icloudCalendarStatus.connection_status === "inactive"
 	)
 		return (
 			<p>
-				予定の書き出し先を<Link to="/account#calendar-settings">カレンダー設定</Link>
+				予定の書き出し先を
+				<Link to="/account#calendar-settings">カレンダー設定</Link>
 				で選択してください。
 			</p>
 		);
-	const icloudSubmitting =
-		navigation.formData?.get("intent") === "sync-icloud-calendar"
-			? String(navigation.formData.get("group_id") ?? "") || null
-			: undefined;
 	return (
 		<div className="calendar-provider-controls">
 			<CalendarSyncControl {...props} provider="google" />
@@ -485,7 +525,7 @@ function CalendarSyncControls(props: {
 	);
 }
 
-function CalendarSyncControl({
+function calendarSyncPresentation({
 	provider,
 	calendarStatus,
 	groupID,
@@ -498,7 +538,6 @@ function CalendarSyncControl({
 	submittingGroupID: string | null | undefined;
 	actionData: Route.ComponentProps["actionData"];
 }) {
-	if (calendarStatus.connection_status === "inactive") return null;
 	const isICloud = provider === "icloud";
 	const calendarLabel = isICloud ? "iCloudカレンダー" : "Googleカレンダー";
 	const settingsPath = isICloud
@@ -509,6 +548,41 @@ function CalendarSyncControl({
 	const isCurrentAction =
 		actionData?.group_id === groupID && actionData?.provider === provider;
 	const hasCurrentActionMessage = isCurrentAction && Boolean(actionData);
+
+	return {
+		calendarStatus,
+		groupID,
+		actionData,
+		isICloud,
+		calendarLabel,
+		settingsPath,
+		sync,
+		isSubmitting,
+		isCurrentAction,
+		hasCurrentActionMessage,
+	};
+}
+
+function CalendarSyncControl(props: {
+	provider: "google" | "icloud";
+	calendarStatus: ConfirmationCalendarStatus;
+	groupID: string | null;
+	submittingGroupID: string | null | undefined;
+	actionData: Route.ComponentProps["actionData"];
+}) {
+	const {
+		calendarStatus,
+		groupID,
+		actionData,
+		isICloud,
+		calendarLabel,
+		settingsPath,
+		sync,
+		isSubmitting,
+		isCurrentAction,
+		hasCurrentActionMessage,
+	} = calendarSyncPresentation(props);
+	if (calendarStatus.connection_status === "inactive") return null;
 	if (
 		calendarStatus.connection_status === "not_connected" ||
 		calendarStatus.connection_status === "write_permission_required"

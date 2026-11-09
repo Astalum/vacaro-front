@@ -208,10 +208,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 	}
 }
 
-export default function NewEvent({
-	actionData,
-	loaderData,
-}: Route.ComponentProps) {
+function useNewEvent({ actionData, loaderData }: Route.ComponentProps) {
 	const navigation = useNavigation();
 	const submitting = navigation.state === "submitting";
 	const {
@@ -221,7 +218,7 @@ export default function NewEvent({
 		clearError: clearFieldError,
 		inputProps,
 	} = useFormErrors(actionData?.error.fields);
-	const [resultsVisible, setResultsVisible] = useState(true);
+	const [resultsVisible, changeResultsVisibility] = useState(true);
 	const hasFieldErrors = Object.keys(localErrors).length > 0;
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -235,6 +232,55 @@ export default function NewEvent({
 		event.preventDefault();
 		document.getElementById(controlIds[first])?.focus();
 	}
+
+	function clearDateErrors() {
+		clearFieldError("window_start_date");
+		clearFieldError("window_end_date");
+	}
+
+	function clearTimeErrors() {
+		clearFieldError("daily_start_time");
+		clearFieldError("daily_end_time");
+	}
+
+	const errorSummary = Object.keys(localErrors).every(
+		(name) => name === "title" || name === "display_name",
+	)
+		? `未入力の項目が${Object.keys(localErrors).length}件あります`
+		: `修正が必要な項目が${Object.keys(localErrors).length}件あります。各入力欄のメッセージをご確認ください。`;
+	return {
+		actionData,
+		loaderData,
+		submitting,
+		fieldErrors,
+		clearFieldError,
+		inputProps,
+		resultsVisible,
+		changeResultsVisibility,
+		hasFieldErrors,
+		handleSubmit,
+		clearDateErrors,
+		clearTimeErrors,
+		errorSummary,
+	};
+}
+
+export default function NewEvent(props: Route.ComponentProps) {
+	const {
+		actionData,
+		loaderData,
+		submitting,
+		fieldErrors,
+		clearFieldError,
+		inputProps,
+		resultsVisible,
+		changeResultsVisibility,
+		hasFieldErrors,
+		handleSubmit,
+		clearDateErrors,
+		clearTimeErrors,
+		errorSummary,
+	} = useNewEvent(props);
 
 	return (
 		<PageShell>
@@ -260,13 +306,7 @@ export default function NewEvent({
 					</ValidationMessage>
 				)}
 				{hasFieldErrors && (
-					<ValidationMessage>
-						{Object.keys(localErrors).every(
-							(name) => name === "title" || name === "display_name",
-						)
-							? `未入力の項目が${Object.keys(localErrors).length}件あります`
-							: `修正が必要な項目が${Object.keys(localErrors).length}件あります。各入力欄のメッセージをご確認ください。`}
-					</ValidationMessage>
+					<ValidationMessage>{errorSummary}</ValidationMessage>
 				)}
 				<div className="new-event-card-grid">
 					<Card className="new-event-card h-full overflow-hidden">
@@ -356,7 +396,7 @@ export default function NewEvent({
 											aria-checked={resultsVisible}
 											aria-describedby="results-visibility-description"
 											onChange={(event) =>
-												setResultsVisible(event.currentTarget.checked)
+												changeResultsVisibility(event.currentTarget.checked)
 											}
 										/>
 										<span
@@ -399,10 +439,7 @@ export default function NewEvent({
 											id="window-start-date"
 											name="window_start_date"
 											{...inputProps("window_start_date", "window-start-date")}
-											onValueChange={() => {
-												clearFieldError("window_start_date");
-												clearFieldError("window_end_date");
-											}}
+											onValueChange={clearDateErrors}
 											defaultValue={loaderData.windowStartAt.slice(0, 10)}
 											required
 										/>
@@ -440,10 +477,7 @@ export default function NewEvent({
 											id="daily-start-time"
 											name="daily_start_time"
 											{...inputProps("daily_start_time", "daily-start-time")}
-											onValueChange={() => {
-												clearFieldError("daily_start_time");
-												clearFieldError("daily_end_time");
-											}}
+											onValueChange={clearTimeErrors}
 											defaultValue={loaderData.windowStartAt.slice(11, 16)}
 											required
 										/>

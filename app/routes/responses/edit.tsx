@@ -16,7 +16,7 @@ export function responseEditTokenFromHash(hash: string) {
 	return /^[A-Za-z0-9_-]{43}$/.test(token) ? token : null;
 }
 
-export default function EditResponseSession() {
+function useResponseSession() {
 	const navigate = useNavigate();
 	const [error, setError] = useState<string | null>(null);
 	const exchange = useRef<Promise<string> | null>(null);
@@ -57,6 +57,12 @@ export default function EditResponseSession() {
 			active = false;
 		};
 	}, [navigate]);
+
+	return { error };
+}
+
+export default function EditResponseSession() {
+	const { error } = useResponseSession();
 
 	return (
 		<PageShell showPersistentInviteUrl={false}>

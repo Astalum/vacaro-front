@@ -60,7 +60,7 @@ export async function handleICloudAction(form: FormData) {
 		);
 	}
 }
-export default function ICloudSettings({
+function useICloudSettings({
 	loaderData,
 	actionData,
 }: {
@@ -70,18 +70,71 @@ export default function ICloudSettings({
 	const { connected, options, error } = loaderData;
 	const navigation = useNavigation();
 	const busy = navigation.state !== "idle";
-	const [account, setAccount] = useState(options.account);
-	const [password, setPassword] = useState("");
+	const [account, changeAccount] = useState(options.account);
+	const [password, changePassword] = useState("");
 	const [selected, setSelected] = useState(() =>
 		savedICloudCalendarIDs(options.calendars),
 	);
 	const [message, setMessage] = useState<string | null>(null);
 	useEffect(() => {
-		setPassword("");
+		changePassword("");
 	}, [actionData]);
 	useEffect(() => {
 		setSelected(savedICloudCalendarIDs(options.calendars));
 	}, [options.calendars]);
+
+	function toggleCalendar(calendarID: string) {
+		setMessage(null);
+		setSelected((ids) =>
+			ids.includes(calendarID)
+				? ids.filter((id) => id !== calendarID)
+				: [...ids, calendarID],
+		);
+	}
+
+	const saveCalendarPreference = () =>
+		setMessage(
+			saveICloudCalendarIDs(selected)
+				? "使用するカレンダーを保存しました"
+				: "設定を保存できませんでした。ブラウザの保存設定をご確認ください。",
+		);
+	return {
+		actionData,
+		connected,
+		options,
+		error,
+		busy,
+		account,
+		changeAccount,
+		password,
+		changePassword,
+		selected,
+		message,
+		toggleCalendar,
+		saveCalendarPreference,
+	};
+}
+
+export default function ICloudSettings(props: {
+	loaderData: Awaited<ReturnType<typeof loadICloudConnection>>;
+	actionData?: SettingsActionData;
+}) {
+	const {
+		actionData,
+		connected,
+		options,
+		error,
+		busy,
+		account,
+		changeAccount,
+		password,
+		changePassword,
+		selected,
+		message,
+		toggleCalendar,
+		saveCalendarPreference,
+	} = useICloudSettings(props);
+
 	const connectForm = (
 		<Form preventScrollReset method="post" className="icloud-connect-form">
 			<label htmlFor="apple-account">Apple Accountのメールアドレス</label>
@@ -93,7 +146,7 @@ export default function ICloudSettings({
 				required
 				maxLength={254}
 				value={account}
-				onChange={(event) => setAccount(event.target.value)}
+				onChange={(event) => changeAccount(event.target.value)}
 			/>
 			<label htmlFor="icloud-app-password">アプリ用パスワード</label>
 			<input
@@ -107,7 +160,7 @@ export default function ICloudSettings({
 				minLength={16}
 				maxLength={19}
 				value={password}
-				onChange={(event) => setPassword(event.target.value)}
+				onChange={(event) => changePassword(event.target.value)}
 				aria-describedby="icloud-password-help"
 			/>
 			<p id="icloud-password-help">
@@ -220,14 +273,7 @@ export default function ICloudSettings({
 										<input
 											type="checkbox"
 											checked={selected.includes(calendar.id)}
-											onChange={() => {
-												setMessage(null);
-												setSelected((ids) =>
-													ids.includes(calendar.id)
-														? ids.filter((id) => id !== calendar.id)
-														: [...ids, calendar.id],
-												);
-											}}
+											onChange={() => toggleCalendar(calendar.id)}
 										/>
 										<span className="calendar-checkmark">
 											<Icon name="check" size={14} />
@@ -243,13 +289,7 @@ export default function ICloudSettings({
 								type="button"
 								className="button button-primary"
 								disabled={selected.length === 0}
-								onClick={() =>
-									setMessage(
-										saveICloudCalendarIDs(selected)
-											? "使用するカレンダーを保存しました"
-											: "設定を保存できませんでした。ブラウザの保存設定をご確認ください。",
-									)
-								}
+								onClick={saveCalendarPreference}
 							>
 								設定を保存
 							</button>

@@ -23,7 +23,7 @@ type DatePickerProps = {
 	className?: string;
 };
 
-export function DatePicker({
+function useDatePicker({
 	id,
 	name,
 	value,
@@ -45,6 +45,59 @@ export function DatePicker({
 		if (value === undefined) setInternalValue(next);
 		onValueChange?.(next);
 	};
+
+	function selectDate(date: Date | undefined) {
+		updateValue(date);
+		if (date) setOpen(false);
+	}
+
+	function selectToday() {
+		updateValue(new Date());
+		setOpen(false);
+	}
+
+	function clearDate() {
+		updateValue(undefined);
+		setOpen(false);
+	}
+
+	return {
+		id,
+		name,
+		required,
+		disabled,
+		ariaLabel,
+		ariaDescribedBy,
+		ariaInvalid,
+		className,
+		open,
+		setOpen,
+		currentValue,
+		selected,
+		selectDate,
+		selectToday,
+		clearDate,
+	};
+}
+
+export function DatePicker(props: DatePickerProps) {
+	const {
+		id,
+		name,
+		required,
+		disabled,
+		ariaLabel,
+		ariaDescribedBy,
+		ariaInvalid,
+		className,
+		open,
+		setOpen,
+		currentValue,
+		selected,
+		selectDate,
+		selectToday,
+		clearDate,
+	} = useDatePicker(props);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -87,36 +140,17 @@ export function DatePicker({
 					mode="single"
 					required={required}
 					selected={selected}
-					onSelect={(date: Date | undefined) => {
-						updateValue(date);
-						if (date) setOpen(false);
-					}}
+					onSelect={selectDate}
 					defaultMonth={selected}
 					locale={ja}
 					fixedWeeks
 				/>
 				<div className="picker-footer">
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							updateValue(new Date());
-							setOpen(false);
-						}}
-					>
+					<Button type="button" variant="ghost" size="sm" onClick={selectToday}>
 						今日
 					</Button>
 					{!required && selected && (
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => {
-								updateValue(undefined);
-								setOpen(false);
-							}}
-						>
+						<Button type="button" variant="ghost" size="sm" onClick={clearDate}>
 							<XIcon className="size-4" /> 選択をクリア
 						</Button>
 					)}

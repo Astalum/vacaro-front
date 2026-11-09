@@ -25,7 +25,7 @@ type DateTimePickerProps = {
 	className?: string;
 };
 
-export function DateTimePicker({
+function useDateTimePicker({
 	id,
 	name,
 	value,
@@ -52,14 +52,71 @@ export function DateTimePicker({
 		onValueChange?.(next);
 	};
 
+	function changeOpen(next: boolean) {
+		setOpen(next);
+		if (next) setPanel("date");
+	}
+
+	function clearDateTime() {
+		updateValue(undefined, "09:00");
+		setOpen(false);
+	}
+
+	const openDatePanel = () => setPanel("date");
+	const openTimePanel = () => setPanel("time");
+	const closePicker = () => setOpen(false);
+	const selectDate = (next: Date | undefined) => updateValue(next, time);
+	const selectTime = (next: string) => updateValue(date, next);
+	return {
+		id,
+		name,
+		required,
+		disabled,
+		ariaLabel,
+		ariaDescribedBy,
+		ariaInvalid,
+		className,
+		open,
+		panel,
+		currentValue,
+		date,
+		time,
+		changeOpen,
+		clearDateTime,
+		openDatePanel,
+		openTimePanel,
+		closePicker,
+		selectDate,
+		selectTime,
+	};
+}
+
+export function DateTimePicker(props: DateTimePickerProps) {
+	const {
+		id,
+		name,
+		required,
+		disabled,
+		ariaLabel,
+		ariaDescribedBy,
+		ariaInvalid,
+		className,
+		open,
+		panel,
+		currentValue,
+		date,
+		time,
+		changeOpen,
+		clearDateTime,
+		openDatePanel,
+		openTimePanel,
+		closePicker,
+		selectDate,
+		selectTime,
+	} = useDateTimePicker(props);
+
 	return (
-		<Popover
-			open={open}
-			onOpenChange={(next) => {
-				setOpen(next);
-				if (next) setPanel("date");
-			}}
-		>
+		<Popover open={open} onOpenChange={changeOpen}>
 			<input
 				type="hidden"
 				name={name}
@@ -102,7 +159,7 @@ export function DateTimePicker({
 					<button
 						type="button"
 						aria-pressed={panel === "date"}
-						onClick={() => setPanel("date")}
+						onClick={openDatePanel}
 					>
 						<CalendarIcon size={16} aria-hidden="true" /> 日付
 					</button>
@@ -110,7 +167,7 @@ export function DateTimePicker({
 						type="button"
 						aria-pressed={panel === "time"}
 						aria-label={`時刻 ${time}`}
-						onClick={() => setPanel("time")}
+						onClick={openTimePanel}
 					>
 						<Clock3Icon size={16} aria-hidden="true" /> {time}
 					</button>
@@ -121,15 +178,12 @@ export function DateTimePicker({
 							mode="single"
 							required={required}
 							selected={date}
-							onSelect={(next: Date | undefined) => updateValue(next, time)}
+							onSelect={selectDate}
 							defaultMonth={date}
 							fixedWeeks
 						/>
 					) : (
-						<TimePickerPanel
-							value={time}
-							onValueChange={(next) => updateValue(date, next)}
-						/>
+						<TimePickerPanel value={time} onValueChange={selectTime} />
 					)}
 				</div>
 				<div className="picker-footer">
@@ -138,7 +192,7 @@ export function DateTimePicker({
 							type="button"
 							size="sm"
 							className="w-full"
-							onClick={() => setPanel("date")}
+							onClick={openDatePanel}
 						>
 							この時刻にする
 						</Button>
@@ -149,10 +203,7 @@ export function DateTimePicker({
 									type="button"
 									variant="ghost"
 									size="sm"
-									onClick={() => {
-										updateValue(undefined, "09:00");
-										setOpen(false);
-									}}
+									onClick={clearDateTime}
 								>
 									<XIcon size={16} aria-hidden="true" /> クリア
 								</Button>
@@ -161,7 +212,7 @@ export function DateTimePicker({
 								type="button"
 								size="sm"
 								disabled={!date}
-								onClick={() => setOpen(false)}
+								onClick={closePicker}
 							>
 								決定
 							</Button>
