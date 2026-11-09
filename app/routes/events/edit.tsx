@@ -252,25 +252,16 @@ function useEditEvent({
 }
 
 export default function EditEvent(props: Route.ComponentProps) {
+	const model = useEditEvent(props);
 	const {
 		event,
-		timeZone,
 		actionData,
-		windowEndInput,
-		errors,
 		localErrors,
-		clearError,
-		inputProps,
 		handleSubmit,
 		saving,
 		reissuingInviteUrl,
 		currentInviteUrl,
-		clearDateErrors,
-		clearTimeErrors,
-		deadlineInput,
-		windowStartDate,
-		dailyStartTime,
-	} = useEditEvent(props);
+	} = model;
 
 	return (
 		<PageShell showPersistentInviteUrl={false}>
@@ -313,158 +304,8 @@ export default function EditEvent(props: Route.ComponentProps) {
 						入力内容をもう一度ご確認ください。
 					</ValidationMessage>
 				)}
-				<section className="form-section compact-section">
-					<div className="field">
-						<label htmlFor="edit-title">
-							イベント名 <em>必須</em>
-						</label>
-						<input
-							id="edit-title"
-							name="title"
-							{...inputProps("title", "edit-title")}
-							onChange={() => clearError("title")}
-							defaultValue={event.title}
-							required
-						/>
-						<FieldError id="edit-title-error">{errors.title}</FieldError>
-					</div>
-					<div className="field">
-						<label htmlFor="edit-description">
-							説明 <small>任意</small>
-						</label>
-						<textarea
-							id="edit-description"
-							name="description"
-							rows={4}
-							defaultValue={event.description ?? ""}
-						/>
-					</div>
-					<div className="field">
-						<label htmlFor="edit-deadline">回答期限</label>
-						<DateTimePicker
-							id="edit-deadline"
-							name="response_deadline_at"
-							{...inputProps("response_deadline_at", "edit-deadline")}
-							onValueChange={() => clearError("response_deadline_at")}
-							defaultValue={deadlineInput}
-						/>
-						<FieldError id="edit-deadline-error">
-							{errors.response_deadline_at}
-						</FieldError>
-					</div>
-					<input type="hidden" name="time_zone" value={timeZone} />
-				</section>
-				<section className="form-section">
-					<div className="form-section-title">
-						<span>02</span>
-						<div>
-							<h2>調整条件</h2>
-							<p>回答済みの時間を範囲外にする変更は保存できません。</p>
-						</div>
-					</div>
-					<div className="window-fields">
-						<div className="field">
-							<label htmlFor="edit-window-start-date">開始日</label>
-							<DatePicker
-								id="edit-window-start-date"
-								name="window_start_date"
-								{...inputProps("window_start_date", "edit-window-start-date")}
-								onValueChange={clearDateErrors}
-								defaultValue={windowStartDate}
-								required
-							/>
-							<FieldError id="edit-window-start-date-error">
-								{errors.window_start_date}
-							</FieldError>
-						</div>
-						<span className="window-arrow">→</span>
-						<div className="field">
-							<label htmlFor="edit-window-end-date">終了日</label>
-							<DatePicker
-								id="edit-window-end-date"
-								name="window_end_date"
-								{...inputProps("window_end_date", "edit-window-end-date")}
-								onValueChange={() => clearError("window_end_date")}
-								defaultValue={windowEndInput.slice(0, 10)}
-								required
-							/>
-							<FieldError id="edit-window-end-date-error">
-								{errors.window_end_date}
-							</FieldError>
-						</div>
-					</div>
-					<div className="daily-window-settings">
-						<div>
-							<strong>毎日の回答受付時間</strong>
-							<p>参加者はこの時間帯の中で回答できます。</p>
-						</div>
-						<div className="daily-window-fields">
-							<div className="field">
-								<label htmlFor="edit-daily-start-time">受付開始</label>
-								<TimePicker
-									id="edit-daily-start-time"
-									name="daily_start_time"
-									{...inputProps("daily_start_time", "edit-daily-start-time")}
-									onValueChange={clearTimeErrors}
-									defaultValue={dailyStartTime}
-									required
-								/>
-								<FieldError id="edit-daily-start-time-error">
-									{errors.daily_start_time}
-								</FieldError>
-							</div>
-							<span>〜</span>
-							<div className="field">
-								<label htmlFor="edit-daily-end-time">受付終了</label>
-								<TimePicker
-									id="edit-daily-end-time"
-									name="daily_end_time"
-									{...inputProps("daily_end_time", "edit-daily-end-time")}
-									onValueChange={() => clearError("daily_end_time")}
-									defaultValue={windowEndInput.slice(11, 16)}
-									required
-								/>
-								<FieldError id="edit-daily-end-time-error">
-									{errors.daily_end_time}
-								</FieldError>
-							</div>
-						</div>
-					</div>
-					<div className="field">
-						<label htmlFor="edit-duration">イベントに必要な時間（分）</label>
-						<input
-							id="edit-duration"
-							name="duration_minutes"
-							{...inputProps("duration_minutes", "edit-duration")}
-							onChange={() => clearError("duration_minutes")}
-							type="number"
-							min={5}
-							max={1440}
-							step={1}
-							defaultValue={event.duration_minutes}
-							required
-						/>
-						<FieldError id="edit-duration-error">
-							{errors.duration_minutes}
-						</FieldError>
-						<small>5～1,440分の範囲で1分単位に指定できます。</small>
-					</div>
-					<div className="field">
-						<label htmlFor="edit-scheduling-mode">調整単位</label>
-						<Select name="scheduling_mode" defaultValue={event.scheduling_mode}>
-							<SelectTrigger id="edit-scheduling-mode">
-								<SelectValue placeholder="調整単位を選択" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="whole_event">イベント全体で調整</SelectItem>
-								<SelectItem value="groups">小グループごとに調整</SelectItem>
-							</SelectContent>
-						</Select>
-						<small>
-							確定済み、またはグループが残っている場合は変更できません。
-						</small>
-					</div>
-				</section>
+				<EventDetailsFields model={model} />
+				<EventConditionsFields model={model} />
 				<div className="form-actions horizontal">
 					<Link
 						className="button button-ghost"
@@ -499,5 +340,188 @@ export default function EditEvent(props: Route.ComponentProps) {
 				/>
 			</section>
 		</PageShell>
+	);
+}
+
+function EventDetailsFields({
+	model,
+}: {
+	model: ReturnType<typeof useEditEvent>;
+}) {
+	const { event, timeZone, errors, clearError, inputProps, deadlineInput } =
+		model;
+	return (
+		<section className="form-section compact-section">
+			<div className="field">
+				<label htmlFor="edit-title">
+					イベント名 <em>必須</em>
+				</label>
+				<input
+					id="edit-title"
+					name="title"
+					{...inputProps("title", "edit-title")}
+					onChange={() => clearError("title")}
+					defaultValue={event.title}
+					required
+				/>
+				<FieldError id="edit-title-error">{errors.title}</FieldError>
+			</div>
+			<div className="field">
+				<label htmlFor="edit-description">
+					説明 <small>任意</small>
+				</label>
+				<textarea
+					id="edit-description"
+					name="description"
+					rows={4}
+					defaultValue={event.description ?? ""}
+				/>
+			</div>
+			<div className="field">
+				<label htmlFor="edit-deadline">回答期限</label>
+				<DateTimePicker
+					id="edit-deadline"
+					name="response_deadline_at"
+					{...inputProps("response_deadline_at", "edit-deadline")}
+					onValueChange={() => clearError("response_deadline_at")}
+					defaultValue={deadlineInput}
+				/>
+				<FieldError id="edit-deadline-error">
+					{errors.response_deadline_at}
+				</FieldError>
+			</div>
+			<input type="hidden" name="time_zone" value={timeZone} />
+		</section>
+	);
+}
+
+function EventConditionsFields({
+	model,
+}: {
+	model: ReturnType<typeof useEditEvent>;
+}) {
+	const {
+		event,
+		windowEndInput,
+		errors,
+		clearError,
+		inputProps,
+		clearDateErrors,
+		clearTimeErrors,
+		windowStartDate,
+		dailyStartTime,
+	} = model;
+	return (
+		<section className="form-section">
+			<div className="form-section-title">
+				<span>02</span>
+				<div>
+					<h2>調整条件</h2>
+					<p>回答済みの時間を範囲外にする変更は保存できません。</p>
+				</div>
+			</div>
+			<div className="window-fields">
+				<div className="field">
+					<label htmlFor="edit-window-start-date">開始日</label>
+					<DatePicker
+						id="edit-window-start-date"
+						name="window_start_date"
+						{...inputProps("window_start_date", "edit-window-start-date")}
+						onValueChange={clearDateErrors}
+						defaultValue={windowStartDate}
+						required
+					/>
+					<FieldError id="edit-window-start-date-error">
+						{errors.window_start_date}
+					</FieldError>
+				</div>
+				<span className="window-arrow">→</span>
+				<div className="field">
+					<label htmlFor="edit-window-end-date">終了日</label>
+					<DatePicker
+						id="edit-window-end-date"
+						name="window_end_date"
+						{...inputProps("window_end_date", "edit-window-end-date")}
+						onValueChange={() => clearError("window_end_date")}
+						defaultValue={windowEndInput.slice(0, 10)}
+						required
+					/>
+					<FieldError id="edit-window-end-date-error">
+						{errors.window_end_date}
+					</FieldError>
+				</div>
+			</div>
+			<div className="daily-window-settings">
+				<div>
+					<strong>毎日の回答受付時間</strong>
+					<p>参加者はこの時間帯の中で回答できます。</p>
+				</div>
+				<div className="daily-window-fields">
+					<div className="field">
+						<label htmlFor="edit-daily-start-time">受付開始</label>
+						<TimePicker
+							id="edit-daily-start-time"
+							name="daily_start_time"
+							{...inputProps("daily_start_time", "edit-daily-start-time")}
+							onValueChange={clearTimeErrors}
+							defaultValue={dailyStartTime}
+							required
+						/>
+						<FieldError id="edit-daily-start-time-error">
+							{errors.daily_start_time}
+						</FieldError>
+					</div>
+					<span>〜</span>
+					<div className="field">
+						<label htmlFor="edit-daily-end-time">受付終了</label>
+						<TimePicker
+							id="edit-daily-end-time"
+							name="daily_end_time"
+							{...inputProps("daily_end_time", "edit-daily-end-time")}
+							onValueChange={() => clearError("daily_end_time")}
+							defaultValue={windowEndInput.slice(11, 16)}
+							required
+						/>
+						<FieldError id="edit-daily-end-time-error">
+							{errors.daily_end_time}
+						</FieldError>
+					</div>
+				</div>
+			</div>
+			<div className="field">
+				<label htmlFor="edit-duration">イベントに必要な時間（分）</label>
+				<input
+					id="edit-duration"
+					name="duration_minutes"
+					{...inputProps("duration_minutes", "edit-duration")}
+					onChange={() => clearError("duration_minutes")}
+					type="number"
+					min={5}
+					max={1440}
+					step={1}
+					defaultValue={event.duration_minutes}
+					required
+				/>
+				<FieldError id="edit-duration-error">
+					{errors.duration_minutes}
+				</FieldError>
+				<small>5～1,440分の範囲で1分単位に指定できます。</small>
+			</div>
+			<div className="field">
+				<label htmlFor="edit-scheduling-mode">調整単位</label>
+				<Select name="scheduling_mode" defaultValue={event.scheduling_mode}>
+					<SelectTrigger id="edit-scheduling-mode">
+						<SelectValue placeholder="調整単位を選択" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="whole_event">イベント全体で調整</SelectItem>
+						<SelectItem value="groups">小グループごとに調整</SelectItem>
+					</SelectContent>
+				</Select>
+				<small>
+					確定済み、またはグループが残っている場合は変更できません。
+				</small>
+			</div>
+		</section>
 	);
 }

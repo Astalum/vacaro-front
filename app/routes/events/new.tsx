@@ -266,21 +266,9 @@ function useNewEvent({ actionData, loaderData }: Route.ComponentProps) {
 }
 
 export default function NewEvent(props: Route.ComponentProps) {
-	const {
-		actionData,
-		loaderData,
-		submitting,
-		fieldErrors,
-		clearFieldError,
-		inputProps,
-		resultsVisible,
-		changeResultsVisibility,
-		hasFieldErrors,
-		handleSubmit,
-		clearDateErrors,
-		clearTimeErrors,
-		errorSummary,
-	} = useNewEvent(props);
+	const model = useNewEvent(props);
+	const { actionData, submitting, hasFieldErrors, handleSubmit, errorSummary } =
+		model;
 
 	return (
 		<PageShell>
@@ -309,270 +297,9 @@ export default function NewEvent(props: Route.ComponentProps) {
 					<ValidationMessage>{errorSummary}</ValidationMessage>
 				)}
 				<div className="new-event-card-grid">
-					<Card className="new-event-card h-full overflow-hidden">
-						<CardHeader className="border-b border-border pb-6">
-							<div className="flex items-center gap-3">
-								<span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">
-									<Icon name="info" size={21} />
-								</span>
-								<CardTitle>イベント情報</CardTitle>
-							</div>
-						</CardHeader>
-						<CardContent className="flex-1">
-							<FieldGroup>
-								<Field>
-									<FieldLabel htmlFor="title">
-										イベント名 <Badge variant="destructive">必須</Badge>
-									</FieldLabel>
-									<Input
-										id="title"
-										name="title"
-										required
-										aria-invalid={Boolean(fieldErrors.title)}
-										aria-describedby={
-											fieldErrors.title ? "title-error" : undefined
-										}
-										onChange={() => clearFieldError("title")}
-									/>
-									{fieldErrors.title && (
-										<FieldError id="title-error">
-											{fieldErrors.title}
-										</FieldError>
-									)}
-								</Field>
-								<Field>
-									<FieldLabel htmlFor="description">
-										説明 <Badge variant="outline">任意</Badge>
-									</FieldLabel>
-									<Textarea id="description" name="description" rows={4} />
-								</Field>
-								<div className="grid gap-5 md:grid-cols-2">
-									<Field>
-										<FieldLabel htmlFor="owner">
-											主催者名 <Badge variant="destructive">必須</Badge>
-										</FieldLabel>
-										<Input
-											id="owner"
-											name="display_name"
-											defaultValue={loaderData.displayName}
-											required
-											aria-invalid={Boolean(fieldErrors.display_name)}
-											aria-describedby={
-												fieldErrors.display_name ? "owner-error" : undefined
-											}
-											onChange={() => clearFieldError("display_name")}
-										/>
-										{fieldErrors.display_name && (
-											<FieldError id="owner-error">
-												{fieldErrors.display_name}
-											</FieldError>
-										)}
-									</Field>
-									<input
-										type="hidden"
-										name="time_zone"
-										value={loaderData.timeZone}
-									/>
-								</div>
-								<Field className="new-event-results-visibility">
-									<div>
-										<FieldLabel htmlFor="results-visible-to-participants">
-											回答結果の公開
-										</FieldLabel>
-										<p id="results-visibility-description">
-											回答者がイベントの集計結果を閲覧できるようにします。
-											作成後も結果画面から変更できます。
-										</p>
-									</div>
-									<label className="new-event-results-toggle">
-										<input
-											id="results-visible-to-participants"
-											className="new-event-results-toggle-input"
-											name="results_visible_to_participants"
-											type="checkbox"
-											role="switch"
-											value="true"
-											checked={resultsVisible}
-											aria-checked={resultsVisible}
-											aria-describedby="results-visibility-description"
-											onChange={(event) =>
-												changeResultsVisibility(event.currentTarget.checked)
-											}
-										/>
-										<span
-											className="new-event-results-toggle-track"
-											aria-hidden="true"
-										>
-											<span />
-										</span>
-										<strong>
-											{resultsVisible ? "表示する" : "表示しない"}
-										</strong>
-									</label>
-									<input
-										type="hidden"
-										name="results_visible_to_participants"
-										value="false"
-									/>
-								</Field>
-							</FieldGroup>
-						</CardContent>
-					</Card>
+					<EventInformationCard model={model} />
 
-					<Card className="new-event-card h-full overflow-hidden">
-						<CardHeader className="border-b border-border pb-6">
-							<div className="flex items-center gap-3">
-								<span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">
-									<Icon name="calendar" size={21} />
-								</span>
-								<CardTitle>調整する期間</CardTitle>
-							</div>
-						</CardHeader>
-						<CardContent className="flex-1">
-							<FieldGroup>
-								<div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
-									<Field>
-										<FieldLabel htmlFor="window-start-date">
-											開始日 <Badge variant="destructive">必須</Badge>
-										</FieldLabel>
-										<DatePicker
-											id="window-start-date"
-											name="window_start_date"
-											{...inputProps("window_start_date", "window-start-date")}
-											onValueChange={clearDateErrors}
-											defaultValue={loaderData.windowStartAt.slice(0, 10)}
-											required
-										/>
-										<FieldError id="window-start-date-error">
-											{fieldErrors.window_start_date}
-										</FieldError>
-									</Field>
-									<span className="hidden h-14 items-center justify-center px-1 text-xl font-extrabold text-primary md:flex">
-										→
-									</span>
-									<Field>
-										<FieldLabel htmlFor="window-end-date">
-											終了日 <Badge variant="destructive">必須</Badge>
-										</FieldLabel>
-										<DatePicker
-											id="window-end-date"
-											name="window_end_date"
-											{...inputProps("window_end_date", "window-end-date")}
-											onValueChange={() => clearFieldError("window_end_date")}
-											defaultValue={loaderData.windowEndAt.slice(0, 10)}
-											required
-										/>
-										<FieldError id="window-end-date-error">
-											{fieldErrors.window_end_date}
-										</FieldError>
-									</Field>
-								</div>
-
-								<div className="new-event-time-range grid gap-4 rounded-xl border border-primary/20 bg-secondary/45 p-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
-									<Field>
-										<FieldLabel htmlFor="daily-start-time">
-											毎日の受付開始 <Badge variant="destructive">必須</Badge>
-										</FieldLabel>
-										<TimePicker
-											id="daily-start-time"
-											name="daily_start_time"
-											{...inputProps("daily_start_time", "daily-start-time")}
-											onValueChange={clearTimeErrors}
-											defaultValue={loaderData.windowStartAt.slice(11, 16)}
-											required
-										/>
-										<FieldError id="daily-start-time-error">
-											{fieldErrors.daily_start_time}
-										</FieldError>
-									</Field>
-									<span className="hidden h-14 items-center justify-center px-1 text-lg font-extrabold text-primary md:flex">
-										〜
-									</span>
-									<Field>
-										<FieldLabel htmlFor="daily-end-time">
-											毎日の受付終了 <Badge variant="destructive">必須</Badge>
-										</FieldLabel>
-										<TimePicker
-											id="daily-end-time"
-											name="daily_end_time"
-											{...inputProps("daily_end_time", "daily-end-time")}
-											onValueChange={() => clearFieldError("daily_end_time")}
-											defaultValue={loaderData.windowEndAt.slice(11, 16)}
-											required
-										/>
-										<FieldError id="daily-end-time-error">
-											{fieldErrors.daily_end_time}
-										</FieldError>
-									</Field>
-								</div>
-								<p className="text-sm font-semibold text-muted-foreground">
-									参加者は期間中の各日、この時間帯の中で回答できます。
-								</p>
-
-								<Field>
-									<FieldLabel htmlFor="duration">
-										イベントに必要な時間
-										<Badge variant="destructive">必須</Badge>
-									</FieldLabel>
-									<Input
-										id="duration"
-										name="duration_minutes"
-										{...inputProps("duration_minutes", "duration")}
-										onChange={() => clearFieldError("duration_minutes")}
-										type="number"
-										min={5}
-										max={1440}
-										step={1}
-										defaultValue={60}
-										required
-									/>
-									<FieldError id="duration-error">
-										{fieldErrors.duration_minutes}
-									</FieldError>
-									<p className="text-sm text-muted-foreground">
-										5～1,440分の範囲で1分単位に指定できます。
-									</p>
-								</Field>
-
-								<Field>
-									<FieldLabel htmlFor="scheduling-mode">
-										調整単位 <Badge variant="destructive">必須</Badge>
-									</FieldLabel>
-									<Select name="scheduling_mode" defaultValue="whole_event">
-										<SelectTrigger id="scheduling-mode">
-											<SelectValue placeholder="調整単位を選択" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="whole_event">
-												イベント全体で調整
-											</SelectItem>
-											<SelectItem value="groups">
-												小グループごとに調整
-											</SelectItem>
-										</SelectContent>
-									</Select>
-								</Field>
-
-								<Field>
-									<FieldLabel htmlFor="deadline">
-										回答期限 <Badge variant="outline">任意</Badge>
-									</FieldLabel>
-									<DateTimePicker
-										id="deadline"
-										name="response_deadline_at"
-										{...inputProps("response_deadline_at", "deadline")}
-										onValueChange={() =>
-											clearFieldError("response_deadline_at")
-										}
-										defaultValue={loaderData.responseDeadlineAt}
-									/>
-									<FieldError id="deadline-error">
-										{fieldErrors.response_deadline_at}
-									</FieldError>
-								</Field>
-							</FieldGroup>
-						</CardContent>
-					</Card>
+					<EventConditionsCard model={model} />
 				</div>
 
 				<div className="flex flex-col items-center justify-center gap-3 pt-1 sm:flex-row-reverse">
@@ -591,5 +318,285 @@ export default function NewEvent(props: Route.ComponentProps) {
 				</div>
 			</Form>
 		</PageShell>
+	);
+}
+
+function EventInformationCard({
+	model,
+}: {
+	model: ReturnType<typeof useNewEvent>;
+}) {
+	const {
+		loaderData,
+		fieldErrors,
+		clearFieldError,
+		resultsVisible,
+		changeResultsVisibility,
+	} = model;
+	return (
+		<Card className="new-event-card h-full overflow-hidden">
+			<CardHeader className="border-b border-border pb-6">
+				<div className="flex items-center gap-3">
+					<span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">
+						<Icon name="info" size={21} />
+					</span>
+					<CardTitle>イベント情報</CardTitle>
+				</div>
+			</CardHeader>
+			<CardContent className="flex-1">
+				<FieldGroup>
+					<Field>
+						<FieldLabel htmlFor="title">
+							イベント名 <Badge variant="destructive">必須</Badge>
+						</FieldLabel>
+						<Input
+							id="title"
+							name="title"
+							required
+							aria-invalid={Boolean(fieldErrors.title)}
+							aria-describedby={fieldErrors.title ? "title-error" : undefined}
+							onChange={() => clearFieldError("title")}
+						/>
+						{fieldErrors.title && (
+							<FieldError id="title-error">{fieldErrors.title}</FieldError>
+						)}
+					</Field>
+					<Field>
+						<FieldLabel htmlFor="description">
+							説明 <Badge variant="outline">任意</Badge>
+						</FieldLabel>
+						<Textarea id="description" name="description" rows={4} />
+					</Field>
+					<div className="grid gap-5 md:grid-cols-2">
+						<Field>
+							<FieldLabel htmlFor="owner">
+								主催者名 <Badge variant="destructive">必須</Badge>
+							</FieldLabel>
+							<Input
+								id="owner"
+								name="display_name"
+								defaultValue={loaderData.displayName}
+								required
+								aria-invalid={Boolean(fieldErrors.display_name)}
+								aria-describedby={
+									fieldErrors.display_name ? "owner-error" : undefined
+								}
+								onChange={() => clearFieldError("display_name")}
+							/>
+							{fieldErrors.display_name && (
+								<FieldError id="owner-error">
+									{fieldErrors.display_name}
+								</FieldError>
+							)}
+						</Field>
+						<input type="hidden" name="time_zone" value={loaderData.timeZone} />
+					</div>
+					<Field className="new-event-results-visibility">
+						<div>
+							<FieldLabel htmlFor="results-visible-to-participants">
+								回答結果の公開
+							</FieldLabel>
+							<p id="results-visibility-description">
+								回答者がイベントの集計結果を閲覧できるようにします。
+								作成後も結果画面から変更できます。
+							</p>
+						</div>
+						<label className="new-event-results-toggle">
+							<input
+								id="results-visible-to-participants"
+								className="new-event-results-toggle-input"
+								name="results_visible_to_participants"
+								type="checkbox"
+								role="switch"
+								value="true"
+								checked={resultsVisible}
+								aria-checked={resultsVisible}
+								aria-describedby="results-visibility-description"
+								onChange={(event) =>
+									changeResultsVisibility(event.currentTarget.checked)
+								}
+							/>
+							<span
+								className="new-event-results-toggle-track"
+								aria-hidden="true"
+							>
+								<span />
+							</span>
+							<strong>{resultsVisible ? "表示する" : "表示しない"}</strong>
+						</label>
+						<input
+							type="hidden"
+							name="results_visible_to_participants"
+							value="false"
+						/>
+					</Field>
+				</FieldGroup>
+			</CardContent>
+		</Card>
+	);
+}
+
+function EventConditionsCard({
+	model,
+}: {
+	model: ReturnType<typeof useNewEvent>;
+}) {
+	const {
+		loaderData,
+		fieldErrors,
+		clearFieldError,
+		inputProps,
+		clearDateErrors,
+		clearTimeErrors,
+	} = model;
+	return (
+		<Card className="new-event-card h-full overflow-hidden">
+			<CardHeader className="border-b border-border pb-6">
+				<div className="flex items-center gap-3">
+					<span className="grid size-10 place-items-center rounded-xl bg-secondary text-primary">
+						<Icon name="calendar" size={21} />
+					</span>
+					<CardTitle>調整する期間</CardTitle>
+				</div>
+			</CardHeader>
+			<CardContent className="flex-1">
+				<FieldGroup>
+					<div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+						<Field>
+							<FieldLabel htmlFor="window-start-date">
+								開始日 <Badge variant="destructive">必須</Badge>
+							</FieldLabel>
+							<DatePicker
+								id="window-start-date"
+								name="window_start_date"
+								{...inputProps("window_start_date", "window-start-date")}
+								onValueChange={clearDateErrors}
+								defaultValue={loaderData.windowStartAt.slice(0, 10)}
+								required
+							/>
+							<FieldError id="window-start-date-error">
+								{fieldErrors.window_start_date}
+							</FieldError>
+						</Field>
+						<span className="hidden h-14 items-center justify-center px-1 text-xl font-extrabold text-primary md:flex">
+							→
+						</span>
+						<Field>
+							<FieldLabel htmlFor="window-end-date">
+								終了日 <Badge variant="destructive">必須</Badge>
+							</FieldLabel>
+							<DatePicker
+								id="window-end-date"
+								name="window_end_date"
+								{...inputProps("window_end_date", "window-end-date")}
+								onValueChange={() => clearFieldError("window_end_date")}
+								defaultValue={loaderData.windowEndAt.slice(0, 10)}
+								required
+							/>
+							<FieldError id="window-end-date-error">
+								{fieldErrors.window_end_date}
+							</FieldError>
+						</Field>
+					</div>
+
+					<div className="new-event-time-range grid gap-4 rounded-xl border border-primary/20 bg-secondary/45 p-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-end">
+						<Field>
+							<FieldLabel htmlFor="daily-start-time">
+								毎日の受付開始 <Badge variant="destructive">必須</Badge>
+							</FieldLabel>
+							<TimePicker
+								id="daily-start-time"
+								name="daily_start_time"
+								{...inputProps("daily_start_time", "daily-start-time")}
+								onValueChange={clearTimeErrors}
+								defaultValue={loaderData.windowStartAt.slice(11, 16)}
+								required
+							/>
+							<FieldError id="daily-start-time-error">
+								{fieldErrors.daily_start_time}
+							</FieldError>
+						</Field>
+						<span className="hidden h-14 items-center justify-center px-1 text-lg font-extrabold text-primary md:flex">
+							〜
+						</span>
+						<Field>
+							<FieldLabel htmlFor="daily-end-time">
+								毎日の受付終了 <Badge variant="destructive">必須</Badge>
+							</FieldLabel>
+							<TimePicker
+								id="daily-end-time"
+								name="daily_end_time"
+								{...inputProps("daily_end_time", "daily-end-time")}
+								onValueChange={() => clearFieldError("daily_end_time")}
+								defaultValue={loaderData.windowEndAt.slice(11, 16)}
+								required
+							/>
+							<FieldError id="daily-end-time-error">
+								{fieldErrors.daily_end_time}
+							</FieldError>
+						</Field>
+					</div>
+					<p className="text-sm font-semibold text-muted-foreground">
+						参加者は期間中の各日、この時間帯の中で回答できます。
+					</p>
+
+					<Field>
+						<FieldLabel htmlFor="duration">
+							イベントに必要な時間
+							<Badge variant="destructive">必須</Badge>
+						</FieldLabel>
+						<Input
+							id="duration"
+							name="duration_minutes"
+							{...inputProps("duration_minutes", "duration")}
+							onChange={() => clearFieldError("duration_minutes")}
+							type="number"
+							min={5}
+							max={1440}
+							step={1}
+							defaultValue={60}
+							required
+						/>
+						<FieldError id="duration-error">
+							{fieldErrors.duration_minutes}
+						</FieldError>
+						<p className="text-sm text-muted-foreground">
+							5～1,440分の範囲で1分単位に指定できます。
+						</p>
+					</Field>
+
+					<Field>
+						<FieldLabel htmlFor="scheduling-mode">
+							調整単位 <Badge variant="destructive">必須</Badge>
+						</FieldLabel>
+						<Select name="scheduling_mode" defaultValue="whole_event">
+							<SelectTrigger id="scheduling-mode">
+								<SelectValue placeholder="調整単位を選択" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="whole_event">イベント全体で調整</SelectItem>
+								<SelectItem value="groups">小グループごとに調整</SelectItem>
+							</SelectContent>
+						</Select>
+					</Field>
+
+					<Field>
+						<FieldLabel htmlFor="deadline">
+							回答期限 <Badge variant="outline">任意</Badge>
+						</FieldLabel>
+						<DateTimePicker
+							id="deadline"
+							name="response_deadline_at"
+							{...inputProps("response_deadline_at", "deadline")}
+							onValueChange={() => clearFieldError("response_deadline_at")}
+							defaultValue={loaderData.responseDeadlineAt}
+						/>
+						<FieldError id="deadline-error">
+							{fieldErrors.response_deadline_at}
+						</FieldError>
+					</Field>
+				</FieldGroup>
+			</CardContent>
+		</Card>
 	);
 }

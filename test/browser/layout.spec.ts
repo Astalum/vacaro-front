@@ -1249,3 +1249,57 @@ test("existing interval touch selection uses the editor delete button", async ({
 		JSON.parse(await page.locator('input[name="intervals"]').inputValue()),
 	).toEqual([]);
 });
+
+test("availability renders one layout and preserves drafts when the viewport changes", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 390, height: 844 });
+	const { unknownRequests } = await installFixtures(page, {
+		empty: true,
+		provider: "none",
+	});
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	await expect(page.locator(".schedule-sidebar")).toHaveCount(0);
+	const column = page.locator(".schedule-mobile-day");
+	await scrollScheduleTimeIntoView(column);
+	const bounds = (await column.boundingBox())!;
+	await page.mouse.move(
+		bounds.x + bounds.width / 2,
+		bounds.y + (bounds.height * 125) / 720,
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		bounds.x + bounds.width / 2,
+		bounds.y + (bounds.height * 215) / 720,
+	);
+	await page.mouse.up();
+	const input = page.locator('input[name="intervals"]');
+	const draft = await input.inputValue();
+	expect(JSON.parse(draft)).toHaveLength(1);
+	const interval = page.locator(".schedule-mobile-grid .schedule-range-button");
+	await interval.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const box = (await interval.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 30);
+	await expect(page.locator(".move-preview")).toBeVisible();
+	await page.setViewportSize({ width: 1024, height: 900 });
+	await expect(page.locator(".schedule-mobile")).toHaveCount(0);
+	await expect(page.locator(".schedule-sidebar")).toBeVisible();
+	await expect(page.locator(".schedule-day-column")).toHaveCount(7);
+	await expect(page.locator(".move-preview")).toHaveCount(0);
+	await page.mouse.up();
+	await expect(input).toHaveValue(draft);
+	await page.setViewportSize({ width: 390, height: 844 });
+	await expect(page.locator(".schedule-sidebar")).toHaveCount(0);
+	await expect(page.locator(".schedule-day-column")).toHaveCount(1);
+	await expect(
+		page.locator(".schedule-mobile-grid .schedule-range-button"),
+	).toHaveCount(1);
+	await expect(input).toHaveValue(draft);
+	expect(await layoutProblems(page)).toEqual([]);
+	expect(unknownRequests).toEqual([]);
+});

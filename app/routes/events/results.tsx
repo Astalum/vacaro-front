@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
@@ -304,16 +304,24 @@ function useResults({ loaderData, actionData }: Route.ComponentProps) {
 					? displayStatus
 					: "open"
 		: displayStatus;
-	const participantById = new Map(
-		availability.map((item) => [
-			item.participant.id,
-			item.participant.display_name,
-		]),
+	const participantById = useMemo(
+		() =>
+			new Map(
+				availability.map((item) => [
+					item.participant.id,
+					item.participant.display_name,
+				]),
+			),
+		[availability],
 	);
-	const months = monthKeysBetween(
-		event.window_start_at,
-		event.window_end_at,
-		user.time_zone,
+	const months = useMemo(
+		() =>
+			monthKeysBetween(
+				event.window_start_at,
+				event.window_end_at,
+				user.time_zone,
+			),
+		[event.window_start_at, event.window_end_at, user.time_zone],
 	);
 	const intervalsByDate = useMemo(
 		() =>
@@ -339,8 +347,14 @@ function useResults({ loaderData, actionData }: Route.ComponentProps) {
 		setExpandedDateKey(null);
 	}, [selectionContext]);
 	const activeMonthIndex = months.indexOf(activeMonth);
-	const startDateKey = dateParts(event.window_start_at, user.time_zone).key;
-	const endDateKey = dateParts(event.window_end_at, user.time_zone).key;
+	const startDateKey = useMemo(
+		() => dateParts(event.window_start_at, user.time_zone).key,
+		[event.window_start_at, user.time_zone],
+	);
+	const endDateKey = useMemo(
+		() => dateParts(event.window_end_at, user.time_zone).key,
+		[event.window_end_at, user.time_zone],
+	);
 	const expandedIntervals = expandedDateKey
 		? (intervalsByDate.get(expandedDateKey) ?? [])
 		: [];
@@ -364,26 +378,30 @@ function useResults({ loaderData, actionData }: Route.ComponentProps) {
 		),
 	);
 
-	const calendarCells = monthCells(activeMonth).map((cell, cellIndex) => {
-		const dayIntervals = cell.inMonth
-			? (intervalsByDate.get(cell.key) ?? [])
-			: [];
-		const outsideWindow = cell.key < startDateKey || cell.key > endDateKey;
-		const clickableDate = cell.inMonth && !outsideWindow;
-		const openDateCandidates = () => {
-			if (!clickableDate) return;
-			setExpandedDateKey(cell.key);
-		};
+	const calendarCells = useMemo(
+		() =>
+			monthCells(activeMonth).map((cell, cellIndex) => {
+				const dayIntervals = cell.inMonth
+					? (intervalsByDate.get(cell.key) ?? [])
+					: [];
+				const outsideWindow = cell.key < startDateKey || cell.key > endDateKey;
+				const clickableDate = cell.inMonth && !outsideWindow;
+				const openDateCandidates = () => {
+					if (!clickableDate) return;
+					setExpandedDateKey(cell.key);
+				};
 
-		return {
-			cell,
-			cellIndex,
-			dayIntervals,
-			outsideWindow,
-			clickableDate,
-			openDateCandidates,
-		};
-	});
+				return {
+					cell,
+					cellIndex,
+					dayIntervals,
+					outsideWindow,
+					clickableDate,
+					openDateCandidates,
+				};
+			}),
+		[activeMonth, intervalsByDate, startDateKey, endDateKey],
+	);
 
 	const closeDateCandidates = () => setExpandedDateKey(null);
 	const participantNames = (ids: string[]) =>
@@ -438,6 +456,7 @@ function useResults({ loaderData, actionData }: Route.ComponentProps) {
 }
 
 export default function Results(props: Route.ComponentProps) {
+	const model = useResults(props);
 	const {
 		actionData,
 		event,
@@ -446,25 +465,10 @@ export default function Results(props: Route.ComponentProps) {
 		activeGroup,
 		availability,
 		restricted,
-		submitting,
 		visibilitySubmitting,
 		isOrganizer,
-		submitted,
-		confirmedStart,
-		confirmedEnd,
 		resultStatus,
-		months,
-		expandedDateKey,
-		activeMonthIndex,
-		expandedIntervals,
-		changeMonth,
-		monthTitle,
-		calendarCells,
-		closeDateCandidates,
-		participantNames,
-		expandedDateTitle,
-		confirmationDateTitle,
-	} = useResults(props);
+	} = model;
 
 	if (restricted) {
 		return (
@@ -616,388 +620,15 @@ export default function Results(props: Route.ComponentProps) {
 			</section>
 			<div className="results-two-column">
 				<div className="results-left-column">
-					<section className="candidate-summary candidate-calendar-panel">
-						<div className="section-title-row">
-							<div>
-								<span className="page-eyebrow">SUGGESTIONS</span>
-								<h2>参加しやすい時間</h2>
-							</div>
-							<span className="response-count">
-								<Icon name="users" size={16} /> {submitted} /{" "}
-								{availability.length}
-								人が回答
-							</span>
-							<p className="candidate-calendar-description">
-								参加可能人数が同じ時間帯を、日付ごとにまとめて表示しています。
-							</p>
-						</div>
-						<div className="schedule-calendar-shell">
-							<div className="schedule-calendar-toolbar">
-								<button
-									type="button"
-									aria-label="前の月"
-									disabled={activeMonthIndex <= 0}
-									onClick={() => changeMonth(activeMonthIndex - 1)}
-								>
-									<Icon name="back" size={18} />
-								</button>
-								<h3>{monthTitle}</h3>
-								<button
-									type="button"
-									aria-label="次の月"
-									disabled={activeMonthIndex >= months.length - 1}
-									onClick={() => changeMonth(activeMonthIndex + 1)}
-								>
-									<Icon name="chevron" size={18} />
-								</button>
-							</div>
-							<div className="schedule-calendar-scroll">
-								<div className="schedule-calendar">
-									{["日", "月", "火", "水", "木", "金", "土"].map(
-										(weekday, index) => (
-											<div
-												className={`schedule-weekday weekday-${index}`}
-												key={weekday}
-											>
-												{weekday}
-											</div>
-										),
-									)}
-									{calendarCells.map(
-										({
-											cell,
-											cellIndex,
-											dayIntervals,
-											outsideWindow,
-											clickableDate,
-											openDateCandidates,
-										}) => (
-											<div
-												className={`schedule-day ${!cell.inMonth ? "other-month" : ""} ${outsideWindow ? "outside-window" : ""} ${expandedDateKey === cell.key ? "date-expanded" : ""} ${clickableDate ? "clickable-date" : ""}`}
-												key={cell.key}
-											>
-												{clickableDate && (
-													<button
-														type="button"
-														className="schedule-day-hit-area"
-														aria-label={`${cell.key}${dayIntervals.length > 0 ? "の時間帯を表示" : "を選択（時間帯なし）"}`}
-														onClick={openDateCandidates}
-													/>
-												)}
-												<span
-													className={`schedule-day-number weekday-${cellIndex % 7}`}
-												>
-													{cell.day}
-												</span>
-												<div className="schedule-day-candidates">
-													{dayIntervals.slice(0, 2).map((interval) => (
-														<div
-															className={`schedule-gathering-interval ${candidateAvailabilityLevel(interval)}`}
-															key={interval.start_at}
-														>
-															<strong>
-																{timeLabel(interval.start_at, user.time_zone)}〜
-																{intervalEndLabel(interval, user.time_zone)}
-															</strong>
-															<span>
-																{interval.available_participant_count}/
-																{interval.total_participant_count}人
-															</span>
-														</div>
-													))}
-													{dayIntervals.length > 2 && (
-														<span className="more-candidates">
-															ほか{dayIntervals.length - 2}区間
-														</span>
-													)}
-												</div>
-											</div>
-										),
-									)}
-								</div>
-							</div>
-							<div className="schedule-calendar-legend">
-								<span>
-									<i className="all" /> 全員参加可能
-								</span>
-								<span>
-									<i className="high" /> 参加可能な人が多い
-								</span>
-								<span>
-									<i className="partial" /> 一部が参加可能
-								</span>
-							</div>
-						</div>
-					</section>
+					<CandidateCalendar model={model} />
 				</div>
 				<div className="results-right-column">
-					<section className="candidate-summary candidate-options-panel">
-						<div className="section-title-row">
-							<div>
-								<span className="page-eyebrow">TIME RANGES</span>
-								<h2>集まれる時間帯</h2>
-								<p>日付を選ぶと、連続して集まれる時間帯を確認できます。</p>
-							</div>
-						</div>
-						{expandedDateKey ? (
-							<div className="daily-candidate-drawer">
-								<div className="daily-candidate-heading">
-									<div>
-										<strong>
-											<WeekendText>{expandedDateTitle}</WeekendText>
-										</strong>
-										<span>{expandedIntervals.length}件の時間帯</span>
-									</div>
-									<button type="button" onClick={closeDateCandidates}>
-										閉じる
-									</button>
-								</div>
-								<div className="daily-interval-list">
-									{expandedIntervals.length === 0 ? (
-										<p className="daily-candidate-empty">
-											この日に集まれる時間帯はありません
-										</p>
-									) : (
-										expandedIntervals.map((interval) => (
-											<div
-												className={`daily-interval-row ${candidateAvailabilityLevel(interval)}`}
-												key={interval.start_at}
-											>
-												<i />
-												<div>
-													<strong>
-														{timeLabel(interval.start_at, user.time_zone)}〜
-														{intervalEndLabel(interval, user.time_zone)}
-													</strong>
-													{interval.segments.map((segment) => (
-														<small
-															key={segment.start_at}
-															className={
-																interval.segments.length > 1
-																	? "changing-participants"
-																	: undefined
-															}
-														>
-															{interval.segments.length > 1 &&
-																`${timeLabel(segment.start_at, user.time_zone)}〜${intervalEndLabel(segment, user.time_zone)}：`}
-															{participantNames(
-																segment.available_participant_ids,
-															)}
-														</small>
-													))}
-												</div>
-												<b>
-													{interval.available_participant_count} /{" "}
-													{interval.total_participant_count}人
-												</b>
-											</div>
-										))
-									)}
-								</div>
-							</div>
-						) : (
-							<div className="empty-state compact calendar-empty-state">
-								<Icon name="clock" size={28} />
-								<h3>カレンダーから日付を選択</h3>
-								<p>
-									{activeGroup && activeGroup.members.length === 0
-										? "時間帯を集計するには、グループへ参加者を割り当ててください。"
-										: "選択した日の、参加者が集まれる時間帯を表示します。"}
-								</p>
-								{isOrganizer &&
-									activeGroup &&
-									activeGroup.members.length === 0 && (
-										<Link
-											className="button button-secondary"
-											to={`/events/${event.id}/manage`}
-										>
-											メンバーを割り当てる
-										</Link>
-									)}
-							</div>
-						)}
-						{isOrganizer && (
-							<div className="manual-confirmation-panel">
-								<div className="manual-confirmation-heading">
-									<span className="page-eyebrow">FINAL SCHEDULE</span>
-									<h2>最終時刻を入力</h2>
-									<p>
-										日付は左のカレンダーから反映されます。開始時刻だけを入力してください。
-									</p>
-									<p>
-										確定すると、対象の参加者の連携済みGoogleカレンダーへ予定を追加し、ほかの調整中イベントでは同じ時間を参加不可として反映します。
-									</p>
-								</div>
-								{confirmedStart && confirmedEnd ? (
-									<div className="manual-confirmation-current">
-										<strong>
-											<WeekendText>
-												{formatDateRange(
-													confirmedStart,
-													confirmedEnd,
-													user.time_zone,
-												)}
-											</WeekendText>
-										</strong>
-										<Form method="post">
-											<input
-												type="hidden"
-												name="group_id"
-												value={activeGroup?.id ?? ""}
-											/>
-											<button
-												className="button button-ghost cancel-confirmation-button"
-												type="submit"
-												name="intent"
-												value="unconfirm"
-												disabled={submitting}
-											>
-												{submitting ? "取り消しています…" : "確定を取り消す"}
-											</button>
-										</Form>
-									</div>
-								) : (
-									<Form
-										key={expandedDateKey ?? "no-date"}
-										method="post"
-										className="manual-confirmation-form"
-									>
-										<input
-											type="hidden"
-											name="group_id"
-											value={activeGroup?.id ?? ""}
-										/>
-										<input
-											type="hidden"
-											name="time_zone"
-											value={user.time_zone}
-										/>
-										<input
-											type="hidden"
-											name="duration_minutes"
-											value={
-												activeGroup?.duration_minutes ?? event.duration_minutes
-											}
-										/>
-										<input
-											type="hidden"
-											name="confirmation_date"
-											value={expandedDateKey ?? ""}
-										/>
-										<div className="manual-confirmation-date">
-											<span>開催日</span>
-											<strong>
-												<WeekendText>{confirmationDateTitle}</WeekendText>
-											</strong>
-										</div>
-										<label htmlFor="confirmation-time">開始時刻</label>
-										<TimePicker
-											id="confirmation-time"
-											className="manual-confirmation-time"
-											name="confirmation_time"
-											required
-										/>
-										<small>
-											必要時間：
-											{minutesLabel(
-												activeGroup?.duration_minutes ?? event.duration_minutes,
-											)}
-										</small>
-										<button
-											className="button button-primary"
-											type="submit"
-											name="intent"
-											value="confirm"
-											disabled={
-												submitting ||
-												event.status === "cancelled" ||
-												!expandedDateKey
-											}
-										>
-											{submitting ? "確定しています…" : "この日時で確定"}
-										</button>
-									</Form>
-								)}
-							</div>
-						)}
-					</section>
-					<section className="availability-board">
-						<div className="section-title-row">
-							<div>
-								<span className="page-eyebrow">RESPONSES</span>
-								<h2>みんなの参加可能時間</h2>
-							</div>
-							<span className="response-count">
-								<Icon name="users" size={16} /> {submitted} /{" "}
-								{availability.length}
-								人が回答
-							</span>
-						</div>
-						<div className="participant-status availability-list">
-							{availability.map(({ participant, intervals }) => (
-								<article
-									className="participant-availability-card"
-									key={participant.id}
-								>
-									<div className="participant-identity">
-										<span className="avatar navy">
-											{participant.display_name.slice(0, 1)}
-										</span>
-										<div>
-											<strong>{participant.display_name}</strong>
-											<small>
-												{participant.role === "organizer" ? "主催者" : "参加者"}
-											</small>
-										</div>
-									</div>
-									<div className="participant-availability-slots">
-										<span>参加可能時間</span>
-										<div className="availability-slot-list">
-											{participant.response_status === "pending" ? (
-												<small className="availability-empty">
-													まだ回答していません
-												</small>
-											) : intervals.length === 0 ? (
-												<small className="availability-empty">
-													参加可能時間なし
-												</small>
-											) : (
-												intervals.map((interval) => (
-													<time
-														key={`${interval.start_at}-${interval.end_at}`}
-														dateTime={interval.start_at}
-													>
-														<Icon name="clock" size={14} />
-														<WeekendText>
-															{formatDateRange(
-																interval.start_at,
-																interval.end_at,
-																user.time_zone,
-															)}
-														</WeekendText>
-													</time>
-												))
-											)}
-										</div>
-									</div>
-									<em
-										className={
-											participant.response_status === "submitted"
-												? "participant-response-state done"
-												: "participant-response-state pending"
-										}
-									>
-										{participant.response_status === "submitted" && (
-											<Icon name="check" size={14} />
-										)}
-										{participant.response_status === "submitted"
-											? "回答済み"
-											: "未回答"}
-									</em>
-								</article>
-							))}
-						</div>
-					</section>
+					<CandidateDetails model={model} />
+					<ParticipantAvailabilityBoard
+						availability={availability}
+						submitted={model.submitted}
+						timeZone={user.time_zone}
+					/>
 				</div>
 			</div>
 			{actionData && "error" in actionData && (
@@ -1017,3 +648,440 @@ export default function Results(props: Route.ComponentProps) {
 		</PageShell>
 	);
 }
+
+function CandidateCalendar({
+	model,
+}: {
+	model: ReturnType<typeof useResults>;
+}) {
+	const {
+		user,
+		availability,
+		submitted,
+		months,
+		expandedDateKey,
+		activeMonthIndex,
+		changeMonth,
+		monthTitle,
+		calendarCells,
+	} = model;
+	return (
+		<section className="candidate-summary candidate-calendar-panel">
+			<div className="section-title-row">
+				<div>
+					<span className="page-eyebrow">SUGGESTIONS</span>
+					<h2>参加しやすい時間</h2>
+				</div>
+				<span className="response-count">
+					<Icon name="users" size={16} /> {submitted} / {availability.length}
+					人が回答
+				</span>
+				<p className="candidate-calendar-description">
+					参加可能人数が同じ時間帯を、日付ごとにまとめて表示しています。
+				</p>
+			</div>
+			<div className="schedule-calendar-shell">
+				<div className="schedule-calendar-toolbar">
+					<button
+						type="button"
+						aria-label="前の月"
+						disabled={activeMonthIndex <= 0}
+						onClick={() => changeMonth(activeMonthIndex - 1)}
+					>
+						<Icon name="back" size={18} />
+					</button>
+					<h3>{monthTitle}</h3>
+					<button
+						type="button"
+						aria-label="次の月"
+						disabled={activeMonthIndex >= months.length - 1}
+						onClick={() => changeMonth(activeMonthIndex + 1)}
+					>
+						<Icon name="chevron" size={18} />
+					</button>
+				</div>
+				<div className="schedule-calendar-scroll">
+					<div className="schedule-calendar">
+						{["日", "月", "火", "水", "木", "金", "土"].map(
+							(weekday, index) => (
+								<div
+									className={`schedule-weekday weekday-${index}`}
+									key={weekday}
+								>
+									{weekday}
+								</div>
+							),
+						)}
+						{calendarCells.map((day) => (
+							<CandidateCalendarDay
+								key={day.cell.key}
+								day={day}
+								expanded={expandedDateKey === day.cell.key}
+								timeZone={user.time_zone}
+							/>
+						))}
+					</div>
+				</div>
+				<div className="schedule-calendar-legend">
+					<span>
+						<i className="all" /> 全員参加可能
+					</span>
+					<span>
+						<i className="high" /> 参加可能な人が多い
+					</span>
+					<span>
+						<i className="partial" /> 一部が参加可能
+					</span>
+				</div>
+			</div>
+		</section>
+	);
+}
+
+function CandidateDetails({ model }: { model: ReturnType<typeof useResults> }) {
+	const {
+		event,
+		user,
+		activeGroup,
+		submitting,
+		isOrganizer,
+		confirmedStart,
+		confirmedEnd,
+		expandedDateKey,
+		expandedIntervals,
+		closeDateCandidates,
+		participantNames,
+		expandedDateTitle,
+		confirmationDateTitle,
+	} = model;
+	return (
+		<section className="candidate-summary candidate-options-panel">
+			<div className="section-title-row">
+				<div>
+					<span className="page-eyebrow">TIME RANGES</span>
+					<h2>集まれる時間帯</h2>
+					<p>日付を選ぶと、連続して集まれる時間帯を確認できます。</p>
+				</div>
+			</div>
+			{expandedDateKey ? (
+				<div className="daily-candidate-drawer">
+					<div className="daily-candidate-heading">
+						<div>
+							<strong>
+								<WeekendText>{expandedDateTitle}</WeekendText>
+							</strong>
+							<span>{expandedIntervals.length}件の時間帯</span>
+						</div>
+						<button type="button" onClick={closeDateCandidates}>
+							閉じる
+						</button>
+					</div>
+					<div className="daily-interval-list">
+						{expandedIntervals.length === 0 ? (
+							<p className="daily-candidate-empty">
+								この日に集まれる時間帯はありません
+							</p>
+						) : (
+							expandedIntervals.map((interval) => (
+								<div
+									className={`daily-interval-row ${candidateAvailabilityLevel(interval)}`}
+									key={interval.start_at}
+								>
+									<i />
+									<div>
+										<strong>
+											{timeLabel(interval.start_at, user.time_zone)}〜
+											{intervalEndLabel(interval, user.time_zone)}
+										</strong>
+										{interval.segments.map((segment) => (
+											<small
+												key={segment.start_at}
+												className={
+													interval.segments.length > 1
+														? "changing-participants"
+														: undefined
+												}
+											>
+												{interval.segments.length > 1 &&
+													`${timeLabel(segment.start_at, user.time_zone)}〜${intervalEndLabel(segment, user.time_zone)}：`}
+												{participantNames(segment.available_participant_ids)}
+											</small>
+										))}
+									</div>
+									<b>
+										{interval.available_participant_count} /{" "}
+										{interval.total_participant_count}人
+									</b>
+								</div>
+							))
+						)}
+					</div>
+				</div>
+			) : (
+				<div className="empty-state compact calendar-empty-state">
+					<Icon name="clock" size={28} />
+					<h3>カレンダーから日付を選択</h3>
+					<p>
+						{activeGroup && activeGroup.members.length === 0
+							? "時間帯を集計するには、グループへ参加者を割り当ててください。"
+							: "選択した日の、参加者が集まれる時間帯を表示します。"}
+					</p>
+					{isOrganizer && activeGroup && activeGroup.members.length === 0 && (
+						<Link
+							className="button button-secondary"
+							to={`/events/${event.id}/manage`}
+						>
+							メンバーを割り当てる
+						</Link>
+					)}
+				</div>
+			)}
+			{isOrganizer && (
+				<div className="manual-confirmation-panel">
+					<div className="manual-confirmation-heading">
+						<span className="page-eyebrow">FINAL SCHEDULE</span>
+						<h2>最終時刻を入力</h2>
+						<p>
+							日付は左のカレンダーから反映されます。開始時刻だけを入力してください。
+						</p>
+						<p>
+							確定すると、対象の参加者の連携済みGoogleカレンダーへ予定を追加し、ほかの調整中イベントでは同じ時間を参加不可として反映します。
+						</p>
+					</div>
+					{confirmedStart && confirmedEnd ? (
+						<div className="manual-confirmation-current">
+							<strong>
+								<WeekendText>
+									{formatDateRange(
+										confirmedStart,
+										confirmedEnd,
+										user.time_zone,
+									)}
+								</WeekendText>
+							</strong>
+							<Form method="post">
+								<input
+									type="hidden"
+									name="group_id"
+									value={activeGroup?.id ?? ""}
+								/>
+								<button
+									className="button button-ghost cancel-confirmation-button"
+									type="submit"
+									name="intent"
+									value="unconfirm"
+									disabled={submitting}
+								>
+									{submitting ? "取り消しています…" : "確定を取り消す"}
+								</button>
+							</Form>
+						</div>
+					) : (
+						<Form
+							key={expandedDateKey ?? "no-date"}
+							method="post"
+							className="manual-confirmation-form"
+						>
+							<input
+								type="hidden"
+								name="group_id"
+								value={activeGroup?.id ?? ""}
+							/>
+							<input type="hidden" name="time_zone" value={user.time_zone} />
+							<input
+								type="hidden"
+								name="duration_minutes"
+								value={activeGroup?.duration_minutes ?? event.duration_minutes}
+							/>
+							<input
+								type="hidden"
+								name="confirmation_date"
+								value={expandedDateKey ?? ""}
+							/>
+							<div className="manual-confirmation-date">
+								<span>開催日</span>
+								<strong>
+									<WeekendText>{confirmationDateTitle}</WeekendText>
+								</strong>
+							</div>
+							<label htmlFor="confirmation-time">開始時刻</label>
+							<TimePicker
+								id="confirmation-time"
+								className="manual-confirmation-time"
+								name="confirmation_time"
+								required
+							/>
+							<small>
+								必要時間：
+								{minutesLabel(
+									activeGroup?.duration_minutes ?? event.duration_minutes,
+								)}
+							</small>
+							<button
+								className="button button-primary"
+								type="submit"
+								name="intent"
+								value="confirm"
+								disabled={
+									submitting || event.status === "cancelled" || !expandedDateKey
+								}
+							>
+								{submitting ? "確定しています…" : "この日時で確定"}
+							</button>
+						</Form>
+					)}
+				</div>
+			)}
+		</section>
+	);
+}
+
+const ParticipantAvailabilityBoard = memo(
+	function ParticipantAvailabilityBoard({
+		availability,
+		submitted,
+		timeZone,
+	}: {
+		availability: ParticipantAvailability[];
+		submitted: number;
+		timeZone: string;
+	}) {
+		return (
+			<section className="availability-board">
+				<div className="section-title-row">
+					<div>
+						<span className="page-eyebrow">RESPONSES</span>
+						<h2>みんなの参加可能時間</h2>
+					</div>
+					<span className="response-count">
+						<Icon name="users" size={16} /> {submitted} / {availability.length}
+						人が回答
+					</span>
+				</div>
+				<div className="participant-status availability-list">
+					{availability.map(({ participant, intervals }) => (
+						<article
+							className="participant-availability-card"
+							key={participant.id}
+						>
+							<div className="participant-identity">
+								<span className="avatar navy">
+									{participant.display_name.slice(0, 1)}
+								</span>
+								<div>
+									<strong>{participant.display_name}</strong>
+									<small>
+										{participant.role === "organizer" ? "主催者" : "参加者"}
+									</small>
+								</div>
+							</div>
+							<div className="participant-availability-slots">
+								<span>参加可能時間</span>
+								<div className="availability-slot-list">
+									{participant.response_status === "pending" ? (
+										<small className="availability-empty">
+											まだ回答していません
+										</small>
+									) : intervals.length === 0 ? (
+										<small className="availability-empty">
+											参加可能時間なし
+										</small>
+									) : (
+										intervals.map((interval) => (
+											<time
+												key={`${interval.start_at}-${interval.end_at}`}
+												dateTime={interval.start_at}
+											>
+												<Icon name="clock" size={14} />
+												<WeekendText>
+													{formatDateRange(
+														interval.start_at,
+														interval.end_at,
+														timeZone,
+													)}
+												</WeekendText>
+											</time>
+										))
+									)}
+								</div>
+							</div>
+							<em
+								className={
+									participant.response_status === "submitted"
+										? "participant-response-state done"
+										: "participant-response-state pending"
+								}
+							>
+								{participant.response_status === "submitted" && (
+									<Icon name="check" size={14} />
+								)}
+								{participant.response_status === "submitted"
+									? "回答済み"
+									: "未回答"}
+							</em>
+						</article>
+					))}
+				</div>
+			</section>
+		);
+	},
+);
+
+const CandidateCalendarDay = memo(function CandidateCalendarDay({
+	day,
+	expanded,
+	timeZone,
+}: {
+	day: ReturnType<typeof useResults>["calendarCells"][number];
+	expanded: boolean;
+	timeZone: string;
+}) {
+	const {
+		cell,
+		cellIndex,
+		dayIntervals,
+		outsideWindow,
+		clickableDate,
+		openDateCandidates,
+	} = day;
+	return (
+		<div
+			className={`schedule-day ${!cell.inMonth ? "other-month" : ""} ${outsideWindow ? "outside-window" : ""} ${expanded ? "date-expanded" : ""} ${clickableDate ? "clickable-date" : ""}`}
+			key={cell.key}
+		>
+			{clickableDate && (
+				<button
+					type="button"
+					className="schedule-day-hit-area"
+					aria-label={`${cell.key}${dayIntervals.length > 0 ? "の時間帯を表示" : "を選択（時間帯なし）"}`}
+					onClick={openDateCandidates}
+				/>
+			)}
+			<span className={`schedule-day-number weekday-${cellIndex % 7}`}>
+				{cell.day}
+			</span>
+			<div className="schedule-day-candidates">
+				{dayIntervals.slice(0, 2).map((interval) => (
+					<div
+						className={`schedule-gathering-interval ${candidateAvailabilityLevel(interval)}`}
+						key={interval.start_at}
+					>
+						<strong>
+							{timeLabel(interval.start_at, timeZone)}〜
+							{intervalEndLabel(interval, timeZone)}
+						</strong>
+						<span>
+							{interval.available_participant_count}/
+							{interval.total_participant_count}人
+						</span>
+					</div>
+				))}
+				{dayIntervals.length > 2 && (
+					<span className="more-candidates">
+						ほか{dayIntervals.length - 2}区間
+					</span>
+				)}
+			</div>
+		</div>
+	);
+});

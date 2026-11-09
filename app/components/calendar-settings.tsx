@@ -259,30 +259,16 @@ export default function CalendarSettings(props: {
 	actionData?: SettingsActionData;
 	icloudActionData?: SettingsActionData;
 }) {
+	const model = useCalendarSettings(props);
 	const {
 		actionData,
 		icloudActionData,
 		user,
-		calendarOptions,
 		provider,
 		icloud,
-		providerChoice,
-		chooseProvider,
 		hash,
 		calendarConnectionError,
-		navigation,
-		intent,
-		calendarConnectionStatus,
-		selectedCalendarIDs,
-		availabilityWindow,
-		preferenceMessage,
-		availabilityWindowMessage,
-		toggleCalendar,
-		saveCalendarPreference,
-		saveAvailabilityWindow,
-		changeStartTime,
-		changeEndTime,
-	} = useCalendarSettings(props);
+	} = model;
 
 	return (
 		<section
@@ -315,51 +301,7 @@ export default function CalendarSettings(props: {
 					操作内容を確認して、もう一度お試しください。
 				</ValidationMessage>
 			)}
-			<section className="account-card provider-selection-card">
-				<h2>利用するカレンダー</h2>
-				<p>
-					連携サービスは1つだけ選択できます。選択したサービス内では、複数のカレンダーを取り込み対象にできます。
-				</p>
-				<Form
-					preventScrollReset
-					method="post"
-					className="calendar-provider-form"
-				>
-					<fieldset disabled={!user || navigation.state !== "idle"}>
-						<legend>使用するサービス</legend>
-						{CALENDAR_PROVIDERS.map((option) => (
-							<label key={option.value} className="calendar-provider-option">
-								<input
-									type="radio"
-									name="provider"
-									value={option.value}
-									checked={providerChoice === option.value}
-									onChange={() => chooseProvider(option.value)}
-								/>
-								<span>
-									<strong>{option.label}</strong>
-									<small>{option.description}</small>
-								</span>
-							</label>
-						))}
-					</fieldset>
-					<button
-						type="submit"
-						name="intent"
-						value="select-provider"
-						className="button button-primary"
-						disabled={!user || navigation.state !== "idle"}
-					>
-						利用するカレンダーを保存
-					</button>
-					{actionData?.kind === "provider-selected" && (
-						<p role="status">利用するカレンダーを変更しました。</p>
-					)}
-				</Form>
-				<p>
-					切り替え後の取り込み・自動登録は選択したサービスだけで行います。切り替え前に書き出した予定は元のカレンダーに残ります。
-				</p>
-			</section>
+			<CalendarProviderSelector model={model} />
 
 			<div className="account-stack calendar-settings-stack">
 				{(provider === "google" || provider === "timetree") &&
@@ -381,249 +323,13 @@ export default function CalendarSettings(props: {
 				{(provider === "google" || provider === "timetree") &&
 					user?.account_type === "registered" && (
 						<>
-							<section
-								className="account-card integration-card"
-								id="google-calendar"
-							>
-								<div className="account-card-heading">
-									<div className="account-card-icon calendar-icon">
-										<Icon name="calendar" />
-									</div>
-									<div>
-										<span className="account-section-label">
-											CALENDAR CONNECTION
-										</span>
-										<h2>
-											{provider === "timetree"
-												? "TimeTreeへの書き出し（Google経由）"
-												: "Googleカレンダー連携"}
-										</h2>
-										<p>
-											{provider === "timetree"
-												? "確定日時をGoogleカレンダー経由でTimeTreeに表示するための接続を管理します。"
-												: "予定の空き時間の取り込みと、確定日時の登録に使う接続を管理します。"}
-										</p>
-									</div>
-									<span
-										className={`integration-status ${calendarConnectionStatus}`}
-									>
-										<i />
-										{calendarConnectionStatus === "connected"
-											? "接続済み"
-											: calendarConnectionStatus === "disconnected"
-												? "未接続"
-												: "確認できません"}
-									</span>
-								</div>
-								{calendarConnectionStatus === "connected" &&
-									!calendarOptions.writeEnabled && (
-										<div
-											className="calendar-write-permission-notice"
-											role="status"
-										>
-											<Icon name="info" size={18} />
-											<p>
-												専用カレンダーへの自動登録を有効にするには、Googleカレンダーを再接続して、Vacaroが作成するカレンダーの管理を許可してください。
-											</p>
-										</div>
-									)}
-								<p>
-									接続時は、カレンダー一覧と空き時間の読み取りを許可してください。
-									確定日時は、Vacaroが作成する専用カレンダー「Vacaro」に登録します。自動登録には、この専用カレンダーの作成・管理の許可も必要です。
-								</p>
-								<div className="integration-actions">
-									<Form preventScrollReset method="post">
-										<button
-											className="button button-primary"
-											type="submit"
-											name="intent"
-											value="calendar-connect"
-											disabled={navigation.state !== "idle"}
-										>
-											{intent === "calendar-connect"
-												? "Googleへ移動しています…"
-												: calendarConnectionStatus === "connected"
-													? "再接続する"
-													: "接続する"}
-										</button>
-									</Form>
-									<Form preventScrollReset method="post">
-										<button
-											className="button button-ghost"
-											type="submit"
-											name="intent"
-											value="calendar-disconnect"
-											disabled={
-												navigation.state !== "idle" ||
-												calendarConnectionStatus === "disconnected"
-											}
-										>
-											{intent === "calendar-disconnect"
-												? "解除しています…"
-												: "接続を解除"}
-										</button>
-									</Form>
-								</div>
-							</section>
+							<GoogleCalendarConnection model={model} />
 
 							{provider === "google" && (
 								<>
-									<section className="account-card availability-window-card">
-										<div className="settings-section-heading">
-											<div>
-												<span className="account-section-label">
-													AVAILABILITY WINDOW
-												</span>
-												<h2>空き時間の取り込み範囲</h2>
-												<p>
-													Googleカレンダーから取り込む際、毎日この時間帯だけを空き時間として読み取ります。
-												</p>
-											</div>
-										</div>
-										<div className="settings-time-window">
-											<div className="settings-time-window-field">
-												<label htmlFor="calendar-window-start">
-													<em>IN</em>
-													開始時刻
-												</label>
-												<TimePicker
-													id="calendar-window-start"
-													value={availabilityWindow.start}
-													onValueChange={changeStartTime}
-												/>
-											</div>
-											<span
-												className="time-window-separator"
-												aria-hidden="true"
-											>
-												〜
-											</span>
-											<div className="settings-time-window-field">
-												<label htmlFor="calendar-window-end">
-													<em>OUT</em>
-													終了時刻
-												</label>
-												<TimePicker
-													id="calendar-window-end"
-													value={availabilityWindow.end}
-													onValueChange={changeEndTime}
-												/>
-											</div>
-										</div>
-										<div className="settings-save-row">
-											{availabilityWindowMessage && (
-												<span
-													className={`save-message ${availabilityWindowMessage.kind}`}
-													aria-live="polite"
-												>
-													{availabilityWindowMessage.text}
-												</span>
-											)}
-											<button
-												className="button button-primary"
-												type="button"
-												onClick={saveAvailabilityWindow}
-											>
-												取り込み範囲を保存
-											</button>
-										</div>
-									</section>
+									<CalendarImportWindow model={model} />
 
-									<section
-										className="account-card calendar-settings-card"
-										id="calendar-settings"
-									>
-										<div className="settings-section-heading">
-											<div>
-												<span className="account-section-label">
-													CALENDAR PREFERENCE
-												</span>
-												<h2>使用するカレンダー</h2>
-												<p>
-													空き時間の判定で「予定あり」として扱うカレンダーを選択します。初期値はメインカレンダーのみです。追加のカレンダーは選択して保存してください。祝日カレンダーは自動的に除外されます。
-												</p>
-											</div>
-											{calendarOptions.calendars.length > 0 && (
-												<span className="selection-count">
-													{selectedCalendarIDs.length}件選択中
-												</span>
-											)}
-										</div>
-										{calendarConnectionStatus === "disconnected" ? (
-											<div className="settings-empty-calendar">
-												<Icon name="calendar" size={20} />
-												<p>
-													連携カードからGoogleカレンダーを接続してください。
-												</p>
-											</div>
-										) : calendarOptions.error ? (
-											<div className="calendar-picker-error settings-error">
-												<Icon name="info" size={18} />
-												<div>
-													<strong>カレンダー一覧を取得できませんでした</strong>
-													<p>{calendarOptions.error.message}</p>
-												</div>
-											</div>
-										) : calendarOptions.calendars.length > 0 ? (
-											<>
-												<div className="settings-calendar-list">
-													{calendarOptions.calendars.map((calendar) => (
-														<label
-															className="settings-calendar-option"
-															key={calendar.id}
-														>
-															<input
-																type="checkbox"
-																checked={selectedCalendarIDs.includes(
-																	calendar.id,
-																)}
-																onChange={() => toggleCalendar(calendar.id)}
-															/>
-															<span className="calendar-checkmark">
-																<Icon name="check" size={15} />
-															</span>
-															<span
-																className="calendar-color"
-																style={{
-																	backgroundColor:
-																		calendar.background_color || "#4285f4",
-																}}
-															/>
-															<span className="calendar-option-name">
-																{calendar.summary}
-															</span>
-															{calendar.primary && <em>メイン</em>}
-														</label>
-													))}
-												</div>
-												<div className="settings-save-row">
-													{preferenceMessage && (
-														<span
-															className={`save-message ${preferenceMessage.kind}`}
-															aria-live="polite"
-														>
-															{preferenceMessage.text}
-														</span>
-													)}
-													<button
-														className="button button-primary"
-														type="button"
-														disabled={selectedCalendarIDs.length === 0}
-														onClick={saveCalendarPreference}
-													>
-														設定を保存
-													</button>
-												</div>
-											</>
-										) : (
-											<div className="settings-empty-calendar">
-												<Icon name="calendar" size={26} />
-												<p>
-													カレンダーを接続すると、ここで取り込み対象を選択できます。
-												</p>
-											</div>
-										)}
-									</section>
+									<GoogleCalendarSelection model={model} />
 								</>
 							)}
 						</>
@@ -640,6 +346,317 @@ export default function CalendarSettings(props: {
 					<TimeTreeGuide />
 				</details>
 			</div>
+		</section>
+	);
+}
+
+function CalendarProviderSelector({
+	model,
+}: {
+	model: ReturnType<typeof useCalendarSettings>;
+}) {
+	const { actionData, user, providerChoice, chooseProvider, navigation } =
+		model;
+	return (
+		<section className="account-card provider-selection-card">
+			<h2>利用するカレンダー</h2>
+			<p>
+				連携サービスは1つだけ選択できます。選択したサービス内では、複数のカレンダーを取り込み対象にできます。
+			</p>
+			<Form preventScrollReset method="post" className="calendar-provider-form">
+				<fieldset disabled={!user || navigation.state !== "idle"}>
+					<legend>使用するサービス</legend>
+					{CALENDAR_PROVIDERS.map((option) => (
+						<label key={option.value} className="calendar-provider-option">
+							<input
+								type="radio"
+								name="provider"
+								value={option.value}
+								checked={providerChoice === option.value}
+								onChange={() => chooseProvider(option.value)}
+							/>
+							<span>
+								<strong>{option.label}</strong>
+								<small>{option.description}</small>
+							</span>
+						</label>
+					))}
+				</fieldset>
+				<button
+					type="submit"
+					name="intent"
+					value="select-provider"
+					className="button button-primary"
+					disabled={!user || navigation.state !== "idle"}
+				>
+					利用するカレンダーを保存
+				</button>
+				{actionData?.kind === "provider-selected" && (
+					<p role="status">利用するカレンダーを変更しました。</p>
+				)}
+			</Form>
+			<p>
+				切り替え後の取り込み・自動登録は選択したサービスだけで行います。切り替え前に書き出した予定は元のカレンダーに残ります。
+			</p>
+		</section>
+	);
+}
+
+function GoogleCalendarConnection({
+	model,
+}: {
+	model: ReturnType<typeof useCalendarSettings>;
+}) {
+	const {
+		calendarOptions,
+		provider,
+		navigation,
+		intent,
+		calendarConnectionStatus,
+	} = model;
+	return (
+		<section className="account-card integration-card" id="google-calendar">
+			<div className="account-card-heading">
+				<div className="account-card-icon calendar-icon">
+					<Icon name="calendar" />
+				</div>
+				<div>
+					<span className="account-section-label">CALENDAR CONNECTION</span>
+					<h2>
+						{provider === "timetree"
+							? "TimeTreeへの書き出し（Google経由）"
+							: "Googleカレンダー連携"}
+					</h2>
+					<p>
+						{provider === "timetree"
+							? "確定日時をGoogleカレンダー経由でTimeTreeに表示するための接続を管理します。"
+							: "予定の空き時間の取り込みと、確定日時の登録に使う接続を管理します。"}
+					</p>
+				</div>
+				<span className={`integration-status ${calendarConnectionStatus}`}>
+					<i />
+					{calendarConnectionStatus === "connected"
+						? "接続済み"
+						: calendarConnectionStatus === "disconnected"
+							? "未接続"
+							: "確認できません"}
+				</span>
+			</div>
+			{calendarConnectionStatus === "connected" &&
+				!calendarOptions.writeEnabled && (
+					<div className="calendar-write-permission-notice" role="status">
+						<Icon name="info" size={18} />
+						<p>
+							専用カレンダーへの自動登録を有効にするには、Googleカレンダーを再接続して、Vacaroが作成するカレンダーの管理を許可してください。
+						</p>
+					</div>
+				)}
+			<p>
+				接続時は、カレンダー一覧と空き時間の読み取りを許可してください。
+				確定日時は、Vacaroが作成する専用カレンダー「Vacaro」に登録します。自動登録には、この専用カレンダーの作成・管理の許可も必要です。
+			</p>
+			<div className="integration-actions">
+				<Form preventScrollReset method="post">
+					<button
+						className="button button-primary"
+						type="submit"
+						name="intent"
+						value="calendar-connect"
+						disabled={navigation.state !== "idle"}
+					>
+						{intent === "calendar-connect"
+							? "Googleへ移動しています…"
+							: calendarConnectionStatus === "connected"
+								? "再接続する"
+								: "接続する"}
+					</button>
+				</Form>
+				<Form preventScrollReset method="post">
+					<button
+						className="button button-ghost"
+						type="submit"
+						name="intent"
+						value="calendar-disconnect"
+						disabled={
+							navigation.state !== "idle" ||
+							calendarConnectionStatus === "disconnected"
+						}
+					>
+						{intent === "calendar-disconnect"
+							? "解除しています…"
+							: "接続を解除"}
+					</button>
+				</Form>
+			</div>
+		</section>
+	);
+}
+
+function CalendarImportWindow({
+	model,
+}: {
+	model: ReturnType<typeof useCalendarSettings>;
+}) {
+	const {
+		availabilityWindow,
+		availabilityWindowMessage,
+		saveAvailabilityWindow,
+		changeStartTime,
+		changeEndTime,
+	} = model;
+	return (
+		<section className="account-card availability-window-card">
+			<div className="settings-section-heading">
+				<div>
+					<span className="account-section-label">AVAILABILITY WINDOW</span>
+					<h2>空き時間の取り込み範囲</h2>
+					<p>
+						Googleカレンダーから取り込む際、毎日この時間帯だけを空き時間として読み取ります。
+					</p>
+				</div>
+			</div>
+			<div className="settings-time-window">
+				<div className="settings-time-window-field">
+					<label htmlFor="calendar-window-start">
+						<em>IN</em>
+						開始時刻
+					</label>
+					<TimePicker
+						id="calendar-window-start"
+						value={availabilityWindow.start}
+						onValueChange={changeStartTime}
+					/>
+				</div>
+				<span className="time-window-separator" aria-hidden="true">
+					〜
+				</span>
+				<div className="settings-time-window-field">
+					<label htmlFor="calendar-window-end">
+						<em>OUT</em>
+						終了時刻
+					</label>
+					<TimePicker
+						id="calendar-window-end"
+						value={availabilityWindow.end}
+						onValueChange={changeEndTime}
+					/>
+				</div>
+			</div>
+			<div className="settings-save-row">
+				{availabilityWindowMessage && (
+					<span
+						className={`save-message ${availabilityWindowMessage.kind}`}
+						aria-live="polite"
+					>
+						{availabilityWindowMessage.text}
+					</span>
+				)}
+				<button
+					className="button button-primary"
+					type="button"
+					onClick={saveAvailabilityWindow}
+				>
+					取り込み範囲を保存
+				</button>
+			</div>
+		</section>
+	);
+}
+
+function GoogleCalendarSelection({
+	model,
+}: {
+	model: ReturnType<typeof useCalendarSettings>;
+}) {
+	const {
+		calendarOptions,
+		calendarConnectionStatus,
+		selectedCalendarIDs,
+		preferenceMessage,
+		toggleCalendar,
+		saveCalendarPreference,
+	} = model;
+	return (
+		<section
+			className="account-card calendar-settings-card"
+			id="calendar-settings"
+		>
+			<div className="settings-section-heading">
+				<div>
+					<span className="account-section-label">CALENDAR PREFERENCE</span>
+					<h2>使用するカレンダー</h2>
+					<p>
+						空き時間の判定で「予定あり」として扱うカレンダーを選択します。初期値はメインカレンダーのみです。追加のカレンダーは選択して保存してください。祝日カレンダーは自動的に除外されます。
+					</p>
+				</div>
+				{calendarOptions.calendars.length > 0 && (
+					<span className="selection-count">
+						{selectedCalendarIDs.length}件選択中
+					</span>
+				)}
+			</div>
+			{calendarConnectionStatus === "disconnected" ? (
+				<div className="settings-empty-calendar">
+					<Icon name="calendar" size={20} />
+					<p>連携カードからGoogleカレンダーを接続してください。</p>
+				</div>
+			) : calendarOptions.error ? (
+				<div className="calendar-picker-error settings-error">
+					<Icon name="info" size={18} />
+					<div>
+						<strong>カレンダー一覧を取得できませんでした</strong>
+						<p>{calendarOptions.error.message}</p>
+					</div>
+				</div>
+			) : calendarOptions.calendars.length > 0 ? (
+				<>
+					<div className="settings-calendar-list">
+						{calendarOptions.calendars.map((calendar) => (
+							<label className="settings-calendar-option" key={calendar.id}>
+								<input
+									type="checkbox"
+									checked={selectedCalendarIDs.includes(calendar.id)}
+									onChange={() => toggleCalendar(calendar.id)}
+								/>
+								<span className="calendar-checkmark">
+									<Icon name="check" size={15} />
+								</span>
+								<span
+									className="calendar-color"
+									style={{
+										backgroundColor: calendar.background_color || "#4285f4",
+									}}
+								/>
+								<span className="calendar-option-name">{calendar.summary}</span>
+								{calendar.primary && <em>メイン</em>}
+							</label>
+						))}
+					</div>
+					<div className="settings-save-row">
+						{preferenceMessage && (
+							<span
+								className={`save-message ${preferenceMessage.kind}`}
+								aria-live="polite"
+							>
+								{preferenceMessage.text}
+							</span>
+						)}
+						<button
+							className="button button-primary"
+							type="button"
+							disabled={selectedCalendarIDs.length === 0}
+							onClick={saveCalendarPreference}
+						>
+							設定を保存
+						</button>
+					</div>
+				</>
+			) : (
+				<div className="settings-empty-calendar">
+					<Icon name="calendar" size={26} />
+					<p>カレンダーを接続すると、ここで取り込み対象を選択できます。</p>
+				</div>
+			)}
 		</section>
 	);
 }

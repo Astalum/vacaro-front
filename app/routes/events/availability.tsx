@@ -1,4 +1,11 @@
-import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type PointerEvent,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { data, Form, Link, useNavigation } from "react-router";
 import { Icon, PageShell, WeekendText } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
@@ -469,7 +476,22 @@ export function HydrateFallback() {
 	);
 }
 
+const SCHEDULE_COMPACT_QUERY = "(max-width: 720px)";
+function subscribeScheduleLayout(onChange: () => void) {
+	const query = window.matchMedia(SCHEDULE_COMPACT_QUERY);
+	query.addEventListener("change", onChange);
+	return () => query.removeEventListener("change", onChange);
+}
+const compactScheduleSnapshot = () =>
+	window.matchMedia(SCHEDULE_COMPACT_QUERY).matches;
+const serverScheduleSnapshot = () => false;
+
 function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
+	const compact = useSyncExternalStore(
+		subscribeScheduleLayout,
+		compactScheduleSnapshot,
+		serverScheduleSnapshot,
+	);
 	const {
 		event,
 		availability,
@@ -490,8 +512,14 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 		() => savedICloudCalendarIDs(icloudOptions.calendars),
 		[icloudOptions.calendars],
 	);
-	const windowStart = localDateTime(event.window_start_at, user.time_zone);
-	const windowEnd = localDateTime(event.window_end_at, user.time_zone);
+	const windowStart = useMemo(
+		() => localDateTime(event.window_start_at, user.time_zone),
+		[event.window_start_at, user.time_zone],
+	);
+	const windowEnd = useMemo(
+		() => localDateTime(event.window_end_at, user.time_zone),
+		[event.window_end_at, user.time_zone],
+	);
 	const dailyStartMinute = minutes(windowStart);
 	const dailyEndMinute = windowEnd.endsWith("T00:00")
 		? DAY_MINUTES
@@ -562,6 +590,13 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 		activeMove.current = null;
 		setMovingRange(null);
 	};
+	useEffect(() => {
+		activeDrag.current = null;
+		activeMove.current = null;
+		setDrag(null);
+		setMovingRange(null);
+	}, [compact]);
+
 	const [copiedEditLink, setCopiedEditLink] = useState(false);
 	const activeWeek = weekOptions[weekIndex] ?? weekStart(firstDate);
 	const days = useMemo(
@@ -916,19 +951,31 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 			}),
 		);
 	};
-	const selectedRanges = ranges.filter((range) =>
-		segmentOnDate(range, selectedDate),
+	const selectedRanges = useMemo(
+		() => ranges.filter((range) => segmentOnDate(range, selectedDate)),
+		[ranges, selectedDate],
 	);
 	const visibleMinutes = Math.max(30, dailyEndMinute - dailyStartMinute);
 	const scheduleGridHeight = Math.max(260, (visibleMinutes / 60) * 52);
 	const mobileGridHeight = Math.max(360, (visibleMinutes / 60) * 42);
-	const axisMarks = timeAxisMarks(dailyStartMinute, dailyEndMinute);
-	const weekTitle = `${new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric" }).format(dateFromKey(days[0]))} — ${new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric" }).format(dateFromKey(days[6]))}`;
-	const selectedTitle = new Intl.DateTimeFormat("ja-JP", {
-		month: "numeric",
-		day: "numeric",
-		weekday: "short",
-	}).format(dateFromKey(selectedDate));
+	const axisMarks = useMemo(
+		() => timeAxisMarks(dailyStartMinute, dailyEndMinute),
+		[dailyStartMinute, dailyEndMinute],
+	);
+	const weekTitle = useMemo(
+		() =>
+			`${new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric" }).format(dateFromKey(days[0]))} — ${new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric" }).format(dateFromKey(days[6]))}`,
+		[days],
+	);
+	const selectedTitle = useMemo(
+		() =>
+			new Intl.DateTimeFormat("ja-JP", {
+				month: "numeric",
+				day: "numeric",
+				weekday: "short",
+			}).format(dateFromKey(selectedDate)),
+		[selectedDate],
+	);
 	const submitting = navigation.state === "submitting";
 	const submittingIntent = navigation.formData?.get("intent");
 	const responseEditUrl =
@@ -964,19 +1011,34 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 		setSelectedRangeID(null);
 	}
 
-	const mobileDates = eventDates.map((key) => {
-		const date = dateFromKey(key);
+	const mobileDates = useMemo(
+		() =>
+			eventDates.map((key) => {
+				const date = dateFromKey(key);
 
-		return { key, date };
-	});
+				return { key, date };
+			}),
+		[eventDates],
+	);
 
-	const weekDays = days.map((key, index) => {
-		const enabled = key >= firstDate && key <= lastDate;
+	const weekDays = useMemo(
+		() =>
+			days.map((key, index) => {
+				const enabled = key >= firstDate && key <= lastDate;
 
-		return { key, index, enabled };
-	});
+				return { key, index, enabled };
+			}),
+		[days, firstDate, lastDate],
+	);
+
+	const serializedRanges = useMemo(
+		() => JSON.stringify(submissionRanges),
+		[submissionRanges],
+	);
 
 	return {
+		serializedRanges,
+		compact,
 		actionData,
 		event,
 		availability,
@@ -1043,63 +1105,16 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 export default function AvailabilityPage(props: Route.ComponentProps) {
 	const model = useAvailability(props);
 	const {
-		actionData,
-		event,
-		availability,
-		calendarOptions,
-		icloudOptions,
 		user,
-		calendarWindow,
 		selectedCalendarIDs,
 		selectedICloudCalendarIDs,
-		dailyStartMinute,
-		dailyStartTime,
-		dailyEndTime,
-		ranges,
-		entryMode,
-		selectedDate,
-		weekOptions,
-		weekIndex,
-		selectedRangeID,
-		movingRange,
-		drag,
-		cancelDrag,
-		days,
 		sourceEventID,
-		importedRanges,
-		submissionRanges,
-		changeEntryMode,
-		beginDrag,
-		moveDrag,
-		finishDrag,
-		removeRange,
-		updateTime,
-		addDailyRange,
-		selectedRanges,
-		visibleMinutes,
-		scheduleGridHeight,
-		mobileGridHeight,
-		axisMarks,
-		weekTitle,
-		selectedTitle,
-		submitting,
-		submittingIntent,
-		selectMobileDate,
-		previousWeek,
-		nextWeek,
-		selectDate,
-		mobileDates,
-		weekDays,
 	} = model;
 
 	return (
 		<PageShell fullScreen showHeader showPersistentInviteUrl={false}>
 			<Form method="post" className="schedule-page">
-				<input
-					type="hidden"
-					name="intervals"
-					value={JSON.stringify(submissionRanges)}
-				/>
+				<input type="hidden" name="intervals" value={model.serializedRanges} />
 				<input
 					type="hidden"
 					name="calendar_ids"
@@ -1113,726 +1128,11 @@ export default function AvailabilityPage(props: Route.ComponentProps) {
 				<input type="hidden" name="time_zone" value={user.time_zone} />
 				<input type="hidden" name="source_event_id" value={sourceEventID} />
 
-				<div className="schedule-mobile">
-					<section className="schedule-mobile-event">
-						<div className="schedule-mobile-event-heading">
-							<span>日程調整</span>
-							<h1>{event.title}</h1>
-						</div>
-						{event.description && <p>{event.description}</p>}
-						<div className="schedule-mobile-summary">
-							<div className="is-wide">
-								<Icon name="calendar" size={17} />
-								<span>調整期間</span>
-								<strong>
-									<WeekendText>
-										{formatDateRange(
-											event.window_start_at,
-											event.window_end_at,
-											user.time_zone,
-										)}
-									</WeekendText>
-								</strong>
-							</div>
-							<div>
-								<Icon name="clock" size={17} />
-								<span>回答受付</span>
-								<strong>
-									{dailyStartTime}〜{dailyEndTime}
-								</strong>
-							</div>
-							<div>
-								<span>所要時間</span>
-								<strong>{minutesLabel(event.duration_minutes)}</strong>
-							</div>
-						</div>
-					</section>
-
-					<section className="schedule-mobile-controls">
-						<fieldset
-							className="schedule-entry-mode"
-							aria-label="回答する時間の選び方"
-						>
-							<button
-								type="button"
-								aria-pressed={entryMode === "available"}
-								onClick={() => changeEntryMode("available")}
-							>
-								都合がいい時間
-							</button>
-							<button
-								type="button"
-								className="is-unavailable"
-								aria-pressed={entryMode === "unavailable"}
-								onClick={() => changeEntryMode("unavailable")}
-							>
-								都合が悪い時間
-							</button>
-						</fieldset>
-						{calendarOptions.calendars.length > 0 ? (
-							<button
-								type="submit"
-								name="intent"
-								value="calendar-preview"
-								className="schedule-import"
-								disabled={submitting}
-							>
-								<Icon name="calendar" size={16} />
-								{submittingIntent === "calendar-preview"
-									? "読込中…"
-									: icloudOptions.calendars.length > 0
-										? "Googleから取込"
-										: "予定取込"}
-							</button>
-						) : icloudOptions.calendars.length === 0 ? (
-							<Link
-								className="schedule-settings-link"
-								to="/account#calendar-settings"
-							>
-								カレンダー設定
-							</Link>
-						) : null}
-						{icloudOptions.calendars.length > 0 && (
-							<button
-								type="submit"
-								name="intent"
-								value="icloud-calendar-preview"
-								className="schedule-import"
-								disabled={submitting}
-								title="現在の入力を、iCloudカレンダーから読み取った空き時間で置き換えます"
-							>
-								<Icon name="calendar" size={16} />
-								{submittingIntent === "icloud-calendar-preview"
-									? "読込中…"
-									: "iCloudから取込"}
-							</button>
-						)}
-					</section>
-					{<CopyControl scope="mobile" model={model} />}
-					{user.account_type === "guest" && <ResponseEditLink model={model} />}
-
-					<nav className="schedule-mobile-dates" aria-label="回答する日付">
-						{mobileDates.map(({ key, date }) => (
-							<button
-								key={key}
-								type="button"
-								className={
-									selectedDate === key
-										? "schedule-mobile-date is-selected"
-										: "schedule-mobile-date"
-								}
-								aria-pressed={selectedDate === key}
-								onClick={() => selectMobileDate(key)}
-							>
-								<small className={weekendClassName(date.getDay())}>
-									{WEEKDAYS[date.getDay()]}
-								</small>
-								<strong>{date.getDate()}</strong>
-							</button>
-						))}
-					</nav>
-
-					<div className="schedule-mobile-answer-grid">
-						<section className="schedule-mobile-timeline">
-							<header>
-								<div>
-									<span>
-										{entryMode === "available"
-											? "都合がいい時間"
-											: "都合が悪い時間"}
-										を選択
-									</span>
-								</div>
-								<small>タップまたはドラッグ</small>
-							</header>
-							<div
-								className="schedule-mobile-grid"
-								style={{ height: mobileGridHeight }}
-							>
-								<div
-									className="schedule-time-axis schedule-mobile-axis"
-									aria-hidden="true"
-								>
-									{axisMarks.map((mark) => (
-										<span
-											key={mark}
-											style={{
-												top:
-													((mark - dailyStartMinute) / visibleMinutes) * 100 +
-													"%",
-											}}
-										>
-											{time(mark)}
-										</span>
-									))}
-								</div>
-								<div
-									className="schedule-day-column schedule-mobile-day"
-									data-date={selectedDate}
-									aria-label={
-										selectedDate +
-										"の" +
-										(entryMode === "available" ? "都合がいい" : "都合が悪い") +
-										"時間を選択"
-									}
-									onPointerDown={(pointerEvent) =>
-										beginDrag(pointerEvent, selectedDate)
-									}
-									onPointerMove={moveDrag}
-									onPointerUp={finishDrag}
-									onPointerCancel={cancelDrag}
-									onLostPointerCapture={cancelDrag}
-								>
-									<button
-										type="button"
-										className="schedule-day-surface"
-										aria-label={`${selectedDate}の時間を追加`}
-									/>
-									{ranges.map((range) => (
-										<ScheduleRange
-											key={range.id}
-											range={range}
-											date={selectedDate}
-											model={model}
-										/>
-									))}
-									{movingRange && (
-										<ScheduleRange
-											range={movingRange}
-											date={selectedDate}
-											preview
-											model={model}
-										/>
-									)}
-
-									{drag?.date === selectedDate && (
-										<i
-											className={
-												entryMode === "unavailable"
-													? "schedule-range preview is-unavailable"
-													: "schedule-range preview"
-											}
-											style={{
-												top:
-													((drag.start - dailyStartMinute) / visibleMinutes) *
-														100 +
-													"%",
-												height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
-											}}
-										/>
-									)}
-								</div>
-							</div>
-						</section>
-
-						<section className="schedule-mobile-editor">
-							<div className="schedule-editor-heading">
-								<div>
-									<span>選択中の日付</span>
-									<h2>
-										<WeekendText>{selectedTitle}</WeekendText>
-									</h2>
-								</div>
-								{selectedRanges.length === 0 && (
-									<button type="button" onClick={addDailyRange}>
-										<Icon name="plus" size={15} />
-										時間を設定
-									</button>
-								)}
-							</div>
-							{selectedRanges.length === 0 && (
-								<p>
-									この日の
-									{entryMode === "available"
-										? "都合がいい時間"
-										: "都合が悪い時間"}
-									を設定してください
-								</p>
-							)}
-							{selectedRanges.map((range) => (
-								<div
-									className={`schedule-time-row${selectedRangeID === range.id ? " is-selected" : ""}`}
-									key={range.id}
-								>
-									<TimePicker
-										id={`desktop-range-${range.id}-start`}
-										className="schedule-time-picker"
-										aria-label="開始時刻"
-										min={dailyStartTime}
-										max={dailyEndTime}
-										value={range.start.slice(11, 16)}
-										onValueChange={(value) =>
-											updateTime(range.id, "start", value, selectedDate)
-										}
-									/>
-									<span>〜</span>
-									<div
-										className={
-											endsAtDayBoundary(range, selectedDate)
-												? "schedule-time-input is-end-of-day"
-												: "schedule-time-input"
-										}
-									>
-										<TimePicker
-											id={`desktop-range-${range.id}-end`}
-											className="schedule-time-picker"
-											aria-label={
-												endsAtDayBoundary(range, selectedDate)
-													? "終了時刻 24:00"
-													: "終了時刻"
-											}
-											min={dailyStartTime}
-											max={dailyEndTime}
-											allowEndOfDay={dailyEndTime === "24:00"}
-											value={
-												endsAtDayBoundary(range, selectedDate)
-													? "24:00"
-													: range.end.slice(11, 16)
-											}
-											onValueChange={(value) =>
-												updateTime(range.id, "end", value, selectedDate)
-											}
-										/>
-									</div>
-									<button
-										className="schedule-time-remove"
-										type="button"
-										aria-label="削除"
-										onClick={() => removeRange(range.id)}
-									>
-										<Icon name="trash" size={19} />
-									</button>
-								</div>
-							))}
-						</section>
-					</div>
-
-					{actionData?.kind === "preview" && (
-						<p className="schedule-message success">
-							予定から{importedRanges.length}件を取り込みました
-						</p>
-					)}
-					{actionData?.kind === "copied" && (
-						<p className="schedule-message success">
-							別イベントの回答をコピーしました
-						</p>
-					)}
-					{actionData?.kind === "saved" && (
-						<p className="schedule-message success">回答を保存しました</p>
-					)}
-					{actionData?.kind === "response-link" && (
-						<p className="schedule-message success">
-							再回答用リンクを発行しました
-						</p>
-					)}
-					{actionData?.kind === "error" && (
-						<ValidationMessage compact title={actionData.error.message}>
-							{actionData.error.code.startsWith("icloud_") ||
-							actionData.error.code.startsWith("calendar_") ||
-							actionData.error.code === "oauth_failed" ? (
-								<Link
-									to={
-										actionData.error.code.startsWith("icloud_")
-											? "/account#calendar-settings"
-											: "/account#calendar-settings"
-									}
-								>
-									カレンダー設定を確認する
-								</Link>
-							) : (
-								"回答時間を確認して、もう一度お試しください。"
-							)}
-						</ValidationMessage>
-					)}
-
-					<footer className="schedule-submit schedule-mobile-submit">
-						<button
-							type="submit"
-							name="intent"
-							value="save"
-							className="schedule-save"
-							disabled={submitting || event.status !== "open"}
-						>
-							{submittingIntent === "save"
-								? "保存しています…"
-								: availability.response_status === "submitted"
-									? "回答を更新"
-									: "回答を保存"}
-							<Icon name="arrow" size={13} />
-						</button>
-						<button
-							type="submit"
-							name="intent"
-							value="none"
-							className="schedule-none"
-							disabled={submitting}
-						>
-							空き時間なしで回答
-						</button>
-					</footer>
-				</div>
-
-				<section className="schedule-main">
-					<div className="schedule-calendar">
-						<header className="schedule-toolbar">
-							<button
-								type="button"
-								aria-label="前の週"
-								disabled={weekIndex === 0}
-								onClick={previousWeek}
-							>
-								<Icon name="back" size={12} />
-							</button>
-							<strong>{weekTitle}</strong>
-							<button
-								type="button"
-								aria-label="次の週"
-								disabled={weekIndex === weekOptions.length - 1}
-								onClick={nextWeek}
-							>
-								<Icon name="chevron" size={12} />
-							</button>
-						</header>
-						<div className="schedule-week-head">
-							<div />
-							{weekDays.map(({ key, index, enabled }) => (
-								<button
-									key={key}
-									type="button"
-									className={selectedDate === key ? "is-selected" : ""}
-									disabled={!enabled}
-									onClick={() => selectDate(key)}
-								>
-									<span className={weekendClassName(index)}>
-										{WEEKDAYS[index]}
-									</span>
-									<strong>{dateFromKey(key).getDate()}</strong>
-								</button>
-							))}
-						</div>
-						<div className="schedule-scroll">
-							<div
-								className="schedule-grid"
-								style={{ height: `${scheduleGridHeight}px` }}
-							>
-								<div className="schedule-time-axis" aria-hidden="true">
-									{axisMarks.map((mark) => (
-										<span
-											key={mark}
-											style={{
-												top: `${((mark - dailyStartMinute) / visibleMinutes) * 100}%`,
-											}}
-										>
-											{time(mark)}
-										</span>
-									))}
-								</div>
-								{drag && (
-									<i
-										className={`schedule-drag-preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
-										aria-hidden="true"
-										style={{
-											gridColumn: `${days.indexOf(drag.date < drag.endDate ? drag.date : drag.endDate) + 2} / ${days.indexOf(drag.date > drag.endDate ? drag.date : drag.endDate) + 3}`,
-											top: `${((drag.start - dailyStartMinute) / visibleMinutes) * 100}%`,
-											height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
-										}}
-									/>
-								)}
-								{weekDays.map(({ key, enabled }) => (
-									<div
-										key={key}
-										className="schedule-day-column"
-										data-date={key}
-										data-disabled={!enabled ? "true" : undefined}
-										aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
-										onPointerDown={(event) => beginDrag(event, key)}
-										onPointerMove={moveDrag}
-										onPointerUp={finishDrag}
-										onPointerCancel={cancelDrag}
-										onLostPointerCapture={cancelDrag}
-									>
-										<button
-											type="button"
-											className="schedule-day-surface"
-											disabled={!enabled}
-											aria-label={`${key}の時間を追加`}
-										/>
-										{ranges.map((range) => (
-											<ScheduleRange
-												key={range.id}
-												range={range}
-												date={key}
-												model={model}
-											/>
-										))}
-										{movingRange && (
-											<ScheduleRange
-												range={movingRange}
-												date={key}
-												preview
-												model={model}
-											/>
-										)}
-									</div>
-								))}
-							</div>
-						</div>
-					</div>
-				</section>
-
-				<aside className="schedule-sidebar">
-					<section className="schedule-event">
-						<h1>{event.title}</h1>
-						{event.description && <p>{event.description}</p>}
-						<div className="schedule-meta">
-							<div className="schedule-meta-label">
-								<Icon name="calendar" size={18} />
-								<span>調整期間</span>
-							</div>
-							<strong>
-								<WeekendText>
-									{formatDateRange(
-										event.window_start_at,
-										event.window_end_at,
-										user.time_zone,
-									)}
-								</WeekendText>
-							</strong>
-						</div>
-						<div className="schedule-meta-pair">
-							<div className="schedule-meta">
-								<div className="schedule-meta-label">
-									<Icon name="clock" size={18} />
-									<span>回答受付</span>
-								</div>
-								<strong>
-									{dailyStartTime}〜{dailyEndTime}
-								</strong>
-							</div>
-							<div className="schedule-meta schedule-meta-duration">
-								<div className="schedule-meta-label">
-									<span>所要時間</span>
-								</div>
-								<strong className="schedule-duration-value">
-									{minutesLabel(event.duration_minutes)}
-								</strong>
-							</div>
-						</div>
-					</section>
-					<div
-						className={
-							icloudOptions.calendars.length > 0
-								? "schedule-guide has-icloud"
-								: "schedule-guide"
-						}
-					>
-						<fieldset
-							className="schedule-entry-mode"
-							aria-label="回答する時間の選び方"
-						>
-							<button
-								type="button"
-								aria-pressed={entryMode === "available"}
-								onClick={() => changeEntryMode("available")}
-							>
-								都合がいい時間
-							</button>
-							<button
-								type="button"
-								className="is-unavailable"
-								aria-pressed={entryMode === "unavailable"}
-								onClick={() => changeEntryMode("unavailable")}
-							>
-								都合が悪い時間
-							</button>
-						</fieldset>
-						{calendarOptions.calendars.length > 0 ? (
-							<button
-								type="submit"
-								name="intent"
-								value="calendar-preview"
-								className="schedule-import"
-								disabled={submitting}
-								title="現在の入力を、Googleカレンダーから読み取った空き時間で置き換えます"
-							>
-								<Icon name="calendar" size={16} />
-								{submittingIntent === "calendar-preview"
-									? "読み取り中…"
-									: icloudOptions.calendars.length > 0
-										? "Googleから取込"
-										: "予定を取り込む"}
-							</button>
-						) : icloudOptions.calendars.length === 0 ? (
-							<Link
-								className="schedule-settings-link"
-								to="/account#calendar-settings"
-							>
-								カレンダー設定
-							</Link>
-						) : null}
-						{icloudOptions.calendars.length > 0 && (
-							<button
-								type="submit"
-								name="intent"
-								value="icloud-calendar-preview"
-								className="schedule-import"
-								disabled={submitting}
-								title="現在の入力を、iCloudカレンダーから読み取った空き時間で置き換えます"
-							>
-								<Icon name="calendar" size={16} />
-								{submittingIntent === "icloud-calendar-preview"
-									? "読込中…"
-									: "iCloudから取込"}
-							</button>
-						)}
-					</div>
-					{<CopyControl scope="desktop" model={model} />}
-					{user.account_type === "guest" && <ResponseEditLink model={model} />}
-					<section className="schedule-editor">
-						<div className="schedule-editor-heading">
-							<h2>
-								<WeekendText>{selectedTitle}</WeekendText>
-							</h2>
-							{selectedRanges.length === 0 && (
-								<button type="button" onClick={addDailyRange}>
-									<Icon name="plus" size={15} />
-									{entryMode === "available"
-										? "都合がいい時間"
-										: "都合が悪い時間"}
-									を設定
-								</button>
-							)}
-						</div>
-						{selectedRanges.length === 0 && (
-							<p>
-								この日の
-								{entryMode === "available"
-									? "都合がいい時間"
-									: "都合が悪い時間"}
-								を設定してください
-							</p>
-						)}
-						{selectedRanges.map((range) => (
-							<div
-								className={`schedule-time-row${selectedRangeID === range.id ? " is-selected" : ""}`}
-								key={range.id}
-							>
-								<TimePicker
-									id={`mobile-range-${range.id}-start`}
-									className="schedule-time-picker"
-									aria-label="開始時刻"
-									min={dailyStartTime}
-									max={dailyEndTime}
-									value={range.start.slice(11, 16)}
-									onValueChange={(value) =>
-										updateTime(range.id, "start", value, selectedDate)
-									}
-								/>
-								<span>〜</span>
-								<div
-									className={`schedule-time-input${
-										endsAtDayBoundary(range, selectedDate)
-											? " is-end-of-day"
-											: ""
-									}`}
-								>
-									<TimePicker
-										id={`mobile-range-${range.id}-end`}
-										className="schedule-time-picker"
-										aria-label={
-											endsAtDayBoundary(range, selectedDate)
-												? "終了時刻 24:00"
-												: "終了時刻"
-										}
-										min={dailyStartTime}
-										max={dailyEndTime}
-										allowEndOfDay={dailyEndTime === "24:00"}
-										value={
-											endsAtDayBoundary(range, selectedDate)
-												? "24:00"
-												: range.end.slice(11, 16)
-										}
-										onValueChange={(value) =>
-											updateTime(range.id, "end", value, selectedDate)
-										}
-									/>
-								</div>
-								<button
-									className="schedule-time-remove"
-									type="button"
-									aria-label="削除"
-									onClick={() => removeRange(range.id)}
-								>
-									<Icon name="trash" size={20} />
-								</button>
-							</div>
-						))}
-					</section>
-
-					{actionData?.kind === "preview" && (
-						<p className="schedule-message success">
-							{calendarWindow.start}〜{calendarWindow.end}の範囲から
-							{importedRanges.length}件を取り込みました
-						</p>
-					)}
-					{actionData?.kind === "copied" && (
-						<p className="schedule-message success">
-							別イベントの回答をコピーしました
-						</p>
-					)}
-					{actionData?.kind === "saved" && (
-						<p className="schedule-message success">回答を保存しました</p>
-					)}
-					{actionData?.kind === "response-link" && (
-						<p className="schedule-message success">
-							再回答用リンクを発行しました
-						</p>
-					)}
-					{actionData?.kind === "error" && (
-						<ValidationMessage compact title={actionData.error.message}>
-							{actionData.error.code.startsWith("icloud_") ||
-							actionData.error.code.startsWith("calendar_") ||
-							actionData.error.code === "oauth_failed" ? (
-								<Link
-									to={
-										actionData.error.code.startsWith("icloud_")
-											? "/account#calendar-settings"
-											: "/account#calendar-settings"
-									}
-								>
-									カレンダー設定を確認する
-								</Link>
-							) : (
-								"回答時間を確認して、もう一度お試しください。"
-							)}
-						</ValidationMessage>
-					)}
-					<footer className="schedule-submit">
-						<button
-							type="submit"
-							name="intent"
-							value="save"
-							className="schedule-save"
-							disabled={submitting || event.status !== "open"}
-						>
-							{submittingIntent === "save"
-								? "保存しています…"
-								: availability.response_status === "submitted"
-									? "回答を更新"
-									: "回答を保存"}
-							<Icon name="arrow" size={13} />
-						</button>
-						<button
-							type="submit"
-							name="intent"
-							value="none"
-							className="schedule-none"
-							disabled={submitting}
-						>
-							空き時間なしで回答
-						</button>
-					</footer>
-				</aside>
+				{model.compact ? (
+					<MobileAvailability model={model} />
+				) : (
+					<DesktopAvailability model={model} />
+				)}
 			</Form>
 		</PageShell>
 	);
@@ -2012,5 +1312,701 @@ function CopyControl({
 				</div>
 			)}
 		</section>
+	);
+}
+
+type AvailabilityModel = ReturnType<typeof useAvailability>;
+
+function EntryModeToggle({ model }: { model: AvailabilityModel }) {
+	const { entryMode, changeEntryMode } = model;
+	return (
+		<fieldset className="schedule-entry-mode" aria-label="回答する時間の選び方">
+			<button
+				type="button"
+				aria-pressed={entryMode === "available"}
+				onClick={() => changeEntryMode("available")}
+			>
+				都合がいい時間
+			</button>
+			<button
+				type="button"
+				className="is-unavailable"
+				aria-pressed={entryMode === "unavailable"}
+				onClick={() => changeEntryMode("unavailable")}
+			>
+				都合が悪い時間
+			</button>
+		</fieldset>
+	);
+}
+
+function TimeAxis({
+	model,
+	mobile = false,
+}: {
+	model: AvailabilityModel;
+	mobile?: boolean;
+}) {
+	const { axisMarks, dailyStartMinute, visibleMinutes } = model;
+	return (
+		<div
+			className={`schedule-time-axis${mobile ? " schedule-mobile-axis" : ""}`}
+			aria-hidden="true"
+		>
+			{axisMarks.map((mark) => (
+				<span
+					key={mark}
+					style={{
+						top: ((mark - dailyStartMinute) / visibleMinutes) * 100 + "%",
+					}}
+				>
+					{time(mark)}
+				</span>
+			))}
+		</div>
+	);
+}
+
+function RangeList({
+	model,
+	idPrefix,
+	trashSize = 20,
+}: {
+	model: AvailabilityModel;
+	idPrefix: string;
+	trashSize?: number;
+}) {
+	const {
+		selectedRanges,
+		selectedRangeID,
+		selectedDate,
+		dailyStartTime,
+		dailyEndTime,
+		updateTime,
+		removeRange,
+	} = model;
+	return (
+		<>
+			{selectedRanges.map((range) => (
+				<div
+					className={`schedule-time-row${selectedRangeID === range.id ? " is-selected" : ""}`}
+					key={range.id}
+				>
+					<TimePicker
+						id={`${idPrefix}-range-${range.id}-start`}
+						className="schedule-time-picker"
+						aria-label="開始時刻"
+						min={dailyStartTime}
+						max={dailyEndTime}
+						value={range.start.slice(11, 16)}
+						onValueChange={(value) =>
+							updateTime(range.id, "start", value, selectedDate)
+						}
+					/>
+					<span>〜</span>
+					<div
+						className={
+							endsAtDayBoundary(range, selectedDate)
+								? "schedule-time-input is-end-of-day"
+								: "schedule-time-input"
+						}
+					>
+						<TimePicker
+							id={`${idPrefix}-range-${range.id}-end`}
+							className="schedule-time-picker"
+							aria-label={
+								endsAtDayBoundary(range, selectedDate)
+									? "終了時刻 24:00"
+									: "終了時刻"
+							}
+							min={dailyStartTime}
+							max={dailyEndTime}
+							allowEndOfDay={dailyEndTime === "24:00"}
+							value={
+								endsAtDayBoundary(range, selectedDate)
+									? "24:00"
+									: range.end.slice(11, 16)
+							}
+							onValueChange={(value) =>
+								updateTime(range.id, "end", value, selectedDate)
+							}
+						/>
+					</div>
+					<button
+						className="schedule-time-remove"
+						type="button"
+						aria-label="削除"
+						onClick={() => removeRange(range.id)}
+					>
+						<Icon name="trash" size={trashSize} />
+					</button>
+				</div>
+			))}
+		</>
+	);
+}
+
+function MobileAvailability({ model }: { model: AvailabilityModel }) {
+	const {
+		event,
+		user,
+		dailyStartMinute,
+		dailyStartTime,
+		dailyEndTime,
+		ranges,
+		entryMode,
+		selectedDate,
+		movingRange,
+		drag,
+		cancelDrag,
+		beginDrag,
+		moveDrag,
+		finishDrag,
+		addDailyRange,
+		selectedRanges,
+		visibleMinutes,
+		mobileGridHeight,
+		selectedTitle,
+		selectMobileDate,
+		mobileDates,
+	} = model;
+	return (
+		<div className="schedule-mobile">
+			<section className="schedule-mobile-event">
+				<div className="schedule-mobile-event-heading">
+					<span>日程調整</span>
+					<h1>{event.title}</h1>
+				</div>
+				{event.description && <p>{event.description}</p>}
+				<div className="schedule-mobile-summary">
+					<div className="is-wide">
+						<Icon name="calendar" size={17} />
+						<span>調整期間</span>
+						<strong>
+							<WeekendText>
+								{formatDateRange(
+									event.window_start_at,
+									event.window_end_at,
+									user.time_zone,
+								)}
+							</WeekendText>
+						</strong>
+					</div>
+					<div>
+						<Icon name="clock" size={17} />
+						<span>回答受付</span>
+						<strong>
+							{dailyStartTime}〜{dailyEndTime}
+						</strong>
+					</div>
+					<div>
+						<span>所要時間</span>
+						<strong>{minutesLabel(event.duration_minutes)}</strong>
+					</div>
+				</div>
+			</section>
+
+			<section className="schedule-mobile-controls">
+				<CalendarImportControls model={model} mobile />
+			</section>
+			{<CopyControl scope="mobile" model={model} />}
+			{user.account_type === "guest" && <ResponseEditLink model={model} />}
+
+			<nav className="schedule-mobile-dates" aria-label="回答する日付">
+				{mobileDates.map(({ key, date }) => (
+					<button
+						key={key}
+						type="button"
+						className={
+							selectedDate === key
+								? "schedule-mobile-date is-selected"
+								: "schedule-mobile-date"
+						}
+						aria-pressed={selectedDate === key}
+						onClick={() => selectMobileDate(key)}
+					>
+						<small className={weekendClassName(date.getDay())}>
+							{WEEKDAYS[date.getDay()]}
+						</small>
+						<strong>{date.getDate()}</strong>
+					</button>
+				))}
+			</nav>
+
+			<div className="schedule-mobile-answer-grid">
+				<section className="schedule-mobile-timeline">
+					<header>
+						<div>
+							<span>
+								{entryMode === "available"
+									? "都合がいい時間"
+									: "都合が悪い時間"}
+								を選択
+							</span>
+						</div>
+						<small>タップまたはドラッグ</small>
+					</header>
+					<div
+						className="schedule-mobile-grid"
+						style={{ height: mobileGridHeight }}
+					>
+						<TimeAxis model={model} mobile />
+						<div
+							className="schedule-day-column schedule-mobile-day"
+							data-date={selectedDate}
+							aria-label={
+								selectedDate +
+								"の" +
+								(entryMode === "available" ? "都合がいい" : "都合が悪い") +
+								"時間を選択"
+							}
+							onPointerDown={(pointerEvent) =>
+								beginDrag(pointerEvent, selectedDate)
+							}
+							onPointerMove={moveDrag}
+							onPointerUp={finishDrag}
+							onPointerCancel={cancelDrag}
+							onLostPointerCapture={cancelDrag}
+						>
+							<button
+								type="button"
+								className="schedule-day-surface"
+								aria-label={`${selectedDate}の時間を追加`}
+							/>
+							{ranges.map((range) => (
+								<ScheduleRange
+									key={range.id}
+									range={range}
+									date={selectedDate}
+									model={model}
+								/>
+							))}
+							{movingRange && (
+								<ScheduleRange
+									range={movingRange}
+									date={selectedDate}
+									preview
+									model={model}
+								/>
+							)}
+
+							{drag?.date === selectedDate && (
+								<i
+									className={
+										entryMode === "unavailable"
+											? "schedule-range preview is-unavailable"
+											: "schedule-range preview"
+									}
+									style={{
+										top:
+											((drag.start - dailyStartMinute) / visibleMinutes) * 100 +
+											"%",
+										height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
+									}}
+								/>
+							)}
+						</div>
+					</div>
+				</section>
+
+				<section className="schedule-mobile-editor">
+					<div className="schedule-editor-heading">
+						<div>
+							<span>選択中の日付</span>
+							<h2>
+								<WeekendText>{selectedTitle}</WeekendText>
+							</h2>
+						</div>
+						{selectedRanges.length === 0 && (
+							<button type="button" onClick={addDailyRange}>
+								<Icon name="plus" size={15} />
+								時間を設定
+							</button>
+						)}
+					</div>
+					{selectedRanges.length === 0 && (
+						<p>
+							この日の
+							{entryMode === "available" ? "都合がいい時間" : "都合が悪い時間"}
+							を設定してください
+						</p>
+					)}
+					<RangeList model={model} idPrefix="desktop" trashSize={19} />
+				</section>
+			</div>
+
+			<AvailabilityMessages model={model} compact />
+
+			<AvailabilitySubmit model={model} mobile />
+		</div>
+	);
+}
+
+function DesktopAvailability({ model }: { model: AvailabilityModel }) {
+	const {
+		event,
+		icloudOptions,
+		user,
+		dailyStartMinute,
+		dailyStartTime,
+		dailyEndTime,
+		ranges,
+		entryMode,
+		selectedDate,
+		weekOptions,
+		weekIndex,
+		movingRange,
+		drag,
+		cancelDrag,
+		days,
+		beginDrag,
+		moveDrag,
+		finishDrag,
+		addDailyRange,
+		selectedRanges,
+		visibleMinutes,
+		scheduleGridHeight,
+		weekTitle,
+		selectedTitle,
+		previousWeek,
+		nextWeek,
+		selectDate,
+		weekDays,
+	} = model;
+	return (
+		<>
+			<section className="schedule-main">
+				<div className="schedule-calendar">
+					<header className="schedule-toolbar">
+						<button
+							type="button"
+							aria-label="前の週"
+							disabled={weekIndex === 0}
+							onClick={previousWeek}
+						>
+							<Icon name="back" size={12} />
+						</button>
+						<strong>{weekTitle}</strong>
+						<button
+							type="button"
+							aria-label="次の週"
+							disabled={weekIndex === weekOptions.length - 1}
+							onClick={nextWeek}
+						>
+							<Icon name="chevron" size={12} />
+						</button>
+					</header>
+					<div className="schedule-week-head">
+						<div />
+						{weekDays.map(({ key, index, enabled }) => (
+							<button
+								key={key}
+								type="button"
+								className={selectedDate === key ? "is-selected" : ""}
+								disabled={!enabled}
+								onClick={() => selectDate(key)}
+							>
+								<span className={weekendClassName(index)}>
+									{WEEKDAYS[index]}
+								</span>
+								<strong>{dateFromKey(key).getDate()}</strong>
+							</button>
+						))}
+					</div>
+					<div className="schedule-scroll">
+						<div
+							className="schedule-grid"
+							style={{ height: `${scheduleGridHeight}px` }}
+						>
+							<TimeAxis model={model} />
+							{drag && (
+								<i
+									className={`schedule-drag-preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
+									aria-hidden="true"
+									style={{
+										gridColumn: `${days.indexOf(drag.date < drag.endDate ? drag.date : drag.endDate) + 2} / ${days.indexOf(drag.date > drag.endDate ? drag.date : drag.endDate) + 3}`,
+										top: `${((drag.start - dailyStartMinute) / visibleMinutes) * 100}%`,
+										height: `${((drag.end - drag.start) / visibleMinutes) * 100}%`,
+									}}
+								/>
+							)}
+							{weekDays.map(({ key, enabled }) => (
+								<div
+									key={key}
+									className="schedule-day-column"
+									data-date={key}
+									data-disabled={!enabled ? "true" : undefined}
+									aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
+									onPointerDown={(event) => beginDrag(event, key)}
+									onPointerMove={moveDrag}
+									onPointerUp={finishDrag}
+									onPointerCancel={cancelDrag}
+									onLostPointerCapture={cancelDrag}
+								>
+									<button
+										type="button"
+										className="schedule-day-surface"
+										disabled={!enabled}
+										aria-label={`${key}の時間を追加`}
+									/>
+									{ranges.map((range) => (
+										<ScheduleRange
+											key={range.id}
+											range={range}
+											date={key}
+											model={model}
+										/>
+									))}
+									{movingRange && (
+										<ScheduleRange
+											range={movingRange}
+											date={key}
+											preview
+											model={model}
+										/>
+									)}
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			</section>
+			<aside className="schedule-sidebar">
+				<section className="schedule-event">
+					<h1>{event.title}</h1>
+					{event.description && <p>{event.description}</p>}
+					<div className="schedule-meta">
+						<div className="schedule-meta-label">
+							<Icon name="calendar" size={18} />
+							<span>調整期間</span>
+						</div>
+						<strong>
+							<WeekendText>
+								{formatDateRange(
+									event.window_start_at,
+									event.window_end_at,
+									user.time_zone,
+								)}
+							</WeekendText>
+						</strong>
+					</div>
+					<div className="schedule-meta-pair">
+						<div className="schedule-meta">
+							<div className="schedule-meta-label">
+								<Icon name="clock" size={18} />
+								<span>回答受付</span>
+							</div>
+							<strong>
+								{dailyStartTime}〜{dailyEndTime}
+							</strong>
+						</div>
+						<div className="schedule-meta schedule-meta-duration">
+							<div className="schedule-meta-label">
+								<span>所要時間</span>
+							</div>
+							<strong className="schedule-duration-value">
+								{minutesLabel(event.duration_minutes)}
+							</strong>
+						</div>
+					</div>
+				</section>
+				<div
+					className={
+						icloudOptions.calendars.length > 0
+							? "schedule-guide has-icloud"
+							: "schedule-guide"
+					}
+				>
+					<CalendarImportControls model={model} />
+				</div>
+				{<CopyControl scope="desktop" model={model} />}
+				{user.account_type === "guest" && <ResponseEditLink model={model} />}
+				<section className="schedule-editor">
+					<div className="schedule-editor-heading">
+						<h2>
+							<WeekendText>{selectedTitle}</WeekendText>
+						</h2>
+						{selectedRanges.length === 0 && (
+							<button type="button" onClick={addDailyRange}>
+								<Icon name="plus" size={15} />
+								{entryMode === "available"
+									? "都合がいい時間"
+									: "都合が悪い時間"}
+								を設定
+							</button>
+						)}
+					</div>
+					{selectedRanges.length === 0 && (
+						<p>
+							この日の
+							{entryMode === "available" ? "都合がいい時間" : "都合が悪い時間"}
+							を設定してください
+						</p>
+					)}
+					<RangeList model={model} idPrefix="mobile" />
+				</section>
+
+				<AvailabilityMessages model={model} />
+				<AvailabilitySubmit model={model} />
+			</aside>
+		</>
+	);
+}
+
+function AvailabilitySubmit({
+	model,
+	mobile = false,
+}: {
+	model: AvailabilityModel;
+	mobile?: boolean;
+}) {
+	const { submitting, submittingIntent, event, availability } = model;
+	return (
+		<footer
+			className={`schedule-submit${mobile ? " schedule-mobile-submit" : ""}`}
+		>
+			<button
+				type="submit"
+				name="intent"
+				value="save"
+				className="schedule-save"
+				disabled={submitting || event.status !== "open"}
+			>
+				{submittingIntent === "save"
+					? "保存しています…"
+					: availability.response_status === "submitted"
+						? "回答を更新"
+						: "回答を保存"}
+				<Icon name="arrow" size={13} />
+			</button>
+			<button
+				type="submit"
+				name="intent"
+				value="none"
+				className="schedule-none"
+				disabled={submitting}
+			>
+				空き時間なしで回答
+			</button>
+		</footer>
+	);
+}
+
+function AvailabilityMessages({
+	model,
+	compact = false,
+}: {
+	model: AvailabilityModel;
+	compact?: boolean;
+}) {
+	const { actionData, importedRanges, calendarWindow } = model;
+	return (
+		<>
+			{actionData?.kind === "preview" && (
+				<p className="schedule-message success">
+					{compact ? (
+						<>予定から{importedRanges.length}件を取り込みました</>
+					) : (
+						<>
+							{calendarWindow.start}〜{calendarWindow.end}の範囲から
+							{importedRanges.length}件を取り込みました
+						</>
+					)}
+				</p>
+			)}
+			{actionData?.kind === "copied" && (
+				<p className="schedule-message success">
+					別イベントの回答をコピーしました
+				</p>
+			)}
+			{actionData?.kind === "saved" && (
+				<p className="schedule-message success">回答を保存しました</p>
+			)}
+			{actionData?.kind === "response-link" && (
+				<p className="schedule-message success">再回答用リンクを発行しました</p>
+			)}
+			{actionData?.kind === "error" && (
+				<ValidationMessage compact title={actionData.error.message}>
+					{actionData.error.code.startsWith("icloud_") ||
+					actionData.error.code.startsWith("calendar_") ||
+					actionData.error.code === "oauth_failed" ? (
+						<Link
+							to={
+								actionData.error.code.startsWith("icloud_")
+									? "/account#calendar-settings"
+									: "/account#calendar-settings"
+							}
+						>
+							カレンダー設定を確認する
+						</Link>
+					) : (
+						"回答時間を確認して、もう一度お試しください。"
+					)}
+				</ValidationMessage>
+			)}
+		</>
+	);
+}
+
+function CalendarImportControls({
+	model,
+	mobile = false,
+}: {
+	model: AvailabilityModel;
+	mobile?: boolean;
+}) {
+	const { calendarOptions, icloudOptions, submitting, submittingIntent } =
+		model;
+	return (
+		<>
+			<EntryModeToggle model={model} />
+			{calendarOptions.calendars.length > 0 ? (
+				<button
+					type="submit"
+					name="intent"
+					value="calendar-preview"
+					className="schedule-import"
+					disabled={submitting}
+					title={
+						mobile
+							? undefined
+							: "現在の入力を、Googleカレンダーから読み取った空き時間で置き換えます"
+					}
+				>
+					<Icon name="calendar" size={16} />
+					{submittingIntent === "calendar-preview"
+						? mobile
+							? "読込中…"
+							: "読み取り中…"
+						: icloudOptions.calendars.length > 0
+							? "Googleから取込"
+							: mobile
+								? "予定取込"
+								: "予定を取り込む"}
+				</button>
+			) : icloudOptions.calendars.length === 0 ? (
+				<Link
+					className="schedule-settings-link"
+					to="/account#calendar-settings"
+				>
+					カレンダー設定
+				</Link>
+			) : null}
+			{icloudOptions.calendars.length > 0 && (
+				<button
+					type="submit"
+					name="intent"
+					value="icloud-calendar-preview"
+					className="schedule-import"
+					disabled={submitting}
+					title="現在の入力を、iCloudカレンダーから読み取った空き時間で置き換えます"
+				>
+					<Icon name="calendar" size={16} />
+					{submittingIntent === "icloud-calendar-preview"
+						? "読込中…"
+						: "iCloudから取込"}
+				</button>
+			)}
+		</>
 	);
 }

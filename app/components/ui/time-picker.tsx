@@ -33,6 +33,10 @@ type TimePickerPanelProps = {
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
+const HOURS = Array.from({ length: 24 }, (_, index) => pad(index));
+const END_OF_DAY_HOURS = [...HOURS, "24"];
+const MINUTES = Array.from({ length: 60 }, (_, index) => pad(index));
+
 function isAvailable(value: string, min?: string, max?: string) {
 	return (!min || value >= min) && (!max || value <= max);
 }
@@ -166,10 +170,8 @@ function getTimePickerPanel({
 			? value
 			: (min ?? "09:00");
 	const [hour, minute] = current.split(":");
-	const hours = Array.from({ length: allowEndOfDay ? 25 : 24 }, (_, index) =>
-		pad(index),
-	);
-	const minutes = Array.from({ length: 60 }, (_, index) => pad(index));
+	const hours = allowEndOfDay ? END_OF_DAY_HOURS : HOURS;
+	const minutes = MINUTES;
 	const hourDisabled = (item: string) =>
 		Boolean(
 			(min && `${item}:${item === "24" ? "00" : "59"}` < min) ||
