@@ -134,3 +134,7 @@ VPS上の`/opt/vacaro`にはCompose、環境ファイル、運用スクリプト
 | `/events/:eventId/availability` | 参加可能時間の回答 |
 | `/events/:eventId/results` | 共通候補と回答状況 |
 | `/events/:eventId/manage` | 主催者向け管理・日程確定 |
+
+## iCloudカレンダー連携
+
+ユーザー設定の「iCloudの接続・取り込み設定」で、Apple Accountとアプリ用パスワードを登録できます。空き時間の取り込み、対象カレンダーの選択、専用「Vacaro」カレンダーへの確定予定の登録・更新・削除に対応します。バックエンドのマイグレーション`000016`が必要です。設定・運用方法は[iCloud連携ガイド](docs/icloud-calendar-setup.md)を参照してください。

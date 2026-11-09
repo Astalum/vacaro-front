@@ -9,6 +9,8 @@ export type Scenario = {
 	empty?: boolean;
 	restricted?: boolean;
 	calendarDisconnected?: boolean;
+	icloudConnected?: boolean;
+	icloudImportError?: boolean;
 	calendarWritePermissionRequired?: boolean;
 	calendarImportError?: string;
 	changingCounts?: boolean;
@@ -159,6 +161,7 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 		},
 		{ eventID, token },
 	);
+	let icloudConnected = Boolean(scenario.icloudConnected);
 	await page.route("**/api/v1/**", async (route) => {
 		const request = route.request();
 		const url = new URL(request.url());
@@ -174,6 +177,51 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 			if (scenario.anonymous) return failure(401, "unauthorized");
 			return json(user);
 		}
+		if (path === "/integrations/icloud-calendar") {
+			if (request.method() === "POST") {
+				icloudConnected = true;
+				return json({ connected: true });
+			}
+			if (request.method() === "DELETE") {
+				icloudConnected = false;
+				return route.fulfill({ status: 204 });
+			}
+		}
+		if (path === "/integrations/icloud-calendar/calendars") {
+			if (!scenario.icloudConnected)
+				return failure(409, "icloud_not_connected");
+			return json({
+				account: "apple@example.com",
+				calendars: [
+					{
+						id: "https://p01-caldav.icloud.com/user/calendars/personal/",
+						summary: scenario.longText
+							? `${longName}のiCloudカレンダー`
+							: "iCloudの個人",
+						is_vacaro: false,
+					},
+					{
+						id: "https://p01-caldav.icloud.com/user/calendars/vacaro/",
+						summary: "Vacaro",
+						is_vacaro: true,
+					},
+				],
+			});
+		}
+		if (path.endsWith("/icloud-calendar-availability/preview")) {
+			if (scenario.icloudImportError)
+				return failure(409, "icloud_reconnect_required");
+			return json({ intervals });
+		}
+		if (path.endsWith("/icloud-confirmation-calendar"))
+			return json({
+				connection_status: scenario.icloudConnected
+					? "connected"
+					: "not_connected",
+				syncs: scenario.icloudConnected
+					? [{ group_id: null, status: "synced", attempted_at: iso(0) }]
+					: [],
+			});
 		if (path.endsWith("/google-calendar-availability/preview")) {
 			if (scenario.calendarImportError)
 				return failure(409, scenario.calendarImportError);

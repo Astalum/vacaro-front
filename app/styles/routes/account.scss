@@ -447,3 +447,15 @@
 	line-height: 1.5;
 	white-space: normal;
 }
+
+.account-card > .icloud-connect-form,
+.icloud-connect-form {
+ display: grid;
+ gap: 10px;
+ margin-top: 18px;
+ min-width: 0;
+}
+.icloud-connect-form input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.icloud-connect-form p { overflow-wrap: anywhere; line-height: 1.7; }
+.icloud-connect-form .button { justify-self: start; }
+.icloud-disconnect { margin-top: 18px; }

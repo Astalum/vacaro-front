@@ -181,6 +181,7 @@ describe("confirmed schedule clientAction", () => {
 			kind: "success",
 			group_id: "group-1",
 			message: "専用カレンダー「Vacaro」に追加しました",
+			provider: "google",
 		});
 		expect(fetchMock).toHaveBeenCalledWith(
 			"/api/v1/events/event-1/confirmation-calendar",
@@ -190,4 +191,40 @@ describe("confirmed schedule clientAction", () => {
 			}),
 		);
 	});
+});
+
+it("registers a confirmed schedule with iCloud independently of Google", async () => {
+	const fetchMock = vi
+		.fn()
+		.mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: { group_id: null, status: "synced", attempted_at: null },
+				}),
+				{ headers: { "Content-Type": "application/json" } },
+			),
+		);
+	vi.stubGlobal("fetch", fetchMock);
+	const form = new FormData();
+	form.set("intent", "sync-icloud-calendar");
+	const result = await clientAction({
+		params: { eventId: "event-1" },
+		request: new Request("https://vacaro.test/events/event-1/confirmed", {
+			method: "POST",
+			body: form,
+		}),
+	} as never);
+	expect(result).toMatchObject({
+		kind: "success",
+		provider: "icloud",
+		group_id: null,
+	});
+	expect(fetchMock).toHaveBeenCalledWith(
+		"/api/v1/events/event-1/icloud-confirmation-calendar",
+		expect.objectContaining({
+			method: "POST",
+			body: JSON.stringify({ group_id: null }),
+		}),
+	);
+	vi.unstubAllGlobals();
 });

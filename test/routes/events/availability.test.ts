@@ -7,14 +7,12 @@ import {
 
 describe("availability clientAction", () => {
 	it("removes holidays from submitted calendar IDs before requesting a preview", async () => {
-		const fetchMock = vi
-			.fn()
-			.mockResolvedValue(
-				new Response(JSON.stringify({ data: { intervals: [] } }), {
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				}),
-			);
+		const fetchMock = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ data: { intervals: [] } }), {
+				status: 200,
+				headers: { "Content-Type": "application/json" },
+			}),
+		);
 		vi.stubGlobal("fetch", fetchMock);
 		const formData = new FormData();
 		formData.set("intent", "calendar-preview");
@@ -289,4 +287,41 @@ describe("availability clientLoader response identity", () => {
 			fetchMock.mock.calls.some(([input]) => String(input).endsWith("/me")),
 		).toBe(false);
 	});
+});
+
+it("imports iCloud intervals from the iCloud endpoint", async () => {
+	const intervals = [
+		{
+			start_at: "2026-11-15T01:00:00Z",
+			end_at: "2026-11-15T02:00:00Z",
+			source: "icloud_calendar",
+		},
+	];
+	const fetchMock = vi
+		.fn()
+		.mockResolvedValue(
+			new Response(JSON.stringify({ data: { intervals } }), {
+				headers: { "Content-Type": "application/json" },
+			}),
+		);
+	vi.stubGlobal("fetch", fetchMock);
+	const form = new FormData();
+	form.set("intent", "icloud-calendar-preview");
+	form.set("icloud_calendar_ids", JSON.stringify(["icloud-personal"]));
+	const result = await clientAction({
+		params: { eventId: "event-1" },
+		request: new Request("https://vacaro.test/events/event-1/availability", {
+			method: "POST",
+			body: form,
+		}),
+	} as never);
+	expect(result).toEqual({ kind: "preview", intervals });
+	expect(fetchMock).toHaveBeenCalledWith(
+		"/api/v1/events/event-1/icloud-calendar-availability/preview",
+		expect.objectContaining({
+			method: "POST",
+			body: JSON.stringify({ calendar_ids: ["icloud-personal"] }),
+		}),
+	);
+	vi.unstubAllGlobals();
 });

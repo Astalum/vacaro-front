@@ -316,3 +316,15 @@
 		grid-area: participants;
 	}
 }
+
+.calendar-provider-controls {
+ display: grid;
+ grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+ gap: 12px;
+ width: 100%;
+ min-width: 0;
+}
+.confirmed-actions > .calendar-provider-controls { flex: 1 1 0; max-width: 900px; }
+.confirmed-group-actions > .calendar-provider-controls { flex-basis: 100%; }
+.calendar-provider-controls .calendar-sync-panel { min-width: 0; max-width: 100%; }
+.calendar-provider-controls p { overflow-wrap: anywhere; }

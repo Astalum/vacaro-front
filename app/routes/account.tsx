@@ -6,6 +6,7 @@ import {
 	redirectDocument,
 	useNavigation,
 	useSearchParams,
+	Link,
 } from "react-router";
 import { Icon, PageIntro, PageShell } from "~/components/app";
 import { TimePicker } from "~/components/ui/time-picker";
@@ -374,6 +375,16 @@ export default function Account({
 						</Form>
 					</section>
 
+					<section className="account-card">
+						<h2>iCloudカレンダー連携</h2>
+						<p>
+							iPhone標準カレンダーのiCloud予定を取り込み、確定予定を専用カレンダー「Vacaro」に自動登録できます。
+						</p>
+						<Link className="button button-ghost" to="/account/icloud">
+							<Icon name="calendar" size={17} />
+							iCloudの接続・取り込み設定
+						</Link>
+					</section>
 					{user.account_type === "registered" && (
 						<>
 							<section className="account-card integration-card">

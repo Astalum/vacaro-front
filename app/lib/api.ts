@@ -7,7 +7,10 @@ export type EventStatus = "open" | "confirmed" | "cancelled";
 export type SchedulingMode = "whole_event" | "groups";
 export type ParticipantRole = "organizer" | "member";
 export type ResponseStatus = "pending" | "submitted";
-export type AvailabilitySource = "manual" | "google_calendar";
+export type AvailabilitySource =
+	| "manual"
+	| "google_calendar"
+	| "icloud_calendar";
 
 export interface User {
 	id: string;

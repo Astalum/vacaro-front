@@ -1341,3 +1341,14 @@
 		animation-iteration-count: 1 !important;
 	}
 }
+
+.schedule-mobile-controls { flex-wrap: wrap; }
+.schedule-mobile-controls .schedule-entry-mode { flex: 1 1 180px; }
+.schedule-mobile-controls .schedule-import { max-width: 100%; white-space: normal; }
+.schedule-sidebar > .schedule-guide.has-icloud {
+ display: grid;
+ grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.schedule-sidebar > .schedule-guide.has-icloud .schedule-entry-mode { grid-column: 1 / -1; }
+.schedule-sidebar > .schedule-guide.has-icloud .schedule-import { min-width: 0; max-width: 100%; white-space: normal; }
+.schedule-sidebar > .schedule-guide.has-icloud .schedule-import:only-of-type { grid-column: 1 / -1; }

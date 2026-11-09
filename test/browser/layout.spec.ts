@@ -3,6 +3,37 @@ import { installFixtures, type Scenario, token } from "./fixtures";
 import { layoutProblems } from "./geometry";
 
 const cases: { name: string; path: string; scenario?: Scenario }[] = [
+	{ name: "iCloud settings disconnected", path: "/account/icloud" },
+	{
+		name: "iCloud settings connected",
+		path: "/account/icloud",
+		scenario: { icloudConnected: true },
+	},
+	{
+		name: "iCloud settings long content",
+		path: "/account/icloud",
+		scenario: { icloudConnected: true, longText: true },
+	},
+	{
+		name: "iCloud availability",
+		path: "/events/event-1/availability",
+		scenario: { icloudConnected: true, calendarDisconnected: true },
+	},
+	{
+		name: "iCloud and Google availability",
+		path: "/events/event-1/availability",
+		scenario: { icloudConnected: true },
+	},
+	{
+		name: "iCloud confirmed",
+		path: "/events/event-1/confirmed",
+		scenario: { icloudConnected: true },
+	},
+	{
+		name: "iCloud confirmed groups",
+		path: "/events/event-1/confirmed",
+		scenario: { icloudConnected: true, groups: true },
+	},
 	{
 		name: "account dedicated calendar reconnect",
 		path: "/account",
@@ -356,6 +387,75 @@ test("holiday calendars are excluded from saved selections and the settings list
 	await expect(page.locator(".schedule-message.success:visible")).toContainText(
 		"件を取り込みました",
 	);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("iCloud connects without retaining the app password in the form or storage", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page);
+	await page.goto("/account/icloud");
+	await page
+		.getByLabel("Apple Accountのメールアドレス")
+		.fill("apple@example.com");
+	await page
+		.getByLabel("アプリ用パスワード", { exact: true })
+		.fill("aaaa-bbbb-cccc-dddd");
+	await page.getByRole("button", { name: "iCloudに接続", exact: true }).click();
+	await expect(
+		page.getByText(
+			"iCloudに接続しました。確定予定は専用カレンダー「Vacaro」に登録します。",
+			{ exact: true },
+		),
+	).toBeVisible();
+	await expect(page.locator("#icloud-app-password")).toHaveValue("");
+	expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
+		"aaaa-bbbb-cccc-dddd",
+	);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("iCloud imports selected calendars", async ({ page }) => {
+	const { unknownRequests } = await installFixtures(page, {
+		icloudConnected: true,
+		calendarDisconnected: true,
+	});
+	await page.goto("/events/event-1/availability");
+	const request = page.waitForRequest(
+		(r) =>
+			r.url().endsWith("/icloud-calendar-availability/preview") &&
+			r.method() === "POST",
+	);
+	await page.locator('button[value="icloud-calendar-preview"]:visible').click();
+	expect((await request).postDataJSON()).toEqual({
+		calendar_ids: ["https://p01-caldav.icloud.com/user/calendars/personal/"],
+	});
+	await expect(page.locator(".schedule-message.success:visible")).toContainText(
+		"件を取り込みました",
+	);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("iCloud import failure preserves the answer and links to iCloud settings", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page, {
+		icloudConnected: true,
+		icloudImportError: true,
+		calendarDisconnected: true,
+	});
+	await page.goto("/events/event-1/availability");
+	const before = await page.locator('input[name="intervals"]').inputValue();
+	await page.locator('button[value="icloud-calendar-preview"]:visible').click();
+	await expect(
+		page
+			.locator('a[href="/account/icloud"]:visible')
+			.filter({ hasText: "カレンダー設定を確認する" }),
+	).toBeVisible();
+	await expect(page.locator('input[name="intervals"]')).toHaveValue(before);
 	expect(unknownRequests).toEqual([]);
 	expect(await layoutProblems(page)).toEqual([]);
 });

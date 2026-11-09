@@ -25,22 +25,38 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const event = await apiRequest<Event>(`/events/${params.eventId}`);
-	const [user, participants, groups, calendarStatus] = await Promise.all([
-		apiRequest<User>("/me"),
-		apiRequest<Participant[]>(`/events/${event.id}/participants`),
-		event.scheduling_mode === "groups"
-			? apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
-			: Promise.resolve([] as SchedulingGroup[]),
-		apiRequest<ConfirmationCalendarStatus>(
-			`/events/${event.id}/confirmation-calendar`,
-		).catch(
-			(): ConfirmationCalendarStatus => ({
-				connection_status: "error",
-				syncs: [],
-			}),
-		),
-	]);
-	return { event, user, participants, groups, calendarStatus };
+	const [user, participants, groups, calendarStatus, icloudCalendarStatus] =
+		await Promise.all([
+			apiRequest<User>("/me"),
+			apiRequest<Participant[]>(`/events/${event.id}/participants`),
+			event.scheduling_mode === "groups"
+				? apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
+				: Promise.resolve([] as SchedulingGroup[]),
+			apiRequest<ConfirmationCalendarStatus>(
+				`/events/${event.id}/confirmation-calendar`,
+			).catch(
+				(): ConfirmationCalendarStatus => ({
+					connection_status: "error",
+					syncs: [],
+				}),
+			),
+			apiRequest<ConfirmationCalendarStatus>(
+				`/events/${event.id}/icloud-confirmation-calendar`,
+			).catch(
+				(): ConfirmationCalendarStatus => ({
+					connection_status: "error",
+					syncs: [],
+				}),
+			),
+		]);
+	return {
+		event,
+		user,
+		participants,
+		groups,
+		calendarStatus,
+		icloudCalendarStatus,
+	};
 }
 clientLoader.hydrate = true as const;
 
@@ -52,11 +68,13 @@ export async function clientAction({
 	const intent = String(formData.get("intent") ?? "");
 	const rawGroupID = String(formData.get("group_id") ?? "").trim();
 	const groupID = rawGroupID || null;
-	if (intent !== "sync-calendar") {
+	const provider = intent === "sync-icloud-calendar" ? "icloud" : "google";
+	if (intent !== "sync-calendar" && intent !== "sync-icloud-calendar") {
 		return data(
 			{
 				kind: "error" as const,
 				group_id: groupID,
+				provider,
 				error: { code: "invalid_intent", message: "操作を確認してください" },
 			},
 			{ status: 400 },
@@ -64,7 +82,7 @@ export async function clientAction({
 	}
 	try {
 		await apiRequest<ConfirmationCalendarSync>(
-			`/events/${params.eventId}/confirmation-calendar`,
+			`/events/${params.eventId}/${provider === "icloud" ? "icloud-" : ""}confirmation-calendar`,
 			{
 				method: "POST",
 				body: JSON.stringify({ group_id: groupID }),
@@ -73,13 +91,15 @@ export async function clientAction({
 		return {
 			kind: "success" as const,
 			group_id: groupID,
-			message: "専用カレンダー「Vacaro」に追加しました",
+			provider,
+			message: `${provider === "icloud" ? "iCloudの" : ""}専用カレンダー「Vacaro」に追加しました`,
 		};
 	} catch (error) {
 		return data(
 			{
 				kind: "error" as const,
 				group_id: groupID,
+				provider,
 				error: apiErrorData(error),
 			},
 			{ status: error instanceof ApiError ? error.status : 500 },
@@ -98,7 +118,14 @@ export default function Confirmed({
 	loaderData,
 	actionData,
 }: Route.ComponentProps) {
-	const { event, user, participants, groups, calendarStatus } = loaderData;
+	const {
+		event,
+		user,
+		participants,
+		groups,
+		calendarStatus,
+		icloudCalendarStatus = { connection_status: "not_connected", syncs: [] },
+	} = loaderData;
 	const navigation = useNavigation();
 	const submittingGroupID =
 		navigation.formData?.get("intent") === "sync-calendar"
@@ -168,9 +195,10 @@ export default function Confirmed({
 						<ParticipantList label="参加者" participants={participants} />
 						<div className="confirmed-group-actions">
 							{event.confirmed_start_at && event.confirmed_end_at && (
-								<CalendarSyncControl
+								<CalendarSyncControls
 									actionData={actionData}
 									calendarStatus={calendarStatus}
+									icloudCalendarStatus={icloudCalendarStatus}
 									groupID={null}
 									submittingGroupID={submittingGroupID}
 								/>
@@ -230,9 +258,10 @@ export default function Confirmed({
 									group.members.some(
 										(member) => member.user_id === user.id,
 									) && (
-										<CalendarSyncControl
+										<CalendarSyncControls
 											actionData={actionData}
 											calendarStatus={calendarStatus}
+											icloudCalendarStatus={icloudCalendarStatus}
 											groupID={group.id}
 											submittingGroupID={submittingGroupID}
 										/>
@@ -350,9 +379,10 @@ export default function Confirmed({
 				<ParticipantList label="参加者" participants={participants} />
 			</section>
 			<div className="confirmed-actions">
-				<CalendarSyncControl
+				<CalendarSyncControls
 					actionData={actionData}
 					calendarStatus={calendarStatus}
+					icloudCalendarStatus={icloudCalendarStatus}
 					groupID={null}
 					submittingGroupID={submittingGroupID}
 				/>
@@ -392,20 +422,53 @@ function ParticipantList({
 	);
 }
 
+function CalendarSyncControls(props: {
+	calendarStatus: ConfirmationCalendarStatus;
+	icloudCalendarStatus: ConfirmationCalendarStatus;
+	groupID: string | null;
+	submittingGroupID: string | null | undefined;
+	actionData: Route.ComponentProps["actionData"];
+}) {
+	const navigation = useNavigation();
+	const icloudSubmitting =
+		navigation.formData?.get("intent") === "sync-icloud-calendar"
+			? String(navigation.formData.get("group_id") ?? "") || null
+			: undefined;
+	return (
+		<div className="calendar-provider-controls">
+			<CalendarSyncControl {...props} provider="google" />
+			<CalendarSyncControl
+				{...props}
+				provider="icloud"
+				calendarStatus={props.icloudCalendarStatus}
+				submittingGroupID={icloudSubmitting}
+			/>
+		</div>
+	);
+}
+
 function CalendarSyncControl({
+	provider,
 	calendarStatus,
 	groupID,
 	submittingGroupID,
 	actionData,
 }: {
+	provider: "google" | "icloud";
 	calendarStatus: ConfirmationCalendarStatus;
 	groupID: string | null;
 	submittingGroupID: string | null | undefined;
 	actionData: Route.ComponentProps["actionData"];
 }) {
+	const isICloud = provider === "icloud";
+	const calendarLabel = isICloud ? "iCloudカレンダー" : "Googleカレンダー";
+	const settingsPath = isICloud
+		? "/account/icloud"
+		: "/account#calendar-settings";
 	const sync = calendarStatus.syncs.find((item) => item.group_id === groupID);
 	const isSubmitting = submittingGroupID === groupID;
-	const isCurrentAction = actionData?.group_id === groupID;
+	const isCurrentAction =
+		actionData?.group_id === groupID && actionData?.provider === provider;
 	const hasCurrentActionMessage = isCurrentAction && Boolean(actionData);
 	if (
 		calendarStatus.connection_status === "not_connected" ||
@@ -415,13 +478,13 @@ function CalendarSyncControl({
 			<div className="calendar-sync-panel needs-connection">
 				<p>
 					{calendarStatus.connection_status === "not_connected"
-						? "Googleカレンダーを連携すると、専用カレンダー「Vacaro」にこの予定を追加できます。"
+						? `${calendarLabel}を連携すると、専用カレンダー「Vacaro」にこの予定を追加できます。`
 						: "専用カレンダー「Vacaro」への登録には、再接続して専用カレンダーの作成・管理を許可してください。"}
 				</p>
-				<Link className="button button-primary" to="/account#calendar-settings">
+				<Link className="button button-primary" to={settingsPath}>
 					<Icon name="calendar" size={17} />
 					{calendarStatus.connection_status === "not_connected"
-						? "Googleカレンダーを連携"
+						? `${calendarLabel}を連携`
 						: "連携権限を更新"}
 				</Link>
 			</div>
@@ -430,7 +493,7 @@ function CalendarSyncControl({
 	if (calendarStatus.connection_status !== "connected") {
 		return (
 			<div className="calendar-sync-panel error">
-				<p>Googleカレンダー連携の状態を確認できませんでした。</p>
+				<p>{calendarLabel}連携の状態を確認できませんでした。</p>
 			</div>
 		);
 	}
@@ -443,7 +506,7 @@ function CalendarSyncControl({
 			)}
 			{sync?.status === "synced" && !hasCurrentActionMessage && (
 				<p className="calendar-sync-message success">
-					専用カレンダー「Vacaro」に追加済みです。
+					{isICloud ? "iCloudの" : ""}専用カレンダー「Vacaro」に追加済みです。
 				</p>
 			)}
 			{isCurrentAction && actionData?.kind === "error" && (
@@ -455,7 +518,11 @@ function CalendarSyncControl({
 				<p className="calendar-sync-message success">{actionData.message}</p>
 			)}
 			<Form method="post">
-				<input name="intent" type="hidden" value="sync-calendar" />
+				<input
+					name="intent"
+					type="hidden"
+					value={isICloud ? "sync-icloud-calendar" : "sync-calendar"}
+				/>
 				{groupID && <input name="group_id" type="hidden" value={groupID} />}
 				<button
 					className="button button-primary"
@@ -466,10 +533,10 @@ function CalendarSyncControl({
 					{isSubmitting
 						? "追加しています…"
 						: sync?.status === "failed"
-							? "Googleカレンダーへの追加を再試行"
+							? `${calendarLabel}への追加を再試行`
 							: sync?.status === "synced"
-								? "Googleカレンダーへ再登録"
-								: "Googleカレンダーに追加"}
+								? `${calendarLabel}へ再登録`
+								: `${calendarLabel}に追加`}
 				</button>
 			</Form>
 		</div>

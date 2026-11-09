@@ -23,6 +23,10 @@ import {
 	saveResponseEditUrl,
 	type User,
 } from "~/lib/api";
+import {
+	type ICloudCalendar,
+	savedICloudCalendarIDs,
+} from "~/lib/icloud-calendar";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/availability";
 
@@ -71,35 +75,50 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const userRequest = apiRequest<User>(
 		`/events/${params.eventId}/response-user`,
 	);
-	const [event, availability, calendarOptions, user, copySources] =
-		await Promise.all([
-			apiRequest<Event>(`/events/${params.eventId}`),
-			apiRequest<{
-				response_status: string;
-				intervals: AvailabilityInterval[];
-			}>(`/events/${params.eventId}/my-availability`),
-			apiRequest<{ calendars: GoogleCalendar[] }>(
-				"/integrations/google-calendar/calendars",
-			)
-				.then((result) => ({
-					calendars: result.calendars.filter(
-						(calendar) => !isGoogleHolidayCalendarID(calendar.id),
-					),
-					error: null,
-				}))
-				.catch((error: unknown) => ({
-					calendars: [] as GoogleCalendar[],
-					error: apiErrorData(error),
-				})),
-			userRequest,
-			listCopySourceEvents(params.eventId)
-				.then((events) => ({ events, error: null }))
-				.catch((error: unknown) => ({
-					events: [] as Event[],
-					error: apiErrorData(error),
-				})),
-		]);
+	const [
+		event,
+		availability,
+		calendarOptions,
+		user,
+		copySources,
+		icloudOptions,
+	] = await Promise.all([
+		apiRequest<Event>(`/events/${params.eventId}`),
+		apiRequest<{
+			response_status: string;
+			intervals: AvailabilityInterval[];
+		}>(`/events/${params.eventId}/my-availability`),
+		apiRequest<{ calendars: GoogleCalendar[] }>(
+			"/integrations/google-calendar/calendars",
+		)
+			.then((result) => ({
+				calendars: result.calendars.filter(
+					(calendar) => !isGoogleHolidayCalendarID(calendar.id),
+				),
+				error: null,
+			}))
+			.catch((error: unknown) => ({
+				calendars: [] as GoogleCalendar[],
+				error: apiErrorData(error),
+			})),
+		userRequest,
+		listCopySourceEvents(params.eventId)
+			.then((events) => ({ events, error: null }))
+			.catch((error: unknown) => ({
+				events: [] as Event[],
+				error: apiErrorData(error),
+			})),
+		apiRequest<{ calendars: ICloudCalendar[] }>(
+			"/integrations/icloud-calendar/calendars",
+		)
+			.then((result) => ({ calendars: result.calendars, error: null }))
+			.catch((error: unknown) => ({
+				calendars: [] as ICloudCalendar[],
+				error: apiErrorData(error),
+			})),
+	]);
 	return {
+		icloudOptions,
 		event,
 		availability,
 		calendarOptions,
@@ -141,9 +160,13 @@ export async function clientAction({
 			});
 			return { kind: "copied" as const, intervals: result.intervals };
 		}
-		if (intent === "calendar-preview") {
+		if (intent === "calendar-preview" || intent === "icloud-calendar-preview") {
+			const isICloud = intent === "icloud-calendar-preview";
 			const parsedCalendarIDs = JSON.parse(
-				String(formData.get("calendar_ids") ?? "[]"),
+				String(
+					formData.get(isICloud ? "icloud_calendar_ids" : "calendar_ids") ??
+						"[]",
+				),
 			) as unknown;
 			const calendarIDs = Array.isArray(parsedCalendarIDs)
 				? parsedCalendarIDs.filter(
@@ -154,11 +177,16 @@ export async function clientAction({
 					)
 				: [];
 			const result = await apiRequest<{ intervals: AvailabilityInterval[] }>(
-				`/events/${params.eventId}/google-calendar-availability/preview`,
+				`/events/${params.eventId}/${isICloud ? "icloud" : "google"}-calendar-availability/preview`,
 				{
 					method: "POST",
 					body: JSON.stringify({
-						calendar_ids: calendarIDs.length > 0 ? calendarIDs : ["primary"],
+						calendar_ids:
+							calendarIDs.length > 0
+								? calendarIDs
+								: isICloud
+									? []
+									: ["primary"],
 					}),
 				},
 			);
@@ -426,6 +454,7 @@ export default function AvailabilityPage({
 		event,
 		availability,
 		calendarOptions,
+		icloudOptions = { calendars: [] as ICloudCalendar[], error: null },
 		user,
 		copySourceEvents,
 		copySourceEventsError,
@@ -436,6 +465,10 @@ export default function AvailabilityPage({
 	const selectedCalendarIDs = useMemo(
 		() => savedCalendarIDs(calendarOptions.calendars),
 		[calendarOptions.calendars],
+	);
+	const selectedICloudCalendarIDs = useMemo(
+		() => savedICloudCalendarIDs(icloudOptions.calendars),
+		[icloudOptions.calendars],
 	);
 	const windowStart = localDateTime(event.window_start_at, user.time_zone);
 	const windowEnd = localDateTime(event.window_end_at, user.time_zone);
@@ -780,6 +813,11 @@ export default function AvailabilityPage({
 					name="calendar_ids"
 					value={JSON.stringify(selectedCalendarIDs)}
 				/>
+				<input
+					type="hidden"
+					name="icloud_calendar_ids"
+					value={JSON.stringify(selectedICloudCalendarIDs)}
+				/>
 				<input type="hidden" name="time_zone" value={user.time_zone} />
 				<input type="hidden" name="source_event_id" value={sourceEventID} />
 
@@ -850,15 +888,32 @@ export default function AvailabilityPage({
 								<Icon name="calendar" size={16} />
 								{submittingIntent === "calendar-preview"
 									? "読込中…"
-									: "予定取込"}
+									: icloudOptions.calendars.length > 0
+										? "Googleから取込"
+										: "予定取込"}
 							</button>
-						) : (
+						) : icloudOptions.calendars.length === 0 ? (
 							<Link
 								className="schedule-settings-link"
 								to="/account#calendar-settings"
 							>
 								カレンダー設定
 							</Link>
+						) : null}
+						{icloudOptions.calendars.length > 0 && (
+							<button
+								type="submit"
+								name="intent"
+								value="icloud-calendar-preview"
+								className="schedule-import"
+								disabled={submitting}
+								title="現在の入力を、iCloudカレンダーから読み取った空き時間で置き換えます"
+							>
+								<Icon name="calendar" size={16} />
+								{submittingIntent === "icloud-calendar-preview"
+									? "読込中…"
+									: "iCloudから取込"}
+							</button>
 						)}
 					</section>
 					{renderCopyControl("mobile")}
@@ -1097,9 +1152,16 @@ export default function AvailabilityPage({
 					)}
 					{actionData?.kind === "error" && (
 						<ValidationMessage compact title={actionData.error.message}>
-							{actionData.error.code.startsWith("calendar_") ||
+							{actionData.error.code.startsWith("icloud_") ||
+							actionData.error.code.startsWith("calendar_") ||
 							actionData.error.code === "oauth_failed" ? (
-								<Link to="/account#calendar-settings">
+								<Link
+									to={
+										actionData.error.code.startsWith("icloud_")
+											? "/account/icloud"
+											: "/account#calendar-settings"
+									}
+								>
 									カレンダー設定を確認する
 								</Link>
 							) : (
@@ -1286,7 +1348,13 @@ export default function AvailabilityPage({
 							</div>
 						</div>
 					</section>
-					<div className="schedule-guide">
+					<div
+						className={
+							icloudOptions.calendars.length > 0
+								? "schedule-guide has-icloud"
+								: "schedule-guide"
+						}
+					>
 						<fieldset
 							className="schedule-entry-mode"
 							aria-label="回答する時間の選び方"
@@ -1319,15 +1387,32 @@ export default function AvailabilityPage({
 								<Icon name="calendar" size={16} />
 								{submittingIntent === "calendar-preview"
 									? "読み取り中…"
-									: "予定を取り込む"}
+									: icloudOptions.calendars.length > 0
+										? "Googleから取込"
+										: "予定を取り込む"}
 							</button>
-						) : (
+						) : icloudOptions.calendars.length === 0 ? (
 							<Link
 								className="schedule-settings-link"
 								to="/account#calendar-settings"
 							>
 								カレンダー設定
 							</Link>
+						) : null}
+						{icloudOptions.calendars.length > 0 && (
+							<button
+								type="submit"
+								name="intent"
+								value="icloud-calendar-preview"
+								className="schedule-import"
+								disabled={submitting}
+								title="現在の入力を、iCloudカレンダーから読み取った空き時間で置き換えます"
+							>
+								<Icon name="calendar" size={16} />
+								{submittingIntent === "icloud-calendar-preview"
+									? "読込中…"
+									: "iCloudから取込"}
+							</button>
 						)}
 					</div>
 					{renderCopyControl("desktop")}
@@ -1435,9 +1520,16 @@ export default function AvailabilityPage({
 					)}
 					{actionData?.kind === "error" && (
 						<ValidationMessage compact title={actionData.error.message}>
-							{actionData.error.code.startsWith("calendar_") ||
+							{actionData.error.code.startsWith("icloud_") ||
+							actionData.error.code.startsWith("calendar_") ||
 							actionData.error.code === "oauth_failed" ? (
-								<Link to="/account#calendar-settings">
+								<Link
+									to={
+										actionData.error.code.startsWith("icloud_")
+											? "/account/icloud"
+											: "/account#calendar-settings"
+									}
+								>
 									カレンダー設定を確認する
 								</Link>
 							) : (

@@ -1002,3 +1002,7 @@ stateDiagram-v2
 - 未定義パスの`404`と許可されていないHTTPメソッドの`405`は、現時点ではGo標準Muxのプレーンテキスト応答となる。
 - Google OAuthの実環境動作にはGoogle Cloud ConsoleのOAuthクライアントと許可済みリダイレクトURIが必要。
 - `SESSION_KEY`と`TOKEN_ENCRYPTION_KEY`は別々の32バイト鍵をBase64化し、Secret Manager等から供給する。
+
+## iCloud連携
+
+`/account/icloud`でiCloudカレンダーを設定する。接続・カレンダー一覧・解除は`/api/v1/integrations/icloud-calendar`系API、回答の取り込みは`/icloud-calendar-availability/preview`、確定予定の登録は`/icloud-confirmation-calendar`を利用する。GoogleとiCloudの同期状態は別に表示し、失敗メッセージは対象プロバイダーだけに表示する。詳細は[設定ガイド](icloud-calendar-setup.md)を参照。

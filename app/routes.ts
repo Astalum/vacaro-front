@@ -5,6 +5,7 @@ export default [
 	route("privacy", "routes/privacy.tsx"),
 	route("terms", "routes/terms.tsx"),
 	route("account", "routes/account.tsx"),
+	route("account/icloud", "routes/account-icloud.tsx"),
 	route("events", "routes/events/index.tsx"),
 	route("events/new", "routes/events/new.tsx"),
 	route("events/:eventId/created", "routes/events/created.tsx"),
