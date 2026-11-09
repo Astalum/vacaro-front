@@ -8,10 +8,13 @@ import {
 	within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { DateTimePicker } from "~/components/ui/date-time-picker";
 
 describe("DateTimePicker", () => {
+	beforeAll(async () => {
+		await import("~/components/ui/calendar");
+	});
 	afterEach(cleanup);
 	it("selects 24:00 on the chosen date and disables later minutes", async () => {
 		const user = userEvent.setup();

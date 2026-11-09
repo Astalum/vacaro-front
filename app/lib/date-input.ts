@@ -18,3 +18,9 @@ export function serializeDateInput(date?: Date) {
 		? `${String(date.getFullYear()).padStart(4, "0")}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 		: "";
 }
+
+const weekdayFormatter = new Intl.DateTimeFormat("ja-JP", { weekday: "short" });
+
+export function dateInputLabel(date: Date) {
+	return `${String(date.getFullYear()).padStart(4, "0")}年${date.getMonth() + 1}月${date.getDate()}日(${weekdayFormatter.format(date)})`;
+}

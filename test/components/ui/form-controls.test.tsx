@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { DatePicker } from "~/components/ui/date-picker";
 import { TimePicker } from "~/components/ui/time-picker";
 import {
@@ -11,6 +11,11 @@ import {
 } from "~/components/ui/validation-message";
 
 describe("custom form controls", () => {
+	// Compile the lazy dependency during setup; browser tests cover its download.
+	beforeAll(async () => {
+		await import("~/components/ui/calendar");
+	});
+	afterEach(cleanup);
 	it("submits a date selected from the custom calendar", async () => {
 		const user = userEvent.setup();
 		const { container } = render(
@@ -27,7 +32,7 @@ describe("custom form controls", () => {
 
 		await user.click(screen.getByLabelText("開催日"));
 		await user.click(
-			within(screen.getByRole("dialog")).getByRole("button", {
+			await within(screen.getByRole("dialog")).findByRole("button", {
 				name: /2026年6月15日/,
 			}),
 		);

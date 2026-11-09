@@ -1,12 +1,14 @@
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import { CalendarIcon, Clock3Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { WeekendText } from "~/components/app";
-import { parseDateInput, serializeDateInput } from "~/lib/date-input";
+import {
+	dateInputLabel,
+	parseDateInput,
+	serializeDateInput,
+} from "~/lib/date-input";
 import { cn } from "~/lib/utils";
 import { Button } from "./button";
-import { Calendar } from "./calendar";
+import { CalendarPanel } from "./calendar-panel";
 import { PickerTrigger } from "./picker-trigger";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { TimePickerPanel } from "./time-picker";
@@ -137,9 +139,7 @@ export function DateTimePicker(props: DateTimePickerProps) {
 				>
 					{date ? (
 						<>
-							<WeekendText>
-								{format(date, "yyyy年M月d日(E)", { locale: ja })}
-							</WeekendText>
+							<WeekendText>{dateInputLabel(date)}</WeekendText>
 							<span className="date-time-picker-time">
 								<Clock3Icon size={14} aria-hidden="true" /> {time}
 							</span>
@@ -174,7 +174,7 @@ export function DateTimePicker(props: DateTimePickerProps) {
 				</fieldset>
 				<div className="picker-panel-scroll">
 					{panel === "date" ? (
-						<Calendar
+						<CalendarPanel
 							mode="single"
 							required={required}
 							selected={date}

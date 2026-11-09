@@ -1,11 +1,13 @@
-import { format } from "date-fns";
-import { ja } from "date-fns/locale";
 import { CalendarIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { WeekendText } from "~/components/app";
-import { parseDateInput, serializeDateInput } from "~/lib/date-input";
+import {
+	dateInputLabel,
+	parseDateInput,
+	serializeDateInput,
+} from "~/lib/date-input";
 import { Button } from "./button";
-import { Calendar } from "./calendar";
+import { CalendarPanel } from "./calendar-panel";
 import { PickerTrigger } from "./picker-trigger";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
@@ -122,9 +124,7 @@ export function DatePicker(props: DatePickerProps) {
 					className={className}
 				>
 					{selected ? (
-						<WeekendText>
-							{format(selected, "yyyy年M月d日(E)", { locale: ja })}
-						</WeekendText>
+						<WeekendText>{dateInputLabel(selected)}</WeekendText>
 					) : (
 						"日付を選択"
 					)}
@@ -136,13 +136,12 @@ export function DatePicker(props: DatePickerProps) {
 				className="picker-popover w-[min(22rem,calc(100vw-1.5rem))]"
 				collisionPadding={{ top: 88, right: 12, bottom: 12, left: 12 }}
 			>
-				<Calendar
+				<CalendarPanel
 					mode="single"
 					required={required}
 					selected={selected}
 					onSelect={selectDate}
 					defaultMonth={selected}
-					locale={ja}
 					fixedWeeks
 				/>
 				<div className="picker-footer">

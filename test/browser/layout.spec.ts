@@ -1250,6 +1250,55 @@ test("existing interval touch selection uses the editor delete button", async ({
 	).toEqual([]);
 });
 
+test("calendar code loads on demand and a pending download preserves form values", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page);
+	let requests = 0;
+	let block = false;
+	let release!: () => void;
+	const download = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	await page.route(
+		/\/(?:app\/components\/ui\/calendar\.tsx(?:\?|$)|assets\/calendar-[\w-]+\.js(?:\?|$))/,
+		async (route) => {
+			requests += 1;
+			if (block) await download;
+			await route.continue();
+		},
+	);
+	try {
+		await page.goto("/events/new");
+		const date = page.locator('input[name="window_start_date"]');
+		await expect(date).toBeAttached();
+		const original = await date.inputValue();
+		expect(requests).toBe(0);
+		block = true;
+		await page.locator("#window-start-date").click();
+		await expect(
+			page
+				.getByRole("status")
+				.filter({ hasText: "カレンダーを読み込んでいます" }),
+		).toBeVisible();
+		await expect(date).toHaveValue(original);
+		await page.keyboard.press("Escape");
+		await expect(page.getByRole("dialog")).toHaveCount(0);
+		release();
+		await page.locator("#window-start-date").click();
+		await expect(page.getByRole("grid")).toBeVisible();
+		await page
+			.locator(".vacaro-calendar-day:not(.vacaro-calendar-selected) button")
+			.nth(14)
+			.click();
+		await expect(date).not.toHaveValue(original);
+		expect(requests).toBe(1);
+		expect(unknownRequests).toEqual([]);
+	} finally {
+		release();
+	}
+});
+
 test("availability renders one layout and preserves drafts when the viewport changes", async ({
 	page,
 }) => {
