@@ -278,6 +278,7 @@ export default function Confirmed({
 						</article>
 					))}
 				</div>
+				<TimeTreeGuideLink />
 			</PageShell>
 		);
 	}
@@ -395,7 +396,17 @@ export default function Confirmed({
 					</Link>
 				)}
 			</div>
+			<TimeTreeGuideLink />
 		</PageShell>
+	);
+}
+
+function TimeTreeGuideLink() {
+	return (
+		<p className="timetree-confirmed-help">
+			TimeTreeをお使いの方へ：
+			<Link to="/account/timetree">Google・iCloud経由で確定予定を表示する</Link>
+		</p>
 	);
 }
 

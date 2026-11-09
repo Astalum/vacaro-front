@@ -385,9 +385,21 @@ export default function Account({
 							iCloudの接続・取り込み設定
 						</Link>
 					</section>
+					<section className="account-card">
+						<h2>TimeTreeで確定予定を表示</h2>
+						<p>
+							Google・iCloudの専用カレンダーを経由して、確定予定をTimeTreeに表示できます。
+						</p>
+						<Link className="button button-ghost" to="/account/timetree">
+							TimeTreeへの表示手順
+						</Link>
+					</section>
 					{user.account_type === "registered" && (
 						<>
-							<section className="account-card integration-card">
+							<section
+								className="account-card integration-card"
+								id="google-calendar"
+							>
 								<div className="account-card-heading">
 									<div className="account-card-icon calendar-icon">
 										<Icon name="calendar" />

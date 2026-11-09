@@ -4,6 +4,38 @@
 	gap: 16px;
 }
 
+.timetree-guide {
+	max-width: 850px;
+	margin-inline: auto;
+}
+.timetree-guide ol {
+	padding-left: 1.5em;
+	line-height: 1.8;
+	color: var(--muted);
+}
+.timetree-guide li + li,
+.timetree-guide .account-card > p + p {
+	margin-top: 12px;
+}
+.timetree-guide .button,
+.timetree-guide .timetree-device-help {
+	margin-top: 16px;
+}
+.timetree-guide a:not(.button) {
+	display: inline-block;
+	margin-top: 12px;
+	text-decoration: underline;
+}
+.timetree-confirmed-help {
+	margin-top: 20px;
+	text-align: center;
+	color: var(--muted);
+	line-height: 1.8;
+}
+.timetree-confirmed-help a {
+	text-decoration: underline;
+}
+
 @media (min-width: 980px) {
 	.account-stack:has(.integration-card) {
 		display: grid;

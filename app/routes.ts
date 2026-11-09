@@ -6,6 +6,7 @@ export default [
 	route("terms", "routes/terms.tsx"),
 	route("account", "routes/account.tsx"),
 	route("account/icloud", "routes/account-icloud.tsx"),
+	route("account/timetree", "routes/account-timetree.tsx"),
 	route("events", "routes/events/index.tsx"),
 	route("events/new", "routes/events/new.tsx"),
 	route("events/:eventId/created", "routes/events/created.tsx"),

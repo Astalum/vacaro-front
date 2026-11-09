@@ -3,6 +3,12 @@ import { installFixtures, type Scenario, token } from "./fixtures";
 import { layoutProblems } from "./geometry";
 
 const cases: { name: string; path: string; scenario?: Scenario }[] = [
+	{ name: "TimeTree setup", path: "/account/timetree" },
+	{
+		name: "TimeTree setup signed out",
+		path: "/account/timetree",
+		scenario: { anonymous: true },
+	},
 	{ name: "iCloud settings disconnected", path: "/account/icloud" },
 	{
 		name: "iCloud settings connected",
