@@ -402,10 +402,10 @@
 	user-select: none;
 	transition: background-color 150ms ease;
 }
-.schedule-day-column:hover:not(:disabled) {
+.schedule-day-column:hover:not([data-disabled="true"]) {
 	background-color: #f2fbf7;
 }
-.schedule-day-column:disabled {
+.schedule-day-column[data-disabled="true"] {
 	background-color: #edf3f0;
 	cursor: default;
 }
@@ -1369,4 +1369,50 @@
 .schedule-drag-preview.is-unavailable {
 	border-color: #c85d4c;
 	background: rgba(223, 128, 111, 0.24);
+}
+
+.schedule-day-surface {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	cursor: crosshair;
+	touch-action: none;
+}
+.schedule-range-button {
+	padding: 0;
+	pointer-events: auto;
+	cursor: grab;
+	touch-action: none;
+}
+.schedule-range-button.is-selected {
+	outline: 2px solid #13785d;
+	outline-offset: 1px;
+	background: #a9e3cb;
+}
+.schedule-range-button.is-selected.is-unavailable {
+	outline-color: #a43f2d;
+	background: #efb5a9;
+}
+.schedule-range-button.is-moving {
+	opacity: 0.25;
+	cursor: grabbing;
+}
+.schedule-range.move-preview {
+	z-index: 4;
+	border: 2px dashed #178e70;
+	background: rgba(72, 185, 154, 0.38);
+}
+.schedule-range.move-preview.is-unavailable {
+	border-color: #a43f2d;
+	background: rgba(223, 128, 111, 0.38);
+}
+.schedule-time-row.is-selected {
+	outline: 2px solid #178e70;
+	outline-offset: 2px;
+	border-radius: 6px;
 }

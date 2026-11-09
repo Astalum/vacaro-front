@@ -774,7 +774,7 @@ test("multi-day drag adds the same hours to each selected day and saves UTC inte
 	await page.goto("/events/event-1/availability");
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const columns = page.locator(
-		".schedule-grid > .schedule-day-column:not(:disabled)",
+		".schedule-grid > .schedule-day-column:not([data-disabled=true])",
 	);
 	test.skip(
 		!(await columns.first().isVisible()),
@@ -839,7 +839,7 @@ test("multi-day drag supports reverse selection and merges overlaps on each day"
 	await page.goto("/events/event-1/availability");
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const columns = page.locator(
-		".schedule-grid > .schedule-day-column:not(:disabled)",
+		".schedule-grid > .schedule-day-column:not([data-disabled=true])",
 	);
 	test.skip(
 		!(await columns.first().isVisible()),
@@ -876,12 +876,12 @@ test("multi-day drag supports reverse selection and merges overlaps on each day"
 	const middle = (await columns.nth(1).boundingBox())!;
 	await page.mouse.move(
 		middle.x + middle.width / 2,
-		middle.y + middle.height * (305 / 720),
+		middle.y + middle.height * (455 / 720),
 	);
 	await page.mouse.down();
 	await page.mouse.move(
 		middle.x + middle.width / 2,
-		middle.y + middle.height * (455 / 720),
+		middle.y + middle.height * (305 / 720),
 	);
 	await page.mouse.up();
 	ranges = JSON.parse(
@@ -906,7 +906,7 @@ test("cancelled multi-day drag leaves the answer unchanged", async ({
 	await page.goto("/events/event-1/availability");
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const columns = page.locator(
-		".schedule-grid > .schedule-day-column:not(:disabled)",
+		".schedule-grid > .schedule-day-column:not([data-disabled=true])",
 	);
 	test.skip(
 		!(await columns.first().isVisible()),
@@ -940,6 +940,9 @@ test("single-day mobile drag still records only the selected date", async ({
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const column = page.locator(".schedule-mobile-day");
 	test.skip(!(await column.isVisible()), "Mobile daily grid only");
+	await column.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
 	const bounds = (await column.boundingBox())!;
 	const date = await column.getAttribute("data-date");
 	await page.mouse.move(
@@ -969,7 +972,7 @@ test("multi-day drag can enter unavailable hours for several days", async ({
 	await page.goto("/events/event-1/availability");
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const columns = page.locator(
-		".schedule-grid > .schedule-day-column:not(:disabled)",
+		".schedule-grid > .schedule-day-column:not([data-disabled=true])",
 	);
 	test.skip(!(await columns.first().isVisible()), "Weekly grid only");
 	if ((await columns.count()) < 3)
@@ -1025,7 +1028,7 @@ test("multi-day drag clamps selection to enabled event dates", async ({
 	await page.goto("/events/event-1/availability");
 	await expect(page.locator('input[name="intervals"]')).toBeAttached();
 	const columns = page.locator(
-		".schedule-grid > .schedule-day-column:not(:disabled)",
+		".schedule-grid > .schedule-day-column:not([data-disabled=true])",
 	);
 	test.skip(!(await columns.first().isVisible()), "Weekly grid only");
 	if ((await columns.count()) < 3)
@@ -1045,4 +1048,193 @@ test("multi-day drag clamps selection to enabled event dates", async ({
 	);
 	expect(ranges).toHaveLength(3);
 	expect(ranges[0].start).toBe(`${firstDate}T11:00`);
+});
+
+test("existing interval click selects only that interval and Delete removes it", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const grid = page.locator(
+		".schedule-grid:visible, .schedule-mobile-grid:visible",
+	);
+	await grid.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const columns = grid.locator(
+		".schedule-day-column:not([data-disabled=true])",
+	);
+	const first = (await columns.first().boundingBox())!;
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (125 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (215 / 720),
+	);
+	await page.mouse.up();
+	const before = await page.locator('input[name="intervals"]').inputValue();
+	const interval = grid.locator(".schedule-range-button").first();
+	await interval.click();
+	await expect(interval).toHaveAttribute("aria-pressed", "true");
+	await expect(interval).toBeFocused();
+	expect(await page.locator('input[name="intervals"]').inputValue()).toBe(
+		before,
+	);
+	await page.keyboard.press("Delete");
+	await expect(grid.locator(".schedule-range-button")).toHaveCount(0);
+	expect(
+		JSON.parse(await page.locator('input[name="intervals"]').inputValue()),
+	).toEqual([]);
+});
+
+test("existing interval drag moves it while preserving duration and keyboard selection", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const grid = page.locator(
+		".schedule-grid:visible, .schedule-mobile-grid:visible",
+	);
+	await grid.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const columns = grid.locator(
+		".schedule-day-column:not([data-disabled=true])",
+	);
+	const first = (await columns.first().boundingBox())!;
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (125 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (215 / 720),
+	);
+	await page.mouse.up();
+	const interval = grid.locator(".schedule-range-button").first();
+	const id = await interval.getAttribute("data-range-id");
+	await interval.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const box = (await interval.boundingBox())!;
+	const index = (await columns.count()) > 1 ? 1 : 0;
+	const target = (await columns.nth(index).boundingBox())!;
+	const date = await columns.nth(index).getAttribute("data-date");
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(
+		target.x + target.width / 2,
+		box.y + box.height / 2 + first.height / 12,
+		{ steps: 10 },
+	);
+	await expect(grid.locator(".move-preview")).toBeVisible();
+	await page.mouse.up();
+	const ranges = JSON.parse(
+		await page.locator('input[name="intervals"]').inputValue(),
+	);
+	expect(ranges).toHaveLength(1);
+	expect(ranges[0]).toMatchObject({
+		id,
+		start: `${date}T12:00`,
+		end: `${date}T14:00`,
+	});
+	const moved = grid.locator(`.schedule-range-button[data-range-id="${id}"]`);
+	await expect(moved).toHaveAttribute("aria-pressed", "true");
+	await expect(moved).toBeFocused();
+	await page.keyboard.press("Backspace");
+	await expect(grid.locator(".schedule-range-button")).toHaveCount(0);
+});
+
+test("existing interval cancelled move and Escape keep its times", async ({
+	page,
+}) => {
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const grid = page.locator(
+		".schedule-grid:visible, .schedule-mobile-grid:visible",
+	);
+	await grid.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const column = grid
+		.locator(".schedule-day-column:not([data-disabled=true])")
+		.first();
+	const first = (await column.boundingBox())!;
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (125 / 720),
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		first.x + first.width / 2,
+		first.y + first.height * (215 / 720),
+	);
+	await page.mouse.up();
+	const before = await page.locator('input[name="intervals"]').inputValue();
+	const interval = grid.locator(".schedule-range-button").first();
+	await interval.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const box = (await interval.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 30);
+	await expect(grid.locator(".move-preview")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await page.mouse.up();
+	await expect(grid.locator(".move-preview")).toHaveCount(0);
+	await expect(interval).toHaveAttribute("aria-pressed", "false");
+	expect(await page.locator('input[name="intervals"]').inputValue()).toBe(
+		before,
+	);
+	await page.keyboard.press("Delete");
+	expect(await page.locator('input[name="intervals"]').inputValue()).toBe(
+		before,
+	);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("existing interval touch selection uses the editor delete button", async ({
+	page,
+}) => {
+	test.skip(
+		(page.viewportSize()?.width ?? 1024) > 720,
+		"Touch mobile layout only",
+	);
+	await installFixtures(page, { empty: true, provider: "none" });
+	await page.goto("/events/event-1/availability");
+	await expect(page.locator('input[name="intervals"]')).toBeAttached();
+	const grid = page.locator(".schedule-mobile-grid");
+	await grid.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	const column = (await grid.locator(".schedule-day-column").boundingBox())!;
+	await page.mouse.move(
+		column.x + column.width / 2,
+		column.y + (column.height * 125) / 720,
+	);
+	await page.mouse.down();
+	await page.mouse.move(
+		column.x + column.width / 2,
+		column.y + (column.height * 215) / 720,
+	);
+	await page.mouse.up();
+	const interval = grid.locator(".schedule-range-button");
+	await interval.evaluate((element) =>
+		element.scrollIntoView({ block: "center", behavior: "instant" }),
+	);
+	await interval.tap();
+	await expect(interval).toHaveAttribute("aria-pressed", "true");
+	await page.locator('.schedule-mobile-editor button[aria-label="削除"]').tap();
+	await expect(interval).toHaveCount(0);
+	expect(
+		JSON.parse(await page.locator('input[name="intervals"]').inputValue()),
+	).toEqual([]);
 });

@@ -32,7 +32,20 @@ import { loadCalendarPreference } from "~/lib/calendar-provider";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/availability";
 
-type TimeRange = { id: string; start: string; end: string };
+import {
+	moveAvailabilityRange,
+	type TimeRange,
+} from "~/lib/availability-range";
+
+type MoveState = {
+	range: TimeRange;
+	date: string;
+	pointerId: number;
+	x: number;
+	y: number;
+	moved: boolean;
+	preview: TimeRange;
+};
 type EntryMode = "available" | "unavailable";
 type DragState = {
 	date: string;
@@ -522,13 +535,36 @@ export default function AvailabilityPage({
 	const [weekIndex, setWeekIndex] = useState(() =>
 		Math.max(0, weekOptions.indexOf(weekStart(selectedDate))),
 	);
+	const [selectedRangeID, setSelectedRangeID] = useState<string | null>(null);
+	const [movingRange, setMovingRange] = useState<TimeRange | null>(null);
+	const activeMove = useRef<MoveState | null>(null);
+	const focusRange = useRef(false);
+	useEffect(() => {
+		if (!focusRange.current) return;
+		focusRange.current = false;
+		const buttons = Array.from(
+			document.querySelectorAll<HTMLElement>(".schedule-range-button"),
+		);
+		buttons
+			.find(
+				(button) =>
+					button.dataset.rangeId === selectedRangeID &&
+					button.dataset.rangeDate === selectedDate &&
+					button.getClientRects().length > 0,
+			)
+			?.focus({ preventScroll: true });
+	}, [ranges, selectedRangeID, selectedDate]);
 	const [drag, setDrag] = useState<DragState | null>(null);
 	const activeDrag = useRef<DragState | null>(null);
 	const setActiveDrag = (next: DragState | null) => {
 		activeDrag.current = next;
 		setDrag(next);
 	};
-	const cancelDrag = () => setActiveDrag(null);
+	const cancelDrag = () => {
+		setActiveDrag(null);
+		activeMove.current = null;
+		setMovingRange(null);
+	};
 	const [copiedEditLink, setCopiedEditLink] = useState(false);
 	const activeWeek = weekOptions[weekIndex] ?? weekStart(firstDate);
 	const days = useMemo(
@@ -580,6 +616,7 @@ export default function AvailabilityPage({
 		if (actionData?.kind !== "preview" && actionData?.kind !== "copied") return;
 		setEntryMode("available");
 		setRanges(importedRanges);
+		setSelectedRangeID(null);
 		if (importedRanges[0]) {
 			const importedDate = importedRanges[0].start.slice(0, 10);
 			setSelectedDate(importedDate);
@@ -612,6 +649,7 @@ export default function AvailabilityPage({
 			),
 		);
 		setEntryMode(nextMode);
+		setSelectedRangeID(null);
 		cancelDrag();
 	};
 
@@ -619,9 +657,10 @@ export default function AvailabilityPage({
 		start: dailyStartMinute,
 		end: dailyEndMinute,
 	});
-	const beginDrag = (pointer: PointerEvent<HTMLButtonElement>, key: string) => {
+	const beginDrag = (pointer: PointerEvent<HTMLElement>, key: string) => {
 		if (
 			activeDrag.current ||
+			activeMove.current ||
 			pointer.button !== 0 ||
 			key < firstDate ||
 			key > lastDate
@@ -637,6 +676,7 @@ export default function AvailabilityPage({
 		if (value < allowed.start || value >= allowed.end) return;
 		pointer.preventDefault();
 		pointer.currentTarget.setPointerCapture(pointer.pointerId);
+		setSelectedRangeID(null);
 		setSelectedDate(key);
 		setActiveDrag({
 			date: key,
@@ -648,7 +688,7 @@ export default function AvailabilityPage({
 		});
 	};
 	const dragAtPointer = (
-		pointer: PointerEvent<HTMLButtonElement>,
+		pointer: PointerEvent<HTMLElement>,
 		current: DragState,
 	): DragState => {
 		const value = pointerMinutes(
@@ -660,8 +700,8 @@ export default function AvailabilityPage({
 		// Pointer capture keeps events on the starting column. Hit-test horizontally
 		// against the visible week instead of relying on the event target changing.
 		const columns = Array.from(
-			pointer.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-				":scope > .schedule-day-column:not(:disabled)",
+			pointer.currentTarget.parentElement?.querySelectorAll<HTMLElement>(
+				":scope > .schedule-day-column:not([data-disabled=true])",
 			) ?? [],
 		);
 		const column =
@@ -676,12 +716,12 @@ export default function AvailabilityPage({
 			end: Math.min(dailyEndMinute, Math.max(current.anchor, value) + 30),
 		};
 	};
-	const moveDrag = (pointer: PointerEvent<HTMLButtonElement>) => {
+	const moveDrag = (pointer: PointerEvent<HTMLElement>) => {
 		const current = activeDrag.current;
 		if (!current || current.pointerId !== pointer.pointerId) return;
 		setActiveDrag(dragAtPointer(pointer, current));
 	};
-	const finishDrag = (pointer: PointerEvent<HTMLButtonElement>) => {
+	const finishDrag = (pointer: PointerEvent<HTMLElement>) => {
 		const current = activeDrag.current;
 		if (!current || current.pointerId !== pointer.pointerId) return;
 		const selected = dragAtPointer(pointer, current);
@@ -701,6 +741,171 @@ export default function AvailabilityPage({
 			added.reduce((current, range) => mergeRanges(current, range), ranges),
 		);
 		cancelDrag();
+	};
+	const dateUnderPointer = (
+		target: HTMLElement,
+		x: number,
+		fallback: string,
+	) => {
+		const grid = target.closest(".schedule-grid, .schedule-mobile-grid");
+		const columns = Array.from(
+			grid?.querySelectorAll<HTMLElement>(
+				".schedule-day-column:not([data-disabled=true])",
+			) ?? [],
+		);
+		return (
+			(
+				columns.find((column) => x < column.getBoundingClientRect().right) ??
+				columns.at(-1)
+			)?.dataset.date ?? fallback
+		);
+	};
+	const removeRange = (id: string) => {
+		cancelDrag();
+		setRanges((current) => current.filter((range) => range.id !== id));
+		if (selectedRangeID === id) setSelectedRangeID(null);
+	};
+	const beginMove = (
+		pointer: PointerEvent<HTMLElement>,
+		range: TimeRange,
+		key: string,
+	) => {
+		pointer.stopPropagation();
+		if (pointer.button !== 0 || activeDrag.current || activeMove.current)
+			return;
+		pointer.preventDefault();
+		pointer.currentTarget.focus({ preventScroll: true });
+		setSelectedRangeID(range.id);
+		setSelectedDate(key);
+		pointer.currentTarget.setPointerCapture(pointer.pointerId);
+		activeMove.current = {
+			range,
+			date: key,
+			pointerId: pointer.pointerId,
+			x: pointer.clientX,
+			y: pointer.clientY,
+			moved: false,
+			preview: range,
+		};
+	};
+	const moveAtPointer = (
+		pointer: PointerEvent<HTMLElement>,
+		current: MoveState,
+	) => {
+		const column = pointer.currentTarget.closest<HTMLElement>(
+			".schedule-day-column",
+		)!;
+		const delta =
+			((pointer.clientY - current.y) / column.getBoundingClientRect().height) *
+			(dailyEndMinute - dailyStartMinute);
+		return {
+			...current,
+			moved:
+				current.moved ||
+				Math.hypot(pointer.clientX - current.x, pointer.clientY - current.y) >
+					5,
+			preview: moveAvailabilityRange(
+				current.range,
+				current.date,
+				dateUnderPointer(pointer.currentTarget, pointer.clientX, current.date),
+				delta,
+				firstDate,
+				lastDate,
+				dailyStartMinute,
+				dailyEndMinute,
+			),
+		};
+	};
+	const moveExistingRange = (pointer: PointerEvent<HTMLElement>) => {
+		pointer.stopPropagation();
+		const current = activeMove.current;
+		if (!current || current.pointerId !== pointer.pointerId) return;
+		const next = moveAtPointer(pointer, current);
+		activeMove.current = next;
+		if (next.moved) setMovingRange(next.preview);
+	};
+	const finishMove = (pointer: PointerEvent<HTMLElement>) => {
+		pointer.stopPropagation();
+		const current = activeMove.current;
+		if (!current || current.pointerId !== pointer.pointerId) return;
+		const next = moveAtPointer(pointer, current);
+		if (next.moved) {
+			setRanges((ranges) =>
+				mergeRanges(
+					ranges.filter((range) => range.id !== current.range.id),
+					next.preview,
+				),
+			);
+			setSelectedDate(next.preview.start.slice(0, 10));
+			focusRange.current = true;
+		}
+		cancelDrag();
+	};
+	const renderRange = (range: TimeRange, key: string, preview = false) => {
+		const segment = segmentOnDate(range, key);
+		if (!segment) return null;
+		const start = Math.max(segment.start, dailyStartMinute),
+			end = Math.min(segment.end, dailyEndMinute);
+		if (end <= start) return null;
+		const style = {
+			top: `${((start - dailyStartMinute) / visibleMinutes) * 100}%`,
+			height: `${((end - start) / visibleMinutes) * 100}%`,
+		};
+		const className = `schedule-range${entryMode === "unavailable" ? " is-unavailable" : ""}${selectedRangeID === range.id ? " is-selected" : ""}${movingRange?.id === range.id ? " is-moving" : ""}`;
+		if (preview)
+			return (
+				<i
+					key="moving-preview"
+					className={`schedule-range move-preview${entryMode === "unavailable" ? " is-unavailable" : ""}`}
+					style={style}
+					aria-hidden="true"
+				/>
+			);
+		return (
+			<button
+				key={range.id}
+				type="button"
+				className={`${className} schedule-range-button`}
+				style={style}
+				title="クリックで選択、ドラッグで移動。Deleteキーで削除できます"
+				aria-keyshortcuts="Delete Backspace"
+				data-range-id={range.id}
+				data-range-date={key}
+				aria-pressed={selectedRangeID === range.id}
+				aria-label={`${key} ${time(start)}〜${time(end)}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間`}
+				onPointerDown={(pointer) => beginMove(pointer, range, key)}
+				onPointerMove={moveExistingRange}
+				onPointerUp={finishMove}
+				onPointerCancel={(event) => {
+					event.stopPropagation();
+					cancelDrag();
+				}}
+				onLostPointerCapture={(event) => {
+					event.stopPropagation();
+					cancelDrag();
+				}}
+				onClick={(event) => {
+					if (event.detail === 0) {
+						setSelectedDate(key);
+						setSelectedRangeID(range.id);
+					}
+				}}
+				onKeyDown={(event) => {
+					if (event.key === "Escape") {
+						event.preventDefault();
+						cancelDrag();
+						setSelectedRangeID(null);
+					}
+					if (
+						(event.key === "Delete" || event.key === "Backspace") &&
+						selectedRangeID === range.id
+					) {
+						event.preventDefault();
+						removeRange(range.id);
+					}
+				}}
+			/>
+		);
 	};
 	const updateTime = (
 		id: string,
@@ -983,6 +1188,7 @@ export default function AvailabilityPage({
 									aria-pressed={selectedDate === key}
 									onClick={() => {
 										setSelectedDate(key);
+										setSelectedRangeID(null);
 										setWeekIndex(
 											Math.max(0, weekOptions.indexOf(weekStart(key))),
 										);
@@ -1031,8 +1237,7 @@ export default function AvailabilityPage({
 										</span>
 									))}
 								</div>
-								<button
-									type="button"
+								<div
 									className="schedule-day-column schedule-mobile-day"
 									data-date={selectedDate}
 									aria-label={
@@ -1049,37 +1254,14 @@ export default function AvailabilityPage({
 									onPointerCancel={cancelDrag}
 									onLostPointerCapture={cancelDrag}
 								>
-									{ranges.map((range) => {
-										const segment = segmentOnDate(range, selectedDate);
-										if (!segment) return null;
-										const visibleStart = Math.max(
-											segment.start,
-											dailyStartMinute,
-										);
-										const visibleEnd = Math.min(segment.end, dailyEndMinute);
-										if (visibleEnd <= visibleStart) return null;
-										return (
-											<i
-												key={range.id}
-												className={
-													entryMode === "unavailable"
-														? "schedule-range is-unavailable"
-														: "schedule-range"
-												}
-												style={{
-													top:
-														((visibleStart - dailyStartMinute) /
-															visibleMinutes) *
-															100 +
-														"%",
-													height:
-														((visibleEnd - visibleStart) / visibleMinutes) *
-															100 +
-														"%",
-												}}
-											/>
-										);
-									})}
+									<button
+										type="button"
+										className="schedule-day-surface"
+										aria-label={`${selectedDate}の時間を追加`}
+									/>
+									{ranges.map((range) => renderRange(range, selectedDate))}
+									{movingRange && renderRange(movingRange, selectedDate, true)}
+
 									{drag?.date === selectedDate && (
 										<i
 											className={
@@ -1096,7 +1278,7 @@ export default function AvailabilityPage({
 											}}
 										/>
 									)}
-								</button>
+								</div>
 							</div>
 						</section>
 
@@ -1125,7 +1307,10 @@ export default function AvailabilityPage({
 								</p>
 							)}
 							{selectedRanges.map((range) => (
-								<div className="schedule-time-row" key={range.id}>
+								<div
+									className={`schedule-time-row${selectedRangeID === range.id ? " is-selected" : ""}`}
+									key={range.id}
+								>
 									<TimePicker
 										id={`desktop-range-${range.id}-start`}
 										className="schedule-time-picker"
@@ -1170,11 +1355,7 @@ export default function AvailabilityPage({
 										className="schedule-time-remove"
 										type="button"
 										aria-label="削除"
-										onClick={() =>
-											setRanges((current) =>
-												current.filter((item) => item.id !== range.id),
-											)
-										}
+										onClick={() => removeRange(range.id)}
 									>
 										<Icon name="trash" size={19} />
 									</button>
@@ -1255,7 +1436,11 @@ export default function AvailabilityPage({
 								type="button"
 								aria-label="前の週"
 								disabled={weekIndex === 0}
-								onClick={() => setWeekIndex((value) => value - 1)}
+								onClick={() => {
+									cancelDrag();
+									setSelectedRangeID(null);
+									setWeekIndex((value) => value - 1);
+								}}
 							>
 								<Icon name="back" size={12} />
 							</button>
@@ -1264,7 +1449,11 @@ export default function AvailabilityPage({
 								type="button"
 								aria-label="次の週"
 								disabled={weekIndex === weekOptions.length - 1}
-								onClick={() => setWeekIndex((value) => value + 1)}
+								onClick={() => {
+									cancelDrag();
+									setSelectedRangeID(null);
+									setWeekIndex((value) => value + 1);
+								}}
 							>
 								<Icon name="chevron" size={12} />
 							</button>
@@ -1279,7 +1468,10 @@ export default function AvailabilityPage({
 										type="button"
 										className={selectedDate === key ? "is-selected" : ""}
 										disabled={!enabled}
-										onClick={() => setSelectedDate(key)}
+										onClick={() => {
+											setSelectedDate(key);
+											setSelectedRangeID(null);
+										}}
 									>
 										<span className={weekendClassName(index)}>
 											{WEEKDAYS[index]}
@@ -1320,12 +1512,11 @@ export default function AvailabilityPage({
 								{days.map((key) => {
 									const enabled = key >= firstDate && key <= lastDate;
 									return (
-										<button
+										<div
 											key={key}
-											type="button"
 											className="schedule-day-column"
 											data-date={key}
-											disabled={!enabled}
+											data-disabled={!enabled ? "true" : undefined}
 											aria-label={`${key}の${entryMode === "available" ? "都合がいい" : "都合が悪い"}時間を選択`}
 											onPointerDown={(event) => beginDrag(event, key)}
 											onPointerMove={moveDrag}
@@ -1333,30 +1524,15 @@ export default function AvailabilityPage({
 											onPointerCancel={cancelDrag}
 											onLostPointerCapture={cancelDrag}
 										>
-											{ranges.map((range) => {
-												const segment = segmentOnDate(range, key);
-												if (!segment) return null;
-												const visibleStart = Math.max(
-													segment.start,
-													dailyStartMinute,
-												);
-												const visibleEnd = Math.min(
-													segment.end,
-													dailyEndMinute,
-												);
-												if (visibleEnd <= visibleStart) return null;
-												return (
-													<i
-														key={range.id}
-														className={`schedule-range${entryMode === "unavailable" ? " is-unavailable" : ""}`}
-														style={{
-															top: `${((visibleStart - dailyStartMinute) / visibleMinutes) * 100}%`,
-															height: `${((visibleEnd - visibleStart) / visibleMinutes) * 100}%`,
-														}}
-													/>
-												);
-											})}
-										</button>
+											<button
+												type="button"
+												className="schedule-day-surface"
+												disabled={!enabled}
+												aria-label={`${key}の時間を追加`}
+											/>
+											{ranges.map((range) => renderRange(range, key))}
+											{movingRange && renderRange(movingRange, key, true)}
+										</div>
 									);
 								})}
 							</div>
@@ -1497,7 +1673,10 @@ export default function AvailabilityPage({
 							</p>
 						)}
 						{selectedRanges.map((range) => (
-							<div className="schedule-time-row" key={range.id}>
+							<div
+								className={`schedule-time-row${selectedRangeID === range.id ? " is-selected" : ""}`}
+								key={range.id}
+							>
 								<TimePicker
 									id={`mobile-range-${range.id}-start`}
 									className="schedule-time-picker"
@@ -1542,11 +1721,7 @@ export default function AvailabilityPage({
 									className="schedule-time-remove"
 									type="button"
 									aria-label="削除"
-									onClick={() =>
-										setRanges((current) =>
-											current.filter((item) => item.id !== range.id),
-										)
-									}
+									onClick={() => removeRange(range.id)}
 								>
 									<Icon name="trash" size={20} />
 								</button>
