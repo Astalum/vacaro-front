@@ -104,6 +104,7 @@ export interface GoogleCalendar {
 }
 
 export type ConfirmationCalendarConnectionStatus =
+	| "inactive"
 	| "connected"
 	| "not_connected"
 	| "write_permission_required"

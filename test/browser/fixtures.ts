@@ -15,6 +15,7 @@ export type Scenario = {
 	calendarImportError?: string;
 	changingCounts?: boolean;
 	endOfDay?: boolean;
+	provider?: "none" | "google" | "icloud" | "timetree";
 };
 
 export const eventID = "event-1";
@@ -163,6 +164,8 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 		{ eventID, token },
 	);
 	let icloudConnected = Boolean(scenario.icloudConnected);
+	let provider =
+		scenario.provider ?? (scenario.icloudConnected ? "icloud" : "google");
 	await page.route("**/api/v1/**", async (route) => {
 		const request = route.request();
 		const url = new URL(request.url());
@@ -174,6 +177,12 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 				status,
 				json: { error: { code, message: "設定内容を確認してください。" } },
 			});
+		if (path === "/integrations/calendar-preference") {
+			if (scenario.anonymous) return failure(401, "unauthorized");
+			if (request.method() === "PUT")
+				provider = request.postDataJSON().provider;
+			return json({ provider });
+		}
 		if (path === "/me" || path.endsWith("/response-user")) {
 			if (scenario.anonymous) return failure(401, "unauthorized");
 			return json(user);
@@ -189,8 +198,9 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 			}
 		}
 		if (path === "/integrations/icloud-calendar/calendars") {
-			if (!scenario.icloudConnected)
-				return failure(409, "icloud_not_connected");
+			if (provider !== "icloud")
+				return failure(409, "calendar_provider_inactive");
+			if (!icloudConnected) return failure(409, "icloud_not_connected");
 			return json({
 				account: "apple@example.com",
 				calendars: [
@@ -229,6 +239,8 @@ export async function installFixtures(page: Page, scenario: Scenario = {}) {
 			return json({ intervals });
 		}
 		if (path.endsWith("/calendars")) {
+			if (provider !== "google" && provider !== "timetree")
+				return failure(409, "calendar_provider_inactive");
 			if (scenario.calendarDisconnected || scenario.guest || scenario.anonymous)
 				return failure(409, "calendar_not_connected");
 			return json({

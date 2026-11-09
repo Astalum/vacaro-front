@@ -28,6 +28,7 @@ import {
 	savedICloudCalendarIDs,
 } from "~/lib/icloud-calendar";
 import { normalizeLocalDateTime } from "~/lib/time";
+import { loadCalendarPreference } from "~/lib/calendar-provider";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/availability";
 
@@ -73,6 +74,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
+	const { provider } = await loadCalendarPreference();
 	const userRequest = apiRequest<User>(
 		`/events/${params.eventId}/response-user`,
 	);
@@ -89,8 +91,11 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 			response_status: string;
 			intervals: AvailabilityInterval[];
 		}>(`/events/${params.eventId}/my-availability`),
-		apiRequest<{ calendars: GoogleCalendar[] }>(
-			"/integrations/google-calendar/calendars",
+		(provider === "google"
+			? apiRequest<{ calendars: GoogleCalendar[] }>(
+					"/integrations/google-calendar/calendars",
+				)
+			: Promise.resolve({ calendars: [] as GoogleCalendar[] })
 		)
 			.then((result) => ({
 				calendars: result.calendars.filter(
@@ -109,8 +114,11 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 				events: [] as Event[],
 				error: apiErrorData(error),
 			})),
-		apiRequest<{ calendars: ICloudCalendar[] }>(
-			"/integrations/icloud-calendar/calendars",
+		(provider === "icloud"
+			? apiRequest<{ calendars: ICloudCalendar[] }>(
+					"/integrations/icloud-calendar/calendars",
+				)
+			: Promise.resolve({ calendars: [] as ICloudCalendar[] })
 		)
 			.then((result) => ({ calendars: result.calendars, error: null }))
 			.catch((error: unknown) => ({

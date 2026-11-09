@@ -16,6 +16,58 @@
 .calendar-settings-stack > .account-card > .button {
 	margin-top: 16px;
 }
+.provider-selection-card {
+	margin-bottom: 16px;
+}
+.account-card > .calendar-provider-form {
+	display: grid;
+	gap: 16px;
+	justify-content: stretch;
+	margin-bottom: 16px;
+}
+.calendar-provider-form fieldset {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+	gap: 12px;
+	border: 0;
+	padding: 0;
+	min-width: 0;
+}
+.calendar-provider-form legend {
+	margin-bottom: 12px;
+	font-weight: 700;
+}
+.calendar-provider-option {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 16px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	cursor: pointer;
+}
+.calendar-provider-option:has(input:checked) {
+	border-color: var(--primary);
+	background: #f0fbf7;
+}
+.calendar-provider-option input {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	margin-top: 3px;
+}
+.calendar-provider-option span {
+	min-width: 0;
+}
+.calendar-provider-option strong,
+.calendar-provider-option small {
+	display: block;
+	line-height: 1.6;
+}
+.calendar-provider-option small {
+	margin-top: 4px;
+	color: var(--muted);
+}
 
 .timetree-guide {
 	max-width: 850px;

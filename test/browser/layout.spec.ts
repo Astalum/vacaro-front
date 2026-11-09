@@ -31,7 +31,11 @@ const cases: { name: string; path: string; scenario?: Scenario }[] = [
 		path: "/calendars/timetree",
 		scenario: { anonymous: true },
 	},
-	{ name: "iCloud settings disconnected", path: "/calendars/icloud" },
+	{
+		name: "iCloud settings disconnected",
+		path: "/calendars/icloud",
+		scenario: { provider: "icloud" },
+	},
 	{
 		name: "iCloud settings connected",
 		path: "/calendars/icloud",
@@ -48,7 +52,7 @@ const cases: { name: string; path: string; scenario?: Scenario }[] = [
 		scenario: { icloudConnected: true, calendarDisconnected: true },
 	},
 	{
-		name: "iCloud and Google availability",
+		name: "iCloud availability with Google credentials",
 		path: "/events/event-1/availability",
 		scenario: { icloudConnected: true },
 	},
@@ -181,7 +185,10 @@ test("calendar settings are separate from the profile and retain saved selection
 	const { unknownRequests } = await installFixtures(page);
 	const calendarRequests: string[] = [];
 	page.on("request", (request) => {
-		if (request.url().includes("/api/v1/integrations/"))
+		if (
+			request.url().includes("/api/v1/integrations/") &&
+			!request.url().endsWith("/calendar-preference")
+		)
 			calendarRequests.push(request.url());
 	});
 	await page.goto("/account");
@@ -216,7 +223,7 @@ test("legacy calendar links and OAuth results reach the new settings pages", asy
 }) => {
 	const { unknownRequests } = await installFixtures(page);
 	for (const [oldPath, newPath] of [
-		["/account/icloud", "/calendars/icloud"],
+		["/account/icloud", "/calendars"],
 		["/account/timetree", "/calendars/timetree"],
 		["/account#calendar-settings", "/calendars#calendar-settings"],
 		["/account#google-calendar", "/calendars#google-calendar"],
@@ -547,7 +554,9 @@ test("holiday calendars are excluded from saved selections and the settings list
 test("iCloud connects without retaining the app password in the form or storage", async ({
 	page,
 }) => {
-	const { unknownRequests } = await installFixtures(page);
+	const { unknownRequests } = await installFixtures(page, {
+		provider: "icloud",
+	});
 	await page.goto("/calendars/icloud");
 	await page
 		.getByLabel("Apple Accountのメールアドレス")
@@ -609,6 +618,150 @@ test("iCloud import failure preserves the answer and links to iCloud settings", 
 			.filter({ hasText: "カレンダー設定を確認する" }),
 	).toBeVisible();
 	await expect(page.locator('input[name="intervals"]')).toHaveValue(before);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("calendar service selection persists and keeps imports and exports exclusive", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page, {
+		provider: "google",
+		icloudConnected: true,
+	});
+	const integrationRequests: string[] = [];
+	page.on("request", (request) => {
+		if (
+			/\/api\/v1\/(integrations\/(google|icloud)-calendar\/calendars|events\/[^/]+\/(icloud-)?confirmation-calendar)/.test(
+				request.url(),
+			)
+		)
+			integrationRequests.push(request.url());
+	});
+	await page.goto("/calendars");
+	await expect(
+		page.locator(".calendar-provider-form input:checked"),
+	).toHaveValue("google");
+	await expect(page.locator(".settings-calendar-option")).toHaveCount(3);
+	await page.locator(".settings-calendar-option").nth(1).click();
+	await page.getByRole("button", { name: "設定を保存", exact: true }).click();
+	await page.goto("/events/event-1/availability");
+	await expect(
+		page.locator('button[value="calendar-preview"]:visible'),
+	).toHaveCount(1);
+	await expect(
+		page.locator('button[value="icloud-calendar-preview"]:visible'),
+	).toHaveCount(0);
+	await page.goto("/events/event-1/confirmed");
+	await expect(
+		page.locator('form:has(input[value="sync-calendar"]) button:visible'),
+	).toHaveCount(1);
+	await expect(
+		page.locator(
+			'form:has(input[value="sync-icloud-calendar"]) button:visible',
+		),
+	).toHaveCount(0);
+	expect(integrationRequests.every((url) => !url.includes("icloud"))).toBe(
+		true,
+	);
+	await page.goto("/calendars");
+	await page.locator('input[name="provider"][value="icloud"]').check();
+	await page
+		.getByRole("button", { name: "利用するカレンダーを保存", exact: true })
+		.click();
+	await expect(page.getByRole("status")).toContainText(
+		"利用するカレンダーを変更しました",
+	);
+	integrationRequests.length = 0;
+	await page.goto("/events/event-1/availability");
+	await expect(
+		page.locator('button[value="calendar-preview"]:visible'),
+	).toHaveCount(0);
+	await expect(
+		page.locator('button[value="icloud-calendar-preview"]:visible'),
+	).toHaveCount(1);
+	await page.goto("/events/event-1/confirmed");
+	await expect(
+		page.locator('form:has(input[value="sync-calendar"]) button:visible'),
+	).toHaveCount(0);
+	await expect(
+		page.locator(
+			'form:has(input[value="sync-icloud-calendar"]) button:visible',
+		),
+	).toHaveCount(1);
+	expect(integrationRequests.every((url) => !url.includes("google"))).toBe(
+		true,
+	);
+	await page.goto("/calendars");
+	await page.locator('input[name="provider"][value="google"]').check();
+	await page
+		.getByRole("button", { name: "利用するカレンダーを保存", exact: true })
+		.click();
+	await expect(
+		page.locator(".settings-calendar-option input:checked"),
+	).toHaveCount(2);
+	expect(unknownRequests).toEqual([]);
+	expect(await layoutProblems(page)).toEqual([]);
+});
+
+test("TimeTree exports only and disabling integration stops all provider requests", async ({
+	page,
+}) => {
+	const { unknownRequests } = await installFixtures(page, {
+		provider: "timetree",
+		icloudConnected: true,
+	});
+	await page.goto("/calendars");
+	await expect(
+		page.getByRole("heading", { name: "TimeTreeへの書き出し（Google経由）" }),
+	).toBeVisible();
+	await expect(page.locator(".settings-calendar-option")).toHaveCount(0);
+	await page.goto("/events/event-1/availability");
+	await expect(
+		page.locator('button[value="calendar-preview"]:visible'),
+	).toHaveCount(0);
+	await expect(
+		page.locator('button[value="icloud-calendar-preview"]:visible'),
+	).toHaveCount(0);
+	await page.goto("/events/event-1/confirmed");
+	await expect(
+		page.locator('form:has(input[value="sync-calendar"]) button:visible'),
+	).toHaveCount(1);
+	await expect(
+		page.locator(
+			'form:has(input[value="sync-icloud-calendar"]) button:visible',
+		),
+	).toHaveCount(0);
+	await page.goto("/calendars");
+	await page.locator('input[name="provider"][value="none"]').check();
+	await page
+		.getByRole("button", { name: "利用するカレンダーを保存", exact: true })
+		.click();
+	await expect(page.getByRole("status")).toContainText(
+		"利用するカレンダーを変更しました",
+	);
+	const providerRequests: string[] = [];
+	page.on("request", (request) => {
+		if (
+			/\/api\/v1\/(integrations\/(google|icloud)-calendar|events\/[^/]+\/(icloud-)?confirmation-calendar)/.test(
+				request.url(),
+			)
+		)
+			providerRequests.push(request.url());
+	});
+	await page.reload();
+	await expect(
+		page.locator(".calendar-provider-form input:checked"),
+	).toHaveValue("none");
+	await page.goto("/events/event-1/availability");
+	await expect(
+		page.locator('button[value$="calendar-preview"]:visible'),
+	).toHaveCount(0);
+	await page.goto("/events/event-1/confirmed");
+	await expect(
+		page.locator('form:has(input[value$="calendar"]) button:visible'),
+	).toHaveCount(0);
+	expect(providerRequests).toEqual([]);
 	expect(unknownRequests).toEqual([]);
 	expect(await layoutProblems(page)).toEqual([]);
 });

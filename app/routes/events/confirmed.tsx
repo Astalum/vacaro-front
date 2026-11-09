@@ -13,6 +13,10 @@ import {
 	type SchedulingGroup,
 	type User,
 } from "~/lib/api";
+import {
+	calendarTransport,
+	loadCalendarPreference,
+} from "~/lib/calendar-provider";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/confirmed";
 
@@ -25,6 +29,11 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 	const event = await apiRequest<Event>(`/events/${params.eventId}`);
+	const { provider } = await loadCalendarPreference();
+	const inactive: ConfirmationCalendarStatus = {
+		connection_status: "inactive",
+		syncs: [],
+	};
 	const [user, participants, groups, calendarStatus, icloudCalendarStatus] =
 		await Promise.all([
 			apiRequest<User>("/me"),
@@ -32,16 +41,22 @@ export async function clientLoader({ params }: Route.ClientLoaderArgs) {
 			event.scheduling_mode === "groups"
 				? apiRequest<SchedulingGroup[]>(`/events/${event.id}/groups`)
 				: Promise.resolve([] as SchedulingGroup[]),
-			apiRequest<ConfirmationCalendarStatus>(
-				`/events/${event.id}/confirmation-calendar`,
+			(calendarTransport(provider) === "google"
+				? apiRequest<ConfirmationCalendarStatus>(
+						`/events/${event.id}/confirmation-calendar`,
+					)
+				: Promise.resolve(inactive)
 			).catch(
 				(): ConfirmationCalendarStatus => ({
 					connection_status: "error",
 					syncs: [],
 				}),
 			),
-			apiRequest<ConfirmationCalendarStatus>(
-				`/events/${event.id}/icloud-confirmation-calendar`,
+			(provider === "icloud"
+				? apiRequest<ConfirmationCalendarStatus>(
+						`/events/${event.id}/icloud-confirmation-calendar`,
+					)
+				: Promise.resolve(inactive)
 			).catch(
 				(): ConfirmationCalendarStatus => ({
 					connection_status: "error",
@@ -405,7 +420,9 @@ function TimeTreeGuideLink() {
 	return (
 		<p className="timetree-confirmed-help">
 			TimeTreeをお使いの方へ：
-			<Link to="/calendars/timetree">Google・iCloud経由で確定予定を表示する</Link>
+			<Link to="/calendars/timetree">
+				Google・iCloud経由で確定予定を表示する
+			</Link>
 		</p>
 	);
 }
@@ -441,6 +458,16 @@ function CalendarSyncControls(props: {
 	actionData: Route.ComponentProps["actionData"];
 }) {
 	const navigation = useNavigation();
+	if (
+		props.calendarStatus.connection_status === "inactive" &&
+		props.icloudCalendarStatus.connection_status === "inactive"
+	)
+		return (
+			<p>
+				予定の書き出し先を<Link to="/calendars">カレンダー設定</Link>
+				で選択してください。
+			</p>
+		);
 	const icloudSubmitting =
 		navigation.formData?.get("intent") === "sync-icloud-calendar"
 			? String(navigation.formData.get("group_id") ?? "") || null
@@ -471,6 +498,7 @@ function CalendarSyncControl({
 	submittingGroupID: string | null | undefined;
 	actionData: Route.ComponentProps["actionData"];
 }) {
+	if (calendarStatus.connection_status === "inactive") return null;
 	const isICloud = provider === "icloud";
 	const calendarLabel = isICloud ? "iCloudカレンダー" : "Googleカレンダー";
 	const settingsPath = isICloud

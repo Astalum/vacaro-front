@@ -25,6 +25,8 @@ describe("calendar settings clientLoader", () => {
 			"fetch",
 			vi.fn((input: string | URL | Request) => {
 				if (String(input).endsWith("/me")) return response(user);
+				if (String(input).endsWith("/calendar-preference"))
+					return response({ provider: "google" });
 				return response({
 					calendars: [
 						{

@@ -9,6 +9,7 @@ import {
 	savedICloudCalendarIDs,
 	saveICloudCalendarIDs,
 } from "~/lib/icloud-calendar";
+import { loadCalendarPreference } from "~/lib/calendar-provider";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/account-icloud";
 
@@ -18,6 +19,8 @@ export function meta() {
 export async function clientLoader() {
 	try {
 		const user = await apiRequest<User>("/me");
+		if ((await loadCalendarPreference()).provider !== "icloud")
+			return redirect("/calendars");
 		const connection = await apiRequest<ICloudCalendarOptions>(
 			"/integrations/icloud-calendar/calendars",
 		)

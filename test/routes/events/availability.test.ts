@@ -264,7 +264,8 @@ describe("availability clientLoader response identity", () => {
 			.mockImplementation(async (input) => {
 				const path = String(input);
 				let data: unknown = [];
-				if (path.endsWith("/response-user")) data = responseUser;
+				if (path.endsWith("/calendar-preference")) data = { provider: "none" };
+				else if (path.endsWith("/response-user")) data = responseUser;
 				else if (path.endsWith("/me"))
 					data = {
 						id: "other-account",
@@ -297,13 +298,11 @@ it("imports iCloud intervals from the iCloud endpoint", async () => {
 			source: "icloud_calendar",
 		},
 	];
-	const fetchMock = vi
-		.fn()
-		.mockResolvedValue(
-			new Response(JSON.stringify({ data: { intervals } }), {
-				headers: { "Content-Type": "application/json" },
-			}),
-		);
+	const fetchMock = vi.fn().mockResolvedValue(
+		new Response(JSON.stringify({ data: { intervals } }), {
+			headers: { "Content-Type": "application/json" },
+		}),
+	);
 	vi.stubGlobal("fetch", fetchMock);
 	const form = new FormData();
 	form.set("intent", "icloud-calendar-preview");
