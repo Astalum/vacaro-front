@@ -432,6 +432,8 @@ test("date time picker time panel", async ({ page }) => {
 	await installFixtures(page);
 	await page.goto("/events/new");
 	await page.locator("#deadline").click();
+	await expect(page.getByRole("grid")).toBeVisible();
+	await page.evaluate(() => document.fonts.ready);
 	await page.getByRole("button", { name: /^時刻 / }).click();
 	await expect(page.getByRole("listbox", { name: "時" })).toBeVisible();
 	await page.evaluate(() => document.fonts.ready);

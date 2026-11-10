@@ -2,7 +2,9 @@
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+// Load the real lazy dependency during module setup; browser tests cover its download.
+import "~/components/ui/calendar";
+import { afterEach, describe, expect, it } from "vitest";
 import { DatePicker } from "~/components/ui/date-picker";
 import { TimePicker } from "~/components/ui/time-picker";
 import {
@@ -11,10 +13,6 @@ import {
 } from "~/components/ui/validation-message";
 
 describe("custom form controls", () => {
-	// Compile the lazy dependency during setup; browser tests cover its download.
-	beforeAll(async () => {
-		await import("~/components/ui/calendar");
-	});
 	afterEach(cleanup);
 	it("submits a date selected from the custom calendar", async () => {
 		const user = userEvent.setup();
