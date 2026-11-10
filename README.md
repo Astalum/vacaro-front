@@ -1,152 +1,94 @@
 # vacaro-front
 
-参加者が候補枠へ○・×で回答するのではなく、参加可能な開始・終了日時を自由に登録する日程調整サービス「vacaro」のフロントエンドです。
-
-## 技術構成
-
-- React 19
-- React Router 8 Framework Mode
-- TypeScript
-- Vite
-- Tailwind CSS / CSS
+参加可能な開始・終了日時を自由に登録する日程調整サービス「vacaro」のフロントエンドです。React 19、React Router 8 Framework Mode、TypeScript、Vite、Sass / Tailwind CSSを使用します。
 
 ## 開発環境
 
-先に `vacaro-back` を `http://localhost:8081` で起動します。
+先に`vacaro-back`を`http://localhost:8081`で起動します。
 
 ```bash
 cd ../vacaro-back
 API_PORT=8081 PUBLIC_APP_URL=http://localhost:8080 docker compose up --build
 ```
 
-### Dockerで起動する
+フロントのディレクトリで、Linux版Node.js 24を使って起動します。
 
-WSL側へNode.jsをインストールしていない場合はこちらを使用します。
+```bash
+npm ci
+npm run dev
+```
+
+ブラウザで`http://localhost:8080`を開きます。`/api/*`はバックエンドへプロキシされ、HttpOnlyセッションCookieを同一サイトで使用できます。WSLではWindows版ではなく、WSL内のLinux版Node.jsを使用してください。
+
+Node.jsを直接インストールしない場合はDockerでも起動できます。
 
 ```bash
 LOCAL_UID=$(id -u) LOCAL_GID=$(id -g) docker compose -f compose.dev.yaml up --build
 ```
 
-ブラウザで `http://localhost:8080` を開きます。ソースコードの変更は自動的に反映されます。
+終了時は`docker compose -f compose.dev.yaml down`を実行します。API接続先を変える場合は`.env.example`から`.env`を作成し、`VACARO_API_URL`を設定します。Docker内からの接続先は`DOCKER_VACARO_API_URL`で変更できます。Googleログインの設定は[アカウント](docs/account.md#googleの設定)を参照してください。
 
-### ローカルのNode.jsで起動する
-
-Linux版Node.js 24が利用できる環境では、次のコマンドでも起動できます。
-
-```bash
-npm install
-npm run dev
-```
-
-WSLから実行する場合は、Windows側のNode.jsではなくWSL内へインストールしたLinux版Node.jsを使用してください。`command -v node` が `/usr/bin`、`~/.nvm`などのLinuxパスを指している必要があります。
-
-開発サーバーは `/api/*` をvacaro-backへプロキシするため、HttpOnlyセッションCookieを同一サイトとして利用できます。
-
-### Googleログインを有効にする
-
-Google Cloud ConsoleでOAuth 2.0クライアントを作成し、承認済みのリダイレクトURIへ次を登録します。
+## ディレクトリと命名
 
 ```text
-http://localhost:8080/api/v1/auth/google/callback
-http://localhost:8080/api/v1/integrations/google-calendar/callback
+app/
+  routes.ts                URLとルートモジュールの対応
+  routes/                  ページ、loader / action（events・accountなどの機能単位）
+  features/
+    account/               アカウントのデータ型
+    events/                回答計算、イベント入力検証、招待・再回答リンク、データ型
+    calendars/             サービス選択、設定UI、取り込み対象・時間帯、データ型
+  components/
+    layout.tsx             ヘッダー・フッター・ページ枠
+    ui/                    機能に依存しない入力部品・アイコン・表示部品
+  lib/                     共通のAPI通信、日時・日付処理、メタ情報、汎用処理
+  styles/                  共通スタイルと機能ごとの画面スタイル
+test/                     routes・features・components・libはapp側の配置に対応
+  browser/                 全ページ・操作・画面幅のWebKit検証
+docs/                     アカウント・イベント・カレンダー・デプロイの4文書
+deploy/                   本番用Compose・環境ファイル例・systemd設定
+scripts/                  デプロイなどの実行スクリプト
 ```
 
-`vacaro-back`の`.env`へ`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`GOOGLE_LOGIN_REDIRECT_URL`、`GOOGLE_CALENDAR_REDIRECT_URL`、`TOKEN_ENCRYPTION_KEY`を設定してください。フロントエンドはログイン開始、コールバック後の完了表示、ログアウト、カレンダー接続、空き時間プレビュー、確定日時の自動登録に対応しています。
+- ファイル名は`kebab-case`、コンポーネント名は`PascalCase`、フックは`useXxx`に揃えます。`routes.ts`や`root.tsx`などフレームワークの規約名は維持します。
+- `index.tsx`は機能ディレクトリの入口となるページに使います。実装を隠すだけの再エクスポート用ファイルは作らず、利用するモジュールから直接importします。
+- 特定機能のUI・計算・保存処理・型は`features/<機能>/`、汎用UIは`components/ui/`、共通処理は`lib/`へ置きます。API通信のファイルへ機能固有の処理を追加しません。
+- ページ固有のロジックと表示は同じTSX内で分離します。取得・更新はloader / action、状態・副作用・イベント処理は同じファイルの`useXxx`、状態を使わない計算は通常の関数、JSXは画面とセクションのコンポーネントにまとめます。
+- そのページだけで使う部品やフックは同じファイルに置きます。複数ページで共有する、または独立した機能として責務がある場合にファイルを分けます。
+- 旧URLの転送は`routes/account/calendar-redirect.ts`へまとめています。URLは`app/routes.ts`で明示し、ファイル移動で公開URLを変えません。
+- スタイルは現在の機能別配置を維持し、`app/styles/app.scss`の読み込み順でカスケードを管理します。
+- ドキュメントはこのREADMEを入口にし、機能の仕様・設定・検証を同じ文書にまとめます。修正ごとの経緯はGit履歴に残し、同内容のAPI・DB仕様のコピーや小さな作業記録を増やしません。
 
-日時は内部・APIではUTCで管理し、入力・表示にはユーザー設定のタイムゾーンを使用します。新規ユーザーの初期値は`Asia/Tokyo`です。Googleログイン時にブラウザのタイムゾーンで上書きせず、`/account`から変更した設定を保持します。
+日付カレンダーはピッカーを開いたときに遅延読み込みします。回答画面は画面幅に合うレイアウトだけを描画し、回答状態は親のフックで保持します。重い集計は入力変更時に再計算し、結果の日付セルや参加者一覧は表示に必要な値だけを受け取ります。
 
-カレンダー連携では空き時間取得用の`calendar.events.freebusy`、読み込み対象を選択するための`calendar.calendarlist.readonly`、確定予定を書き込むための`calendar.app.created`権限を使用します。権限追加前に接続済みだった場合は、`/account`からGoogleカレンダーを再接続してください。
-
-バックエンドのURLを変更する場合：
+## 検証とビルド
 
 ```bash
-cp .env.example .env
-```
-
-```env
-VACARO_API_URL=http://localhost:8081
-```
-
-Dockerから接続するAPIのURLだけを変更する場合は、`DOCKER_VACARO_API_URL`を
-指定してください。
-
-## コマンド
-
-```bash
-npm run dev
 npm run typecheck
+npm test
 npm run build
 npm run start
 ```
 
-Docker開発環境を終了する場合：
+WebKitの表示・操作テストは次の手順で実行します。
 
 ```bash
-docker compose -f compose.dev.yaml down
+pnpm install --frozen-lockfile
+pnpm exec playwright install --with-deps webkit
+pnpm test:layout
 ```
 
-## 画面コードの構成
+開発サーバーは自動起動し、APIはテストデータへ差し替えます。本番データは更新しません。初回は公開Google Fontsの取得に接続が必要で、取得済みフォントはOSの一時ディレクトリにキャッシュします。
 
-ロジックと表示は、同じTSXファイル内で分離します。
+全ページを320・375・390・430・667・768・1024・1440pxで検証し、680/681・720/721・900/901pxの境界幅も確認します。ログイン状態、長い文字列、カレンダーの各サービス、ピッカー、複数日入力、区間の選択・移動・削除を含みます。はみ出し・重なり・文字の見切れを計測し、意図したスクロール領域は区別します。LinuxのWebKitでの検証であり、Safari実機の確認とは別に扱います。
 
-- API取得・更新は、引き続きReact Routerのloader / actionで処理します。
-- 状態管理・副作用・入力検証・イベント処理・表示データの組み立ては、同じファイルの`useXxx`フックにまとめます。状態を使わない計算は通常の関数にします。
-- 画面コンポーネントはフックの戻り値を使ってJSXを返します。JSX内のコールバックは、原則としてハンドラへの引数の受け渡しにとどめます。
-- 画面内のセクションや繰り返す部品は同じファイルにコンポーネントとして置きます。複数の画面で使うUIは`app/components`で共有します。
-- 日付カレンダーはピッカーを開いたときに遅延読み込みします。読み込み中もフォームの値を保持し、読み込み状態を表示します。
-- 回答画面は画面幅に合うレイアウトだけを描画します。回答状態は親のフックに保持し、レイアウト切り替え中のドラッグはキャンセルします。
-- 重い集計や日付データの組み立ては入力が変わったときに再計算します。結果カレンダーの日付セルと参加者一覧は、表示に関係する値だけを受け取って再描画を抑えます。
+`LAYOUT_SCREENSHOTS=1 pnpm test:layout`で全ページのキャプチャを保存できます。レポートは`playwright-report/`、失敗時の画像・トレースは`test-results/`に出力します。どちらもGit管理対象外です。
 
-## 本番デプロイ
+## 機能・運用ドキュメント
 
-本番VPSではソースコードの取得、依存関係のインストール、型チェック、テスト、イメージのビルドを行いません。`main`へのpush時にGitHub Actionsがこれらを実行し、検証済みイメージをGHCRへ発行します。
+- [アカウント・ログイン・ユーザー設定](docs/account.md)
+- [イベント・招待・回答・集計](docs/events.md)
+- [カレンダー連携（Google・iCloud・TimeTree）](docs/calendars.md)
+- [本番デプロイと運用](docs/deployment.md)
 
-VPSへ配置するのは、原則として次のファイルだけです。`compose.prod.yaml`は、フロントエンド、バックエンドAPI、DBマイグレーション、PostgreSQLをまとめて起動します。
-
-- `deploy/compose.prod.yaml`（バックエンド等と統合する場合は、その本番Composeへ同じ`image:`設定を反映）
-- `deploy/.env.production.example`を元に作成した`.env.production`
-- 必要に応じて`deploy/vacaro-front.service`と`scripts/redeploy.sh`
-
-`.env.production`のイメージは、各リポジトリのGitHub Actionsが発行した不変のコミットSHAタグへ固定します。
-
-```env
-VACARO_FRONT_IMAGE=ghcr.io/astalum/vacaro-front:sha-<40桁のcommit SHA>
-VACARO_BACK_IMAGE=ghcr.io/astalum/vacaro-back:sha-<40桁のcommit SHA>
-VACARO_MIGRATIONS_IMAGE=ghcr.io/astalum/vacaro-back:migrations-sha-<40桁のcommit SHA>
-```
-
-GHCRパッケージがprivateの場合のみ、VPSでread-onlyのPersonal Access Tokenを使って一度`docker login ghcr.io`を実行します。デプロイはVPS上で次の処理だけを行います。
-
-```bash
-DEPLOY_DIR=/opt/vacaro ./redeploy.sh
-```
-
-`redeploy.sh`はCompose設定の検証、`docker compose pull`、`docker compose up -d`、ヘルスチェックだけを実行します。新しい版へ更新するときは、`.env.production`のSHAタグを変更してから再実行します。これにより、VPSへGit、Node.js、npm、pnpm、TypeScript、コンパイラを置く必要はありません。
-
-### VS Code Remote SSH
-
-本番VPSは通常の開発ワークスペースとして開かない運用を推奨します。調査のために開く場合は、VS Codeの拡張機能ビューで`SSH: <VPS名> - Installed`を選び、TypeScript/JavaScript Language Features、ESLint、Prettier、Git関連など本番運用に不要な拡張をリモート側で`Disable (Workspace)`またはアンインストールします。ローカル側の拡張は無効化する必要はありません。
-
-VPS上の`/opt/vacaro`にはCompose、環境ファイル、運用スクリプトだけを置き、アプリのソースディレクトリをRemote SSHで開かないようにします。秘密値を含む`.env.production`はGitへ追加せず、権限を`600`にしてください。
-
-## ドキュメント
-
-- [本番デプロイ手順](docs/production-deployment.md)
-- [画面・ルーティング設計](docs/screen-and-routing-design.md)
-- [API仕様](docs/api-design.md)
-- [データベース設計](docs/database-design.md)
-
-## 主要ルート
-
-| URL | 用途 |
-| --- | --- |
-| `/account` | ユーザー情報・Googleカレンダー連携・取り込み対象の設定 |
-| `/events/new` | イベント作成 |
-| `/invitations/:inviteToken` | 招待確認・参加 |
-| `/events/:eventId/availability` | 参加可能時間の回答 |
-| `/events/:eventId/results` | 共通候補と回答状況 |
-| `/events/:eventId/manage` | 主催者向け管理・日程確定 |
-
-## iCloudカレンダー連携
-
-ユーザー設定の「iCloudの接続・取り込み設定」で、Apple Accountとアプリ用パスワードを登録できます。空き時間の取り込み、対象カレンダーの選択、専用「Vacaro」カレンダーへの確定予定の登録・更新・削除に対応します。バックエンドのマイグレーション`000016`が必要です。設定・運用方法は[iCloud連携ガイド](docs/icloud-calendar-setup.md)を参照してください。
+GitHub Actionsは検証とGHCRへのイメージ発行を行います。VPSへの反映はデプロイ手順に従って行います。バックエンドのAPI・DBの詳細は各機能ドキュメントからバックエンド側の仕様を参照します。

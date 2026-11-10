@@ -1,6 +1,6 @@
-# vacaro-front 画面・ルーティング設計
+# イベント・招待・回答
 
-## 1. サービスの前提
+## サービスの前提
 
 vacaroは、主催者が候補枠を事前に列挙する日程調整サービスではない。
 
@@ -10,19 +10,19 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 - イベントに必要な時間
 - 回答期限
 
-参加者は対象期間内で、自分が参加できる開始・終了日時を自由に複数登録する。サーバーは全参加者の参加可能時間を重ね合わせ、必要時間を満たす共通候補日時を算出する。
+参加者は対象期間内で、自分が参加できる開始・終了日時を自由に複数登録する。結果画面では参加可能時間を重ね合わせ、人数が同じ連続時間帯をまとめて表示する。開催日時の確定ではイベントまたはグループの必要時間を適用する。
 
 ```text
 主催者が調整期間と必要時間を設定
   → 招待URLを共有
     → 参加者が空いている時間帯を自由に登録
-      → サーバーが「全体」と追加した小グループごとに重なりを集計
+      → 「全体」と追加した小グループごとに重なりを集計
         → 主催者がresults画面で開催日時を確定
 ```
 
 時間区間はAPI仕様と同じく、開始を含み終了を含まない `[start_at, end_at)` として扱う。
 
-## 2. 利用フロー
+## 利用フロー
 
 ### 主催者
 
@@ -38,10 +38,10 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 1. 招待URLを開き、イベント内容を確認する。
 2. 表示名を入力してイベントへ参加する。
 3. 対象期間内で参加できる開始・終了日時を複数登録する。
-4. 必要に応じてGoogleカレンダーから空き時間を取り込む。
+4. 必要に応じて選択中のGoogle・iCloudカレンダーから空き時間を取り込む。
 5. 回答を送信し、共通候補と回答状況を確認する。
 
-## 3. 画面一覧
+## 画面一覧
 
 | 区分 | 画面 | ルート | 主な役割 |
 | --- | --- | --- | --- |
@@ -62,7 +62,7 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 | 共通 | 確定結果 | `/events/:eventId/confirmed` | 確定した日時を確認 |
 | 共通 | Not Found | `*` | 無効なURLや存在しないイベントを案内 |
 
-### 3.1 resultsとmanageの責務境界
+### resultsとmanageの責務境界
 
 | 操作 | results | manage |
 | --- | :---: | :---: |
@@ -76,9 +76,9 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 
 同じ情報や主要操作を両画面へ重複配置しない。画面間を移動するリンクには、具体的な目的を示す「このグループの日程を調整」「グループ編成を変更」などの文言を使用する。
 
-## 4. 画面要件
+## 画面要件
 
-### 4.1 イベント作成 `/events/new`
+### イベント作成 `/events/new`
 
 入力項目：
 
@@ -91,29 +91,7 @@ vacaroは、主催者が候補枠を事前に列挙する日程調整サービ�
 
 イベント作成時に「全体」が常設グループとして用意される。調整単位は選択させず、必要な小グループは作成後にmanage画面から追加する。作成成功後は `/events/:eventId/created` へ遷移する。
 
-### 4.1.1 ユーザー設定 `/account`
-
-- 未認証ユーザーとゲストユーザーにGoogleログインを案内
-- ゲストで作成・参加済みのイベントはGoogleログイン後のユーザーへ引き継ぐ
-- Google認証済みユーザーの表示名とメールアドレスを表示
-- 表示名と日時の入力・表示に使用するタイムゾーンを設定
-- ユーザー設定のタイムゾーン初期値は`Asia/Tokyo`とする。Googleログイン時は保存済みの設定を保持し、ブラウザのタイムゾーンでは上書きしない。日時は内部・APIではUTCで管理し、画面ではユーザー設定に従って入力・表示する
-- ページ内にカレンダー設定を表示し、選択したサービスの接続状態と取り込み対象を管理する
-- セッションからのログアウト
-
-Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブラウザ遷移で開く。Googleカレンダー接続後は `/account?google_calendar=connected` に戻り、ページ内のカレンダー設定に認可結果を反映する。独立した接続完了ポップアップは表示しない。
-
-### 4.1.2 ユーザーページ内のカレンダー設定 `/account#calendar-settings`
-
-- 使用しない・Google・iCloud・TimeTreeから連携サービスを1つ選択する
-- Googleの接続・再接続・解除、取り込み時間帯、複数の対象カレンダーの選択をページ内で行う
-- iCloudを選択した場合は、Apple Accountの接続・解除と複数の対象カレンダーの選択をページ内に表示する
-- TimeTreeの表示手順は同じページ内の開閉パネルで確認できる
-- 旧 `/calendars`、`/calendars/icloud`、`/calendars/timetree`、`/account/icloud`、`/account/timetree` はユーザーページ内へ転送し、OAuth結果のクエリを保持する
-- 保存済みのサービス選択、カレンダー選択・取り込み時間帯は引き継ぐ
-- カレンダー設定を取得できない場合もプロフィール設定を表示する
-
-### 4.2 作成完了 `/events/:eventId/created`
+### 作成完了 `/events/:eventId/created`
 
 - イベント概要
 - 調整対象期間と必要時間
@@ -122,7 +100,7 @@ Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブ�
 
 生の招待トークンは作成時と再発行時だけ取得できるため、再読み込み時の扱いを別途考慮する。
 
-### 4.3 招待確認・参加 `/invitations/:inviteToken`
+### 招待確認・参加 `/invitations/:inviteToken`
 
 - 認証不要で公開招待情報を取得
 - イベント名、説明、調整対象期間、必要時間、回答期限を表示
@@ -132,13 +110,13 @@ Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブ�
 
 無効な招待トークンまたは取消済みイベントは404として扱う。
 
-### 4.4 参加可能時間入力 `/events/:eventId/availability`
+### 参加可能時間入力 `/events/:eventId/availability`
 
 - イベントの調整対象期間と必要時間を表示
 - 週単位の時間カレンダー上で参加可能時間を色付きの帯として可視化
 - カレンダーの空き部分を30分単位で縦横にドラッグし、矩形で囲んだ複数日の同じ時間帯をまとめて追加する。左右・上下の逆方向にも対応し、既存の時間帯との重複は日ごとに統合する。ドラッグ中は点線枠を表示し、キャンセル時は回答を変更しない。右側の編集パネルから詳細を編集・削除する
 - 入力済みの区間はクリックで選択し、枠と対応する編集行を強調する。ドラッグで区間の長さを保ったまま日付・時間を移動し、Delete/Backspaceキーまたは編集欄の削除ボタンで削除できる。Escapeで移動をキャンセルし選択を解除する。入力欄のキー操作では区間を削除しない。
-- Googleカレンダーから空き時間をプレビューして取り込む導線
+- 選択中のGoogle・iCloudカレンダーから空き時間をプレビューして取り込む導線。TimeTreeは書き出しのみ
 - ユーザー設定で選択したカレンダーを判定対象として使用
 - 空配列を「参加可能時間なし」として送信できる操作
 - 既存回答がある場合は編集として表示
@@ -154,7 +132,7 @@ Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブ�
 
 隣接する区間はAPI側で統合される。送信は `PUT /api/v1/events/:eventId/my-availability` により全件置換する。
 
-### 4.5 集計結果 `/events/:eventId/results`
+### 集計結果 `/events/:eventId/results`
 
 - 結果の表示と日程確定に責務を限定し、グループ編成やイベント設定を置かない
 - 「全体」と各小グループの候補を表示し、グループタブで表示対象を切り替える
@@ -162,7 +140,7 @@ Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブ�
 - URLの`scope=whole`または`group_id`検索パラメータで選択状態を共有可能にする
 - `group_id`が未指定なら「全体」を表示する
 - 存在しない、または別イベントの`group_id`は404にせず、先頭グループへ置き換える
-- 対象の必要時間を満たす候補のうち、参加可能なメンバーが同じで重なる候補を連続した時間帯へまとめて表示
+- 回答された空き時間を人数の変化点で集計し、人数が同じ限りは1枠として表示。参加者が入れ替わる場合は枠内に時間別の内訳を表示
 - 集まれる時間帯を月間カレンダー上の日付・開始〜終了時刻として表示
 - 月をまたぐ調整期間は前月・次月ボタンで切り替え
 - カレンダー上の候補を選択すると参加可能なメンバーを表示
@@ -171,13 +149,13 @@ Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブ�
 - 日別タイムライン上で対象参加者の参加可能時間を表示
 - 自分の回答を編集する導線
 - 主催者には、全体またはグループの最終日程を確定・解除する操作を表示。日付は結果カレンダーで選択した日を自動反映し、開始時刻だけを直接入力する。終了日時は対象の必要時間から自動計算する
-- 確定時は対象参加者の連携済みGoogleカレンダーへ予定を登録し、他の調整中イベントの同時間帯を参加不可にする旨を表示
+- 確定時は対象参加者の選択済みサービスの専用カレンダーへ予定を登録し、他の調整中イベントの同時間帯を参加不可にする旨を表示
 - 小グループが0件でも「全体」の候補と回答状況を表示
 - グループのメンバーが0人の場合は、候補なしとしてメンバー割り当てへの導線を表示
 
-候補は全体表示では `GET /api/v1/events/:eventId/candidates`、グループ表示では `GET /api/v1/events/:eventId/groups/:groupId/candidates` の結果を表示し、フロント側で独自再計算しない。候補の選択状態は確定日時に使用しない。結果カレンダーで選択した日付と主催者が入力した開始時刻を結合し、対象の必要時間から終了日時を算出する。全体表示と各グループ表示のどちらからも日時を確定できる。日時確定はresults画面のRoute Actionから対応するconfirmation APIへ送信し、成功後にローダーデータを再検証する。カレンダー登録と他イベントへの反映はAPI側で処理する。
+結果画面は全体またはグループの`availability` APIから回答を取得し、`app/features/events/availability-summary.ts`で人数の変化点ごとに集計する。必要時間で区切る`candidates` APIはこの表示には使用しない。候補の選択状態は確定日時に使用しない。結果カレンダーで選択した日付と主催者が入力した開始時刻を結合し、対象の必要時間から終了日時を算出する。全体表示と各グループ表示のどちらからも日時を確定できる。日時確定はresults画面のRoute Actionから対応するconfirmation APIへ送信し、成功後にローダーデータを再検証する。カレンダー登録と他イベントへの反映はAPI側で処理する。[カレンダー連携](calendars.md)も参照。
 
-### 4.6 イベント管理 `/events/:eventId/manage`
+### イベント管理 `/events/:eventId/manage`
 
 - イベント条件、参加者数、グループ数を表示
 - 招待URLの表示・コピー
@@ -193,7 +171,7 @@ Google OAuthの開始URLはAPIの`GET /api/v1/auth/google/start`を通常のブ�
 
 manage画面では候補ランキング、詳細な回答結果、日程確定操作を表示しない。これらはresults画面へ集約する。
 
-### 4.7 イベント編集 `/events/:eventId/edit`
+### イベント編集 `/events/:eventId/edit`
 
 - イベント名、説明
 - 調整対象期間
@@ -202,69 +180,32 @@ manage画面では候補ランキング、詳細な回答結果、日程確定�
 
 変更後の期間が登録済みの参加可能時間を除外する場合、APIは422を返すため、影響を説明するエラーを表示する。
 
-### 4.8 確定結果 `/events/:eventId/confirmed`
+### 確定結果 `/events/:eventId/confirmed`
 
 - 「全体」と各小グループの名称、対象メンバー、確定した開始・終了日時
 - イベント名と説明
 - 参加者一覧
-- 連携済みGoogleカレンダーへ自動登録された予定の確認
+- 選択済みサービスの専用カレンダーへ自動登録された予定の確認
 
-## 5. ルーティング
-
-APIの招待URLと認証境界に合わせ、公開招待と参加後のイベント画面を分離する。
-
-```ts
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
-
-export default [
-  index("routes/home.tsx"),
-  route("account", "routes/account.tsx"),
-  route("events", "routes/events/index.tsx"),
-  route("events/new", "routes/events/new.tsx"),
-  route("events/:eventId/created", "routes/events/created.tsx"),
-  route("events/:eventId/availability", "routes/events/availability.tsx"),
-  route("events/:eventId/results", "routes/events/results.tsx"),
-  route("events/:eventId/manage", "routes/events/manage.tsx"),
-  route("events/:eventId/edit", "routes/events/edit.tsx"),
-  route("events/:eventId/confirmed", "routes/events/confirmed.tsx"),
-  route("invitations/:inviteToken", "routes/invitations/join.tsx"),
-  route("responses/edit", "routes/responses/edit.tsx"),
-  route("*", "routes/not-found.tsx"),
-] satisfies RouteConfig;
-```
-
-## 6. 画面とAPIの対応
+## 画面とAPIの対応
 
 | 画面 | 主なAPI |
 | --- | --- |
-| ユーザー設定 | `GET /api/v1/me`、`GET /api/v1/auth/google/start`、`DELETE /api/v1/session`、Googleカレンダー連携API |
+| ユーザー設定 | `GET /api/v1/me`、`GET /api/v1/auth/google/start`、`DELETE /api/v1/session`、選択中サービスのカレンダー連携API |
 | イベント作成 | `POST /api/v1/events` |
 | 作成完了 | 作成レスポンスの `invite_url` |
 | 招待確認 | `GET /api/v1/invitations/:inviteToken` |
 | イベント参加 | `POST /api/v1/guest-sessions`、`POST /api/v1/invitations/:inviteToken/participants` |
 | 再回答リンク受付 | `POST /api/v1/response-sessions` |
 | 参加可能時間入力 | `GET` / `PUT /api/v1/events/:eventId/my-availability`、`GET /response-user`、`POST /response-edit-link` |
-| カレンダー取込 | `POST /api/v1/events/:eventId/google-calendar-availability/preview` |
-| 集計結果 | `GET /api/v1/events/:eventId/availability`、`GET /api/v1/events/:eventId/candidates` |
-| グループ別集計結果 | `GET /api/v1/events/:eventId/groups`、グループ別availability・candidates・confirmation API |
+| カレンダー取込 | `POST /api/v1/events/:eventId/{google,icloud}-calendar-availability/preview` |
+| 集計結果 | `GET /api/v1/events/:eventId/availability` |
+| グループ別集計結果 | `GET /api/v1/events/:eventId/groups`、グループ別availability・confirmation API |
 | イベント管理 | `GET /api/v1/events/:eventId/participants`、グループCRUD・メンバー一括置換API |
 | イベント編集 | `PATCH /api/v1/events/:eventId` |
 | 確定結果 | `GET /api/v1/events/:eventId` |
 
-## 7. MVPの実装範囲
-
-1. イベント作成
-2. 作成完了と招待URL共有
-3. 招待確認・ゲスト参加
-4. 参加可能時間の手動入力・編集
-5. 共通候補と回答状況の表示
-6. 主催者による日時確定
-7. 小グループの作成・メンバー編成
-8. 小グループ別の候補表示・日時確定
-
-Google認証、Googleカレンダー連携、イベント一覧まで実装済み。別イベントからの回答コピーはMVP後でもよい。
-
-## 8. イベント状態
+## イベント状態
 
 現在のAPI仕様に合わせ、イベント状態は次の3つとする。
 
@@ -278,7 +219,7 @@ Google認証、Googleカレンダー連携、イベント一覧まで実装済�
 
 「全体」または一部の小グループだけが確定している間もイベントは`open`とする。「全体」と存在するすべての小グループが確定した時点で`confirmed`へ遷移し、いずれかの確定を解除した場合は`open`へ戻す。`scheduling_mode`は既存データとの互換性のため内部的に保持するが、新規画面では調整単位として選択させない。
 
-## 9. エラー・例外時の扱い
+## エラー・例外時の扱い
 
 - セッションがない場合はゲストセッション作成またはログインへ誘導する。
 - イベント未参加者がイベントIDの画面へアクセスした場合は404として扱う。
@@ -286,3 +227,24 @@ Google認証、Googleカレンダー連携、イベント一覧まで実装済�
 - 重複区間や期間外の入力は該当入力行の近くに表示する。
 - 回答保存に失敗しても入力内容を保持し、再試行できるようにする。
 - 確定済みイベントでは参加可能時間入力より確定結果を優先する。
+
+## 招待時の表示名
+
+招待フォームの「イベントでの表示名」は参加APIの`display_name`へ送信し、イベント内の参加者名として保存する。アカウント名は入力欄の初期値として使う。別名で参加しても`PATCH /me`でプロフィールを書き換えない。入力欄のオートコンプリートは`nickname`を使用する。未ログインの場合は入力名でゲストセッションを作成する。
+
+## 時刻入力と24:00
+
+時刻入力は `00:00`〜`23:59` と `24:00` を受け付ける。24時台に許可するのは `24:00` のみで、`24:01` 以降は拒否する。時刻ピッカーでも24時を選択でき、その際の分は00に固定する。各入力の最小・最大時刻や開始・終了の順序の制約は引き続き適用する。
+
+日付付き入力の `2026-12-31T24:00` は `2027-01-01T00:00` と同じ日時として扱う。ユーザーのIANAタイムゾーンを適用する前に日付を繰り上げる。これにより夏時間切り替え日にも翌日のローカル深夜として変換する。存在しない日付や夏時間で存在しない時刻は拒否する。
+
+APIとDBには従来どおりUTCの日時を送る。APIが受け付けるRFC3339日時の書式を拡張するものではない。
+
+イベント作成・編集、回答期限、空き時間回答、日程確定、カレンダー取り込み時間帯で同じ検証を使う。回答期限と期間終了の比較では、前日24:00と翌日00:00を同値として扱う。終了が深夜のイベントを再編集する際は、前日の終了日と24:00を表示して保存済みの終了日時を維持する。
+
+## 実装と検証
+
+- 画面とloader / action: `app/routes/events/`、`app/routes/invitations/`、`app/routes/responses/`。URLの定義は[`app/routes.ts`](../app/routes.ts)を参照。
+- 共有する回答計算・入力検証・招待リンク: `app/features/events/`。APIのイベント・参加者・グループ・回答の型は同ディレクトリの`types.ts`に置く。
+- 検証: `test/routes/events/`、`test/features/events/`、`test/routes/invitations/`、`test/routes/responses/`と`test/browser/`。別名参加、複数日ドラッグ、移動・削除、24:00、人数別の連続時間帯を含める。
+- バックエンドの詳細な[API仕様](https://github.com/Astalum/vacaro-back/blob/main/docs/api-design.md)・[DB設計](https://github.com/Astalum/vacaro-back/blob/main/docs/database-design.md)はバックエンド側で管理する。フロント側にはコピーを置かず、実装変更時は実際の型・ハンドラー・マイグレーションも確認する。

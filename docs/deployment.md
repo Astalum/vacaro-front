@@ -30,7 +30,7 @@ git commit -m "Separate development and production deployment"
 git push origin main
 ```
 
-バックエンド側もコミットしてpushします。
+バックエンドを変更した場合だけ、そちらもコミットしてpushします。
 
 ```bash
 cd /home/astalum/self-develop/vacaro-back
@@ -42,6 +42,8 @@ git push origin main
 ```
 
 ## 2. GitHub Actionsを確認する
+
+`.github/workflows/publish-image.yaml`の責務は検証とGHCRへのイメージ発行までです。VPSへの自動デプロイは含まれないため、発行後の適用とヘルスチェックは下記の手順で行います。
 
 GitHubの`Astalum/vacaro-front`と`Astalum/vacaro-back`を開き、それぞれのイメージ発行Actionsが成功することを確認します。
 
