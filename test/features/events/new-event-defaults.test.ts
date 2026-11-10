@@ -8,7 +8,7 @@ describe("getNewEventDefaults", () => {
 		expect(defaults).toEqual({
 			windowStartAt: "2026-10-03T09:00",
 			windowEndAt: "2026-10-10T21:00",
-			responseDeadlineAt: "2026-09-29T23:59",
+			responseDeadlineAt: "2026-09-29T24:00",
 		});
 	});
 
@@ -21,7 +21,7 @@ describe("getNewEventDefaults", () => {
 		expect(defaults).toEqual({
 			windowStartAt: "2027-01-03T09:00",
 			windowEndAt: "2027-01-10T21:00",
-			responseDeadlineAt: "2026-12-30T23:59",
+			responseDeadlineAt: "2026-12-30T24:00",
 		});
 	});
 });

@@ -40,6 +40,6 @@ export function getNewEventDefaults(
 	return {
 		windowStartAt: localDateTimeAfterDays(now, 7, "09:00", timeZone),
 		windowEndAt: localDateTimeAfterDays(now, 14, "21:00", timeZone),
-		responseDeadlineAt: localDateTimeAfterDays(now, 3, "23:59", timeZone),
+		responseDeadlineAt: localDateTimeAfterDays(now, 3, "24:00", timeZone),
 	};
 }
