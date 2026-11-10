@@ -150,7 +150,7 @@ export function DateTimePicker(props: DateTimePickerProps) {
 				</PickerTrigger>
 			</PopoverTrigger>
 			<PopoverContent
-				className="picker-popover date-time-picker-popover max-h-[var(--radix-popover-content-available-height)] w-[min(22rem,calc(100vw-1.5rem))]"
+				className="picker-popover calendar-picker-popover date-time-picker-popover max-h-[var(--radix-popover-content-available-height)]"
 				align="start"
 				aria-label={ariaLabel ?? "日付と時刻を選択"}
 				collisionPadding={{ top: 88, right: 12, bottom: 12, left: 12 }}

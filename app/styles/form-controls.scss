@@ -66,6 +66,10 @@
 	overscroll-behavior: contain;
 	box-shadow: 0 12px 40px rgba(23, 61, 52, 0.16);
 }
+.calendar-picker-popover {
+	width: min(20rem, calc(100vw - 2rem));
+	max-width: min(20rem, var(--radix-popover-content-available-width));
+}
 .picker-footer {
 	display: flex;
 	justify-content: flex-end;

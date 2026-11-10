@@ -133,7 +133,7 @@ export function DatePicker(props: DatePickerProps) {
 			<PopoverContent
 				align="start"
 				aria-label={ariaLabel ?? "日付を選択"}
-				className="picker-popover w-[min(22rem,calc(100vw-1.5rem))]"
+				className="picker-popover calendar-picker-popover"
 				collisionPadding={{ top: 88, right: 12, bottom: 12, left: 12 }}
 			>
 				<CalendarPanel
