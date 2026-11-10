@@ -12,6 +12,10 @@ import { ValidationMessage } from "~/components/ui/validation-message";
 import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
 import { COMMON_TIME_ZONES, isValidTimeZone } from "~/lib/datetime";
 import { type User } from "~/features/account/types";
+import {
+	AvailabilitySettings,
+	handleAvailabilityDefaultAction,
+} from "~/features/account/availability-settings";
 import CalendarSettings, {
 	loadCalendarSettings,
 	handleCalendarAction,
@@ -44,6 +48,8 @@ clientLoader.hydrate = true as const;
 export async function clientAction({ request }: Route.ClientActionArgs) {
 	const formData = await request.formData();
 	const intent = formData.get("intent");
+	if (intent === "update-availability-default")
+		return handleAvailabilityDefaultAction(formData);
 	if (
 		intent === "select-provider" ||
 		intent === "calendar-connect" ||
@@ -158,7 +164,7 @@ export default function Account(props: Route.ComponentProps) {
 			<PageIntro
 				eyebrow="USER SETTINGS"
 				title="ユーザー設定"
-				description="プロフィール、日時の表示、カレンダー連携をまとめて設定できます。"
+				description="プロフィール、日時の表示、空き時間の初期状態、カレンダー連携を設定できます。"
 			/>
 			{actionData?.kind === "profile-updated" && (
 				<div className="confirm-banner compact-banner">
@@ -281,6 +287,21 @@ export default function Account(props: Route.ComponentProps) {
 							</button>
 						</Form>
 					</section>
+					<AvailabilitySettings
+						user={user}
+						saved={actionData?.kind === "availability-default-updated"}
+						error={
+							actionData?.kind === "error" &&
+							actionData.scope === "availability"
+								? actionData.error
+								: undefined
+						}
+						saving={
+							intent === "update-availability-default" &&
+							navigation.state !== "idle"
+						}
+						disabled={navigation.state !== "idle"}
+					/>
 				</div>
 			)}
 			{calendar.settings ? (

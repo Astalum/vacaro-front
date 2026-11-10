@@ -558,7 +558,13 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 			end: localDateTime(interval.end_at, user.time_zone),
 		})),
 	);
-	const [entryMode, setEntryMode] = useState<EntryMode>("available");
+	const [entryMode, setEntryMode] = useState<EntryMode>(() =>
+		availability.response_status === "pending" &&
+		availability.intervals.length === 0 &&
+		user.availability_default === "available"
+			? "unavailable"
+			: "available",
+	);
 	const [selectedDate, setSelectedDate] = useState(
 		() => ranges[0]?.start.slice(0, 10) ?? firstDate,
 	);

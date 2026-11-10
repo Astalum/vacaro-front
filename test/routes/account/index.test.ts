@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clientLoader } from "~/routes/account/index";
+import { clientAction, clientLoader } from "~/routes/account/index";
 const args = (suffix = "") =>
 	({ request: new Request(`https://vacaro.test/account${suffix}`) }) as never;
 const user = {
@@ -16,6 +16,77 @@ function response(data: unknown, status = 200) {
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("combined user settings", () => {
+	it.each(["available", "unavailable"])(
+		"saves %s as the account's initial availability without changing the profile",
+		async (value) => {
+			const fetchMock = vi
+				.fn()
+				.mockResolvedValue(response({ ...user, availability_default: value }));
+			vi.stubGlobal("fetch", fetchMock);
+			const formData = new FormData();
+			formData.set("intent", "update-availability-default");
+			formData.set("availability_default", value);
+			const result = await clientAction({
+				request: new Request("https://vacaro.test/account", {
+					method: "POST",
+					body: formData,
+				}),
+			} as never);
+			expect(result).toEqual({ kind: "availability-default-updated" });
+			expect(fetchMock).toHaveBeenCalledOnce();
+			expect(fetchMock.mock.calls[0][0]).toBe(
+				"/api/v1/me/availability-default",
+			);
+			expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
+			expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+				availability_default: value,
+			});
+		},
+	);
+	it("rejects an invalid initial availability without sending a request", async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal("fetch", fetchMock);
+		const formData = new FormData();
+		formData.set("intent", "update-availability-default");
+		formData.set("availability_default", "invalid");
+		const result = await clientAction({
+			request: new Request("https://vacaro.test/account", {
+				method: "POST",
+				body: formData,
+			}),
+		} as never);
+		expect(result).toMatchObject({
+			init: { status: 422 },
+			data: { kind: "error", scope: "availability" },
+		});
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+	it("reports a failed preference save instead of reporting success", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValue(
+					response(
+						{ code: "internal_error", message: "保存できませんでした" },
+						500,
+					),
+				),
+		);
+		const formData = new FormData();
+		formData.set("intent", "update-availability-default");
+		formData.set("availability_default", "available");
+		const result = await clientAction({
+			request: new Request("https://vacaro.test/account", {
+				method: "POST",
+				body: formData,
+			}),
+		} as never);
+		expect(result).toMatchObject({
+			init: { status: 500 },
+			data: { kind: "error", scope: "availability" },
+		});
+	});
 	it("loads the profile and only the selected service on the same page", async () => {
 		const fetchMock = vi.fn((input: unknown) => {
 			const path = String(input);

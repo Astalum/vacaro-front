@@ -10,13 +10,15 @@
 .provider-selection-card {
 	margin-bottom: 16px;
 }
-.account-card > .calendar-provider-form {
+.account-card > .calendar-provider-form,
+.account-card > .availability-default-form {
 	display: grid;
 	gap: 16px;
 	justify-content: stretch;
 	margin-bottom: 16px;
 }
-.calendar-provider-form fieldset {
+.calendar-provider-form fieldset,
+.availability-default-form fieldset {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
 	gap: 12px;
@@ -24,11 +26,13 @@
 	padding: 0;
 	min-width: 0;
 }
-.calendar-provider-form legend {
+.calendar-provider-form legend,
+.availability-default-form legend {
 	margin-bottom: 12px;
 	font-weight: 700;
 }
-.calendar-provider-option {
+.calendar-provider-option,
+.availability-default-option {
 	display: flex;
 	align-items: flex-start;
 	gap: 10px;
@@ -37,27 +41,37 @@
 	border-radius: 10px;
 	cursor: pointer;
 }
-.calendar-provider-option:has(input:checked) {
+.calendar-provider-option:has(input:checked),
+.availability-default-option:has(input:checked) {
 	border-color: var(--primary);
 	background: #f0fbf7;
 }
-.calendar-provider-option input {
+.calendar-provider-option input,
+.availability-default-option input {
 	flex: 0 0 auto;
 	width: 18px;
 	height: 18px;
 	margin-top: 3px;
 }
-.calendar-provider-option span {
+.calendar-provider-option span,
+.availability-default-option span {
 	min-width: 0;
 }
 .calendar-provider-option strong,
-.calendar-provider-option small {
+.calendar-provider-option small,
+.availability-default-option strong,
+.availability-default-option small {
 	display: block;
 	line-height: 1.6;
 }
-.calendar-provider-option small {
+.calendar-provider-option small,
+.availability-default-option small {
 	margin-top: 4px;
 	color: var(--muted);
+}
+.availability-settings-saved {
+	color: var(--primary-dark);
+	font-weight: 700;
 }
 
 .timetree-guide {
