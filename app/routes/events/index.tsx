@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { data, Link, useFetcher } from "react-router";
-import { Icon, PageIntro, PageShell, WeekendText } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageIntro, PageShell } from "~/components/layout";
+import { WeekendText } from "~/components/ui/weekend-text";
 import {
 	ApiError,
 	apiErrorData,
 	apiRequest,
 	apiRequestWithMeta,
-	type Event,
-	eventDisplayStatus,
-	formatDateTime,
-	minutesLabel,
-	type User,
 } from "~/lib/api";
+import { type Event } from "~/features/events/types";
+import { eventDisplayStatus } from "~/features/events/status";
+import { formatDateTime, minutesLabel } from "~/lib/datetime";
+import { type User } from "~/features/account/types";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/index";
 

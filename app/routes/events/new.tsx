@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { data, Form, redirect, useNavigation } from "react-router";
-import { Icon, PageIntro, PageShell } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageIntro, PageShell } from "~/components/layout";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -22,20 +23,18 @@ import {
 	FieldError,
 	ValidationMessage,
 } from "~/components/ui/validation-message";
+import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
 import {
-	ApiError,
-	apiErrorData,
-	apiRequest,
 	DEFAULT_TIME_ZONE,
-	type EventWithInvite,
 	isValidTimeZone,
 	localDateTimeToIso,
-	saveEventInviteUrl,
-	type User,
-} from "~/lib/api";
-import { validateEventForm } from "~/lib/event-form-validation";
+} from "~/lib/datetime";
+import { type EventWithInvite } from "~/features/events/types";
+import { saveEventInviteUrl } from "~/features/events/links";
+import { type User } from "~/features/account/types";
+import { validateEventForm } from "~/features/events/form-validation";
 import { createPageMeta } from "~/lib/meta";
-import { getNewEventDefaults } from "~/lib/new-event-defaults";
+import { getNewEventDefaults } from "~/features/events/new-event-defaults";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/new";
 

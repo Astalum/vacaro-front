@@ -3,13 +3,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { createRoutesStub } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ConfirmationCalendarStatus } from "~/features/calendars/types";
 import type {
-	ConfirmationCalendarStatus,
 	Event,
 	Participant,
 	SchedulingGroup,
-	User,
-} from "~/lib/api";
+} from "~/features/events/types";
+import type { User } from "~/features/account/types";
 import Confirmed, { clientAction } from "~/routes/events/confirmed";
 
 afterEach(() => {
@@ -194,16 +194,14 @@ describe("confirmed schedule clientAction", () => {
 });
 
 it("registers a confirmed schedule with iCloud independently of Google", async () => {
-	const fetchMock = vi
-		.fn()
-		.mockResolvedValue(
-			new Response(
-				JSON.stringify({
-					data: { group_id: null, status: "synced", attempted_at: null },
-				}),
-				{ headers: { "Content-Type": "application/json" } },
-			),
-		);
+	const fetchMock = vi.fn().mockResolvedValue(
+		new Response(
+			JSON.stringify({
+				data: { group_id: null, status: "synced", attempted_at: null },
+			}),
+			{ headers: { "Content-Type": "application/json" } },
+		),
+	);
 	vi.stubGlobal("fetch", fetchMock);
 	const form = new FormData();
 	form.set("intent", "sync-icloud-calendar");

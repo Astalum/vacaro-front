@@ -1,12 +1,11 @@
 import type { FormEvent } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
+import { Icon } from "~/components/ui/icon";
 import {
-	Icon,
 	InviteUrlReissue,
-	PageIntro,
-	PageShell,
 	PersistentInviteUrl,
-} from "~/components/app";
+} from "~/features/events/invite-url";
+import { PageIntro, PageShell } from "~/components/layout";
 import { DatePicker } from "~/components/ui/date-picker";
 import { DateTimePicker } from "~/components/ui/date-time-picker";
 import {
@@ -22,19 +21,19 @@ import {
 	FieldError,
 	ValidationMessage,
 } from "~/components/ui/validation-message";
+import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
+import { type Event } from "~/features/events/types";
 import {
-	ApiError,
-	apiErrorData,
-	apiRequest,
-	type Event,
 	isoToLocalDateTime,
 	isValidTimeZone,
 	localDateTimeToIso,
+} from "~/lib/datetime";
+import {
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
-	type User,
-} from "~/lib/api";
-import { validateEventForm } from "~/lib/event-form-validation";
+} from "~/features/events/links";
+import { type User } from "~/features/account/types";
+import { validateEventForm } from "~/features/events/form-validation";
 import { createPageMeta } from "~/lib/meta";
 import { endOfDayInput, isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/edit";

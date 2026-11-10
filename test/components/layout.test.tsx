@@ -1,0 +1,92 @@
+// @vitest-environment happy-dom
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppHeader, PageShell } from "~/components/layout";
+import {
+	EVENT_INVITE_URLS_STORAGE_KEY,
+	saveEventInviteUrl,
+} from "~/features/events/links";
+
+describe("AppHeader mobile menu", () => {
+	beforeEach(() => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn().mockResolvedValue(
+				new Response(
+					JSON.stringify({
+						error: { code: "unauthorized", message: "認証が必要です" },
+					}),
+					{ status: 401, headers: { "Content-Type": "application/json" } },
+				),
+			),
+		);
+	});
+
+	afterEach(() => vi.unstubAllGlobals());
+
+	it("shows every destination and closes after choosing a link", async () => {
+		const user = userEvent.setup();
+		render(
+			<MemoryRouter>
+				<AppHeader />
+			</MemoryRouter>,
+		);
+
+		const menuButton = screen.getByRole("button", { name: "メニューを開く" });
+		await user.click(menuButton);
+
+		expect(menuButton.getAttribute("aria-expanded")).toBe("true");
+		expect(
+			screen.getByRole("link", { name: /イベントを作る/ }).getAttribute("href"),
+		).toBe("/events/new");
+		expect(
+			screen.getByRole("link", { name: "イベント一覧" }).getAttribute("href"),
+		).toBe("/events");
+		expect(
+			screen
+				.getByRole("link", { name: /Googleでログイン/ })
+				.getAttribute("href"),
+		).toBe("/api/v1/auth/google/start");
+
+		await user.click(screen.getByRole("link", { name: "イベント一覧" }));
+		expect(menuButton.getAttribute("aria-expanded")).toBe("false");
+	});
+});
+
+describe("PageShell invite URL", () => {
+	beforeEach(() => {
+		window.localStorage.removeItem(EVENT_INVITE_URLS_STORAGE_KEY);
+	});
+
+	it("keeps the saved invite URL visible at the bottom and reflects updates", async () => {
+		const eventID = "event-123";
+		const originalUrl = "https://vacaro.test/invitations/original";
+		const regeneratedUrl = "https://vacaro.test/invitations/regenerated";
+		saveEventInviteUrl(eventID, originalUrl);
+
+		render(
+			<MemoryRouter initialEntries={[`/events/${eventID}/availability`]}>
+				<PageShell fullScreen>回答画面</PageShell>
+			</MemoryRouter>,
+		);
+
+		const inviteLink = await screen.findByRole("link", {
+			name: originalUrl,
+		});
+		expect(inviteLink.getAttribute("href")).toBe(originalUrl);
+		expect(inviteLink.closest("main")).not.toBeNull();
+		expect(inviteLink.closest("section")?.previousSibling?.textContent).toBe(
+			"回答画面",
+		);
+
+		act(() => saveEventInviteUrl(eventID, regeneratedUrl));
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole("link", { name: regeneratedUrl }).getAttribute("href"),
+			).toBe(regeneratedUrl);
+		});
+	});
+});

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Icon, PageShell } from "~/components/app";
-import { apiErrorData, apiRequest, saveResponseEditUrl } from "~/lib/api";
+import { Icon } from "~/components/ui/icon";
+import { PageShell } from "~/components/layout";
+import { apiErrorData, apiRequest } from "~/lib/api";
+import { saveResponseEditUrl } from "~/features/events/links";
 import { createPageMeta } from "~/lib/meta";
 
 export function meta() {

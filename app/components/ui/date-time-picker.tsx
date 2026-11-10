@@ -1,6 +1,6 @@
 import { CalendarIcon, Clock3Icon, XIcon } from "lucide-react";
 import { useState } from "react";
-import { WeekendText } from "~/components/app";
+import { WeekendText } from "~/components/ui/weekend-text";
 import {
 	dateInputLabel,
 	parseDateInput,

@@ -1,22 +1,23 @@
 import { data, Form, Link, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageShell } from "~/components/layout";
+import { WeekendText } from "~/components/ui/weekend-text";
+import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
 import {
-	ApiError,
-	apiErrorData,
-	apiRequest,
 	type ConfirmationCalendarStatus,
 	type ConfirmationCalendarSync,
+} from "~/features/calendars/types";
+import {
 	type Event,
-	formatDateRange,
-	minutesLabel,
 	type Participant,
 	type SchedulingGroup,
-	type User,
-} from "~/lib/api";
+} from "~/features/events/types";
+import { formatDateRange, minutesLabel } from "~/lib/datetime";
+import { type User } from "~/features/account/types";
 import {
 	calendarTransport,
 	loadCalendarPreference,
-} from "~/lib/calendar-provider";
+} from "~/features/calendars/provider";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/confirmed";
 

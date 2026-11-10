@@ -1,26 +1,28 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { data, Form, Link, redirect, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageShell } from "~/components/layout";
+import { WeekendText } from "~/components/ui/weekend-text";
 import { TimePicker } from "~/components/ui/time-picker";
 import { ValidationMessage } from "~/components/ui/validation-message";
+import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
 import {
-	ApiError,
-	apiErrorData,
-	apiRequest,
 	DEFAULT_TIME_ZONE,
-	type Event,
-	eventDisplayStatus,
 	formatDateRange,
 	localDateTimeToIso,
 	minutesLabel,
+} from "~/lib/datetime";
+import {
+	type Event,
 	type ParticipantAvailability,
 	type SchedulingGroup,
-	type User,
-} from "~/lib/api";
+} from "~/features/events/types";
+import { eventDisplayStatus } from "~/features/events/status";
+import { type User } from "~/features/account/types";
 import {
 	type AvailabilityRange,
 	summarizeAvailability,
-} from "~/lib/availability-summary";
+} from "~/features/events/availability-summary";
 import { createPageMeta } from "~/lib/meta";
 import { isTimeValue } from "~/lib/time";
 import type { Route } from "./+types/results";

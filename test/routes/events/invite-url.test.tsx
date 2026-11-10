@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EVENT_INVITE_URLS_STORAGE_KEY, savedEventInviteUrl } from "~/lib/api";
+import {
+	EVENT_INVITE_URLS_STORAGE_KEY,
+	savedEventInviteUrl,
+} from "~/features/events/links";
 import {
 	clientAction as createdAction,
 	clientLoader as createdLoader,

@@ -4,11 +4,13 @@ export default [
 	index("routes/home.tsx"),
 	route("privacy", "routes/privacy.tsx"),
 	route("terms", "routes/terms.tsx"),
-	route("account", "routes/account.tsx"),
-	route("account/:calendarProvider", "routes/legacy-calendar-settings.ts"),
-	route("calendars", "routes/calendars.tsx"),
-	route("calendars/icloud", "routes/account-icloud.tsx"),
-	route("calendars/timetree", "routes/account-timetree.tsx"),
+	route("account", "routes/account/index.tsx"),
+	route("account/:calendarProvider", "routes/account/calendar-redirect.ts", {
+		id: "legacy-account-calendar",
+	}),
+	route("calendars/:calendarProvider?", "routes/account/calendar-redirect.ts", {
+		id: "legacy-calendars",
+	}),
 	route("events", "routes/events/index.tsx"),
 	route("events/new", "routes/events/new.tsx"),
 	route("events/:eventId/created", "routes/events/created.tsx"),

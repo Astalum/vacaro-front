@@ -1,19 +1,18 @@
 import { data, Form, redirect, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageShell } from "~/components/layout";
+import { WeekendText } from "~/components/ui/weekend-text";
 import { ValidationMessage } from "~/components/ui/validation-message";
+import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
 import {
-	ApiError,
-	apiErrorData,
-	apiRequest,
 	DEFAULT_TIME_ZONE,
-	type Event,
-	eventDisplayStatus,
 	formatDateRange,
-	type JoinedParticipant,
 	minutesLabel,
-	saveResponseEditUrl,
-	type User,
-} from "~/lib/api";
+} from "~/lib/datetime";
+import { type Event, type JoinedParticipant } from "~/features/events/types";
+import { eventDisplayStatus } from "~/features/events/status";
+import { saveResponseEditUrl } from "~/features/events/links";
+import { type User } from "~/features/account/types";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/join";
 

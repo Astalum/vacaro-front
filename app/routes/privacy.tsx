@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { PageIntro, PageShell } from "~/components/app";
+import { PageIntro, PageShell } from "~/components/layout";
 import { createPageMeta } from "~/lib/meta";
 
 export function meta() {

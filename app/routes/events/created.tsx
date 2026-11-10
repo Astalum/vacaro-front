@@ -1,24 +1,19 @@
 import { useState } from "react";
 import { data, Link, useNavigation } from "react-router";
-import {
-	Icon,
-	InviteUrlReissue,
-	PageShell,
-	WeekendText,
-} from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { InviteUrlReissue } from "~/features/events/invite-url";
+import { PageShell } from "~/components/layout";
+import { WeekendText } from "~/components/ui/weekend-text";
 import { ValidationMessage } from "~/components/ui/validation-message";
+import { ApiError, apiErrorData, apiRequest } from "~/lib/api";
+import { type Event } from "~/features/events/types";
+import { formatDateRange, minutesLabel } from "~/lib/datetime";
 import {
-	ApiError,
-	apiErrorData,
-	apiRequest,
-	type Event,
-	formatDateRange,
-	minutesLabel,
 	reissueEventInviteUrl,
 	savedEventInviteUrl,
 	saveEventInviteUrl,
-	type User,
-} from "~/lib/api";
+} from "~/features/events/links";
+import { type User } from "~/features/account/types";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/created";
 

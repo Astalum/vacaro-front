@@ -6,7 +6,8 @@ import {
 	useNavigate,
 	useSearchParams,
 } from "react-router";
-import { AppHeader, Icon, SiteFooter } from "~/components/app";
+import { AppHeader, SiteFooter } from "~/components/layout";
+import { Icon } from "~/components/ui/icon";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/home";
 

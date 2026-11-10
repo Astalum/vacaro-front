@@ -1,5 +1,6 @@
 import { Link } from "react-router";
-import { Icon, PageShell } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageShell } from "~/components/layout";
 import { createPageMeta } from "~/lib/meta";
 
 export function meta() {

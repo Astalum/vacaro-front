@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Event, SchedulingGroup, User } from "~/lib/api";
+import type { Event, SchedulingGroup } from "~/features/events/types";
+import type { User } from "~/features/account/types";
 import { clientAction, clientLoader } from "~/routes/events/results";
 
 function response(data: unknown) {

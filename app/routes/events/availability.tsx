@@ -7,42 +7,51 @@ import {
 	useSyncExternalStore,
 } from "react";
 import { data, Form, Link, useNavigation } from "react-router";
-import { Icon, PageShell, WeekendText } from "~/components/app";
+import { Icon } from "~/components/ui/icon";
+import { PageShell } from "~/components/layout";
+import { WeekendText } from "~/components/ui/weekend-text";
 import { TimePicker } from "~/components/ui/time-picker";
 import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
-	type AvailabilityInterval,
 	apiErrorData,
 	apiRequest,
 	apiRequestWithMeta,
+} from "~/lib/api";
+import { type AvailabilityInterval, type Event } from "~/features/events/types";
+import {
 	type CalendarAvailabilityWindow,
+	savedCalendarAvailabilityWindow,
+} from "~/features/calendars/import-window";
+import {
 	DEFAULT_TIME_ZONE,
-	type Event,
 	formatDateRange,
-	type GoogleCalendar,
-	isGoogleHolidayCalendarID,
 	localDateTimeToIso,
 	minutesLabel,
-	savedCalendarAvailabilityWindow,
+} from "~/lib/datetime";
+import { type GoogleCalendar } from "~/features/calendars/types";
+import {
+	isGoogleHolidayCalendarID,
 	savedCalendarIDs,
+} from "~/features/calendars/google-selection";
+import {
 	savedResponseEditUrl,
 	saveResponseEditUrl,
-	type User,
-} from "~/lib/api";
+} from "~/features/events/links";
+import { type User } from "~/features/account/types";
 import {
 	type ICloudCalendar,
 	savedICloudCalendarIDs,
-} from "~/lib/icloud-calendar";
+} from "~/features/calendars/icloud-selection";
 import { normalizeLocalDateTime } from "~/lib/time";
-import { loadCalendarPreference } from "~/lib/calendar-provider";
+import { loadCalendarPreference } from "~/features/calendars/provider";
 import { createPageMeta } from "~/lib/meta";
 import type { Route } from "./+types/availability";
 
 import {
 	moveAvailabilityRange,
 	type TimeRange,
-} from "~/lib/availability-range";
+} from "~/features/events/availability-range";
 
 type MoveState = {
 	range: TimeRange;
