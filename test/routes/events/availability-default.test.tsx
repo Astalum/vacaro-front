@@ -1,4 +1,10 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+	act,
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRoutesStub } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
@@ -91,13 +97,9 @@ describe("initial availability preference", () => {
 				.getByRole("button", { name: "都合が悪い時間" })
 				.getAttribute("aria-pressed"),
 		).toBe("true");
-		await user.click(
-			screen.getByRole("button", { name: "都合がいい時間" }),
-		);
+		await user.click(screen.getByRole("button", { name: "都合がいい時間" }));
 		expect(ranges()).toEqual(expected);
-		await user.click(
-			screen.getByRole("button", { name: "都合が悪い時間" }),
-		);
+		await user.click(screen.getByRole("button", { name: "都合が悪い時間" }));
 		expect(ranges()).toEqual(expected);
 	});
 
@@ -121,4 +123,88 @@ describe("initial availability preference", () => {
 			]);
 		},
 	);
+});
+
+describe("holding Shift to temporarily reverse the entry mode", () => {
+	const savedInterval = {
+		id: "existing",
+		start_at: "2026-12-31T01:00:00Z",
+		end_at: "2026-12-31T03:00:00Z",
+	};
+	const modeButton = (mode: "available" | "unavailable") =>
+		screen.getByRole("button", {
+			name: mode === "available" ? "都合がいい時間" : "都合が悪い時間",
+		});
+	const shift = (
+		type: "keyDown" | "keyUp",
+		code = "ShiftLeft",
+		repeat = false,
+	) => fireEvent[type](window, { key: "Shift", code, repeat });
+
+	it.each(["available", "unavailable"] as const)(
+		"reverses %s only while held and preserves the saved answer",
+		async (baseline) => {
+			const user = userEvent.setup();
+			const ranges = await openAvailability(undefined, "submitted", [
+				savedInterval,
+			]);
+			await user.click(modeButton(baseline));
+			const original = ranges();
+			const opposite = baseline === "available" ? "unavailable" : "available";
+			shift("keyDown");
+			expect(modeButton(opposite).getAttribute("aria-pressed")).toBe("true");
+			expect(ranges()).toEqual(original);
+			shift("keyDown", "ShiftLeft", true);
+			expect(modeButton(opposite).getAttribute("aria-pressed")).toBe("true");
+			shift("keyUp");
+			expect(modeButton(baseline).getAttribute("aria-pressed")).toBe("true");
+			expect(ranges()).toEqual(original);
+			act(() => {
+				shift("keyDown");
+				shift("keyUp");
+			});
+			expect(modeButton(baseline).getAttribute("aria-pressed")).toBe("true");
+			expect(ranges()).toEqual(original);
+		},
+	);
+
+	it("waits until both Shift keys have been released", async () => {
+		const ranges = await openAvailability(undefined, "submitted", [
+			savedInterval,
+		]);
+		const original = ranges();
+		shift("keyDown", "ShiftLeft");
+		shift("keyDown", "ShiftRight");
+		shift("keyUp", "ShiftLeft");
+		expect(modeButton("unavailable").getAttribute("aria-pressed")).toBe("true");
+		shift("keyUp", "ShiftRight");
+		expect(modeButton("available").getAttribute("aria-pressed")).toBe("true");
+		expect(ranges()).toEqual(original);
+	});
+
+	it("restores the baseline when the window loses focus", async () => {
+		const ranges = await openAvailability("available");
+		const original = ranges();
+		shift("keyDown");
+		expect(modeButton("available").getAttribute("aria-pressed")).toBe("true");
+		fireEvent.blur(window);
+		expect(modeButton("unavailable").getAttribute("aria-pressed")).toBe("true");
+		shift("keyUp");
+		expect(modeButton("unavailable").getAttribute("aria-pressed")).toBe("true");
+		expect(ranges()).toEqual(original);
+	});
+
+	it("keeps the mode while using Shift in the time picker", async () => {
+		const user = userEvent.setup();
+		const ranges = await openAvailability(undefined, "submitted", [
+			savedInterval,
+		]);
+		const original = ranges();
+		await user.click(screen.getByRole("button", { name: /^開始時刻/ }));
+		await screen.findByRole("dialog");
+		await user.keyboard("{Shift>}");
+		expect(modeButton("available").getAttribute("aria-pressed")).toBe("true");
+		await user.keyboard("{/Shift}");
+		expect(ranges()).toEqual(original);
+	});
 });

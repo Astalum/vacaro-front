@@ -1,5 +1,6 @@
 import {
 	type PointerEvent,
+	useCallback,
 	useEffect,
 	useMemo,
 	useRef,
@@ -565,6 +566,11 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 			? "unavailable"
 			: "available",
 	);
+	const entryModeRef = useRef(entryMode);
+	const shiftOverride = useRef<{
+		keys: Set<string>;
+		baseline: EntryMode | null;
+	}>({ keys: new Set(), baseline: null });
 	const [selectedDate, setSelectedDate] = useState(
 		() => ranges[0]?.start.slice(0, 10) ?? firstDate,
 	);
@@ -600,11 +606,12 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 		activeDrag.current = next;
 		setDrag(next);
 	};
-	const cancelDrag = () => {
-		setActiveDrag(null);
+	const cancelDrag = useCallback(() => {
+		activeDrag.current = null;
+		setDrag(null);
 		activeMove.current = null;
 		setMovingRange(null);
-	};
+	}, []);
 	useEffect(() => {
 		activeDrag.current = null;
 		activeMove.current = null;
@@ -661,15 +668,37 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 
 	useEffect(() => {
 		if (actionData?.kind !== "preview" && actionData?.kind !== "copied") return;
-		setEntryMode("available");
-		setRanges(importedRanges);
+		const overriding = shiftOverride.current.baseline !== null;
+		if (overriding) shiftOverride.current.baseline = "available";
+		const nextMode = overriding ? "unavailable" : "available";
+		entryModeRef.current = nextMode;
+		setEntryMode(nextMode);
+		setRanges(
+			overriding
+				? invertRangesForWindow(
+						importedRanges,
+						firstDate,
+						lastDate,
+						dailyStartMinute,
+						dailyEndMinute,
+					)
+				: importedRanges,
+		);
 		setSelectedRangeID(null);
 		if (importedRanges[0]) {
 			const importedDate = importedRanges[0].start.slice(0, 10);
 			setSelectedDate(importedDate);
 			setWeekIndex(Math.max(0, weekOptions.indexOf(weekStart(importedDate))));
 		}
-	}, [actionData, importedRanges, weekOptions]);
+	}, [
+		actionData,
+		importedRanges,
+		weekOptions,
+		firstDate,
+		lastDate,
+		dailyStartMinute,
+		dailyEndMinute,
+	]);
 
 	const submissionRanges = useMemo(
 		() =>
@@ -684,21 +713,74 @@ function useAvailability({ loaderData, actionData }: Route.ComponentProps) {
 					),
 		[dailyEndMinute, dailyStartMinute, entryMode, firstDate, lastDate, ranges],
 	);
-	const changeEntryMode = (nextMode: EntryMode) => {
-		if (nextMode === entryMode) return;
-		setRanges((current) =>
-			invertRangesForWindow(
-				current,
-				firstDate,
-				lastDate,
-				dailyStartMinute,
-				dailyEndMinute,
-			),
-		);
-		setEntryMode(nextMode);
-		setSelectedRangeID(null);
-		cancelDrag();
-	};
+	const changeEntryMode = useCallback(
+		(nextMode: EntryMode) => {
+			if (nextMode === entryModeRef.current) return;
+			entryModeRef.current = nextMode;
+			setRanges((current) =>
+				invertRangesForWindow(
+					current,
+					firstDate,
+					lastDate,
+					dailyStartMinute,
+					dailyEndMinute,
+				),
+			);
+			setEntryMode(nextMode);
+			setSelectedRangeID(null);
+			cancelDrag();
+		},
+		[firstDate, lastDate, dailyStartMinute, dailyEndMinute, cancelDrag],
+	);
+
+	useEffect(() => {
+		const restoreMode = () => {
+			const { baseline } = shiftOverride.current;
+			shiftOverride.current.keys.clear();
+			shiftOverride.current.baseline = null;
+			if (baseline !== null) changeEntryMode(baseline);
+		};
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Shift" || event.repeat) return;
+			const code = event.code || event.key;
+			if (shiftOverride.current.keys.size > 0) {
+				shiftOverride.current.keys.add(code);
+				return;
+			}
+			const target = event.target;
+			if (
+				event.defaultPrevented ||
+				event.isComposing ||
+				event.ctrlKey ||
+				event.altKey ||
+				event.metaKey ||
+				(target instanceof HTMLElement &&
+					(target.isContentEditable ||
+						target.closest(
+							'input, textarea, select, [contenteditable], [role="textbox"], [role="dialog"], [role="listbox"]',
+						)))
+			)
+				return;
+			shiftOverride.current.keys.add(code);
+			shiftOverride.current.baseline = entryModeRef.current;
+			changeEntryMode(
+				entryModeRef.current === "available" ? "unavailable" : "available",
+			);
+		};
+		const onKeyUp = (event: KeyboardEvent) => {
+			if (event.key !== "Shift") return;
+			shiftOverride.current.keys.delete(event.code || event.key);
+			if (shiftOverride.current.keys.size === 0) restoreMode();
+		};
+		window.addEventListener("keydown", onKeyDown);
+		window.addEventListener("keyup", onKeyUp);
+		window.addEventListener("blur", restoreMode);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("keyup", onKeyUp);
+			window.removeEventListener("blur", restoreMode);
+		};
+	}, [changeEntryMode]);
 
 	const allowedRange = (_key: string) => ({
 		start: dailyStartMinute,
@@ -1335,7 +1417,11 @@ type AvailabilityModel = ReturnType<typeof useAvailability>;
 function EntryModeToggle({ model }: { model: AvailabilityModel }) {
 	const { entryMode, changeEntryMode } = model;
 	return (
-		<fieldset className="schedule-entry-mode" aria-label="回答する時間の選び方">
+		<fieldset
+			className="schedule-entry-mode"
+			aria-label="回答する時間の選び方"
+			title="Shiftキーを押している間は反対の入力モードになります"
+		>
 			<button
 				type="button"
 				aria-pressed={entryMode === "available"}
