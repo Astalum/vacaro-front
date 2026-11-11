@@ -15,6 +15,7 @@ import { TimePicker } from "~/components/ui/time-picker";
 import { ValidationMessage } from "~/components/ui/validation-message";
 import {
 	ApiError,
+	type ApiErrorBody,
 	apiErrorData,
 	apiRequest,
 	apiRequestWithMeta,
@@ -244,13 +245,14 @@ export async function clientAction({
 			end_at: localDateTimeToIso(range.end, timeZone),
 		}));
 		if (intervals.some((interval) => !interval.start_at || !interval.end_at)) {
+			const error: ApiErrorBody = {
+				code: "invalid_time_zone_datetime",
+				message: "イベントのタイムゾーンで日時を解釈できませんでした",
+			};
 			return data(
 				{
 					kind: "error" as const,
-					error: {
-						code: "invalid_time_zone_datetime",
-						message: "イベントのタイムゾーンで日時を解釈できませんでした",
-					},
+					error,
 				},
 				{ status: 422 },
 			);
@@ -2027,7 +2029,11 @@ function AvailabilityMessages({
 				<p className="schedule-message success">再回答用リンクを発行しました</p>
 			)}
 			{actionData?.kind === "error" && (
-				<ValidationMessage compact title={actionData.error.message}>
+				<ValidationMessage
+					compact
+					title={actionData.error.message}
+					fields={actionData.error.fields}
+				>
 					{actionData.error.code.startsWith("icloud_") ||
 					actionData.error.code.startsWith("calendar_") ||
 					actionData.error.code === "oauth_failed" ? (

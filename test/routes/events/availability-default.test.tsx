@@ -35,11 +35,23 @@ async function openAvailability(
 	preference: AvailabilityDefault | undefined,
 	responseStatus = "pending",
 	intervals: AvailabilityInterval[] = [],
+	error?: {
+		code: string;
+		message: string;
+		fields: Record<string, string>;
+	},
 ) {
 	const RouterStub = createRoutesStub([
 		{
 			path: "/events/:eventId/availability",
-			Component: AvailabilityPage,
+			Component: error
+				? (props: Parameters<typeof AvailabilityPage>[0]) => (
+						<AvailabilityPage
+							{...props}
+							actionData={{ kind: "error", error }}
+						/>
+					)
+				: AvailabilityPage,
 			loader: () => ({
 				event,
 				user: {
@@ -70,6 +82,30 @@ async function openAvailability(
 }
 
 describe("initial availability preference", () => {
+	it("shows the server's validation reason while preserving the answer", async () => {
+		const ranges = await openAvailability(
+			undefined,
+			"submitted",
+			[
+				{
+					id: "existing",
+					start_at: "2026-12-31T01:00:00Z",
+					end_at: "2026-12-31T03:00:00Z",
+				},
+			],
+			{
+				code: "validation_failed",
+				message: "入力内容を確認してください",
+				fields: { intervals: "イベント期間内を指定してください" },
+			},
+		);
+		expect(screen.getByRole("alert").textContent).toContain(
+			"イベント期間内を指定してください",
+		);
+		expect(ranges()).toEqual([
+			{ start: "2026-12-31T10:00", end: "2026-12-31T12:00" },
+		]);
+	});
 	it.each([undefined, "unavailable"] as const)(
 		"starts with no available time for %s",
 		async (preference) => {
