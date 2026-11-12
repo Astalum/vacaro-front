@@ -326,13 +326,22 @@ function useResults({ loaderData, actionData }: Route.ComponentProps) {
 		[event.window_start_at, event.window_end_at, user.time_zone],
 	);
 	const intervalsByDate = useMemo(
-		() =>
-			summarizeAvailability(
+		() => {
+			const intervals = summarizeAvailability(
 				availability,
 				event.window_start_at,
 				event.window_end_at,
 				user.time_zone,
-			),
+			);
+			for (const dayIntervals of intervals.values()) {
+				dayIntervals.sort(
+					(left, right) =>
+						right.available_participant_count - left.available_participant_count ||
+						Date.parse(left.start_at) - Date.parse(right.start_at),
+				);
+			}
+			return intervals;
+		},
 		[availability, event.window_start_at, event.window_end_at, user.time_zone],
 	);
 	const initialStart =
@@ -679,7 +688,7 @@ function CandidateCalendar({
 					人が回答
 				</span>
 				<p className="candidate-calendar-description">
-					参加可能人数が同じ時間帯を、日付ごとにまとめて表示しています。
+					日付ごとに、参加可能人数が多い順に時間帯を表示しています。
 				</p>
 			</div>
 			<div className="schedule-calendar-shell">
