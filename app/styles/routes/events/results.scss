@@ -1,5 +1,15 @@
 /* Event results page */
 /* Results page summary and response presentation. */
+.candidate-summary {
+	--candidate-all-text: #1f7b63;
+	--candidate-all-background: #dff5ed;
+	--candidate-high-text: #785600;
+	--candidate-high-accent: #c49100;
+	--candidate-high-background: #fff3bf;
+	--candidate-partial-text: #a31d36;
+	--candidate-partial-accent: #d72d4e;
+	--candidate-partial-background: #ffe3e9;
+}
 .page-main:has(> .availability-overview),
 .page-main:has(> .result-head) {
 	width: min(1220px, calc(100% - (var(--page-gutter) * 2)));
@@ -1347,13 +1357,18 @@
 	white-space: nowrap;
 }
 .schedule-gathering-interval.all {
-	color: #1f7b63;
+	background: var(--candidate-all-background);
+	color: var(--candidate-all-text);
 }
 .schedule-gathering-interval.high {
-	color: #99700f;
+	border-left-color: var(--candidate-high-accent);
+	background: var(--candidate-high-background);
+	color: var(--candidate-high-text);
 }
 .schedule-gathering-interval.partial {
-	color: #b24f42;
+	border-left-color: var(--candidate-partial-accent);
+	background: var(--candidate-partial-background);
+	color: var(--candidate-partial-text);
 }
 .schedule-candidate {
 	width: 100%;
@@ -1443,10 +1458,10 @@
 	background: #a8ddcb;
 }
 .schedule-calendar-legend i.high {
-	background: #f1d378;
+	background: var(--candidate-high-accent);
 }
 .schedule-calendar-legend i.partial {
-	background: #f4afa5;
+	background: var(--candidate-partial-accent);
 }
 .selected-schedule-detail {
 	margin-top: 12px;
@@ -1706,13 +1721,22 @@
 	white-space: normal;
 }
 .daily-interval-row.all {
-	color: #22876b;
+	background: var(--candidate-all-background);
+	color: var(--candidate-all-text);
 }
 .daily-interval-row.high {
-	color: #b38318;
+	background: var(--candidate-high-background);
+	color: var(--candidate-high-text);
+}
+.daily-interval-row.high > i {
+	background: var(--candidate-high-accent);
 }
 .daily-interval-row.partial {
-	color: #bd5a4c;
+	background: var(--candidate-partial-background);
+	color: var(--candidate-partial-text);
+}
+.daily-interval-row.partial > i {
+	background: var(--candidate-partial-accent);
 }
 .candidate-cards {
 	display: grid;
