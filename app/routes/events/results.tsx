@@ -416,10 +416,10 @@ function useResults({ loaderData, actionData }: Route.ComponentProps) {
 
 	const closeDateCandidates = () => setExpandedDateKey(null);
 	const participantNames = (ids: string[]) =>
-		ids
-			.map((id) => participantById.get(id))
-			.filter(Boolean)
-			.join("、");
+		ids.flatMap((id) => {
+			const name = participantById.get(id);
+			return name ? [{ id, name }] : [];
+		});
 	const expandedDateTitle = expandedDateKey
 		? new Intl.DateTimeFormat("ja-JP", {
 				month: "long",
@@ -799,30 +799,30 @@ function CandidateDetails({ model }: { model: ReturnType<typeof useResults> }) {
 									key={interval.start_at}
 								>
 									<i />
-									<div>
-										<strong>
-											{timeLabel(interval.start_at, user.time_zone)}〜
-											{intervalEndLabel(interval, user.time_zone)}
-										</strong>
-										{interval.segments.map((segment) => (
-											<small
-												key={segment.start_at}
-												className={
-													interval.segments.length > 1
-														? "changing-participants"
-														: undefined
-												}
-											>
-												{interval.segments.length > 1 &&
-													`${timeLabel(segment.start_at, user.time_zone)}〜${intervalEndLabel(segment, user.time_zone)}：`}
-												{participantNames(segment.available_participant_ids)}
-											</small>
-										))}
-									</div>
+									<strong>
+										{timeLabel(interval.start_at, user.time_zone)}〜
+										{intervalEndLabel(interval, user.time_zone)}
+									</strong>
 									<b>
 										{interval.available_participant_count} /{" "}
 										{interval.total_participant_count}人
 									</b>
+									<div>
+										{interval.segments.map((segment) => (
+											<small key={segment.start_at}>
+												{interval.segments.length > 1 &&
+													`${timeLabel(segment.start_at, user.time_zone)}〜${intervalEndLabel(segment, user.time_zone)}：`}
+												{participantNames(segment.available_participant_ids).map(
+													({ id, name }, index, names) => (
+														<span className="daily-interval-participant" key={id}>
+															{name}
+															{index < names.length - 1 && "、"}
+														</span>
+													),
+												)}
+											</small>
+										))}
+									</div>
 								</div>
 							))
 						)}

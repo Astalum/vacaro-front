@@ -1681,8 +1681,12 @@
 .daily-interval-row {
 	display: grid;
 	grid-template-columns: 5px minmax(0, 1fr) auto;
+	grid-template-areas:
+		"marker time count"
+		"marker participants participants";
 	align-items: center;
-	gap: 11px;
+	column-gap: 11px;
+	row-gap: 3px;
 	padding: 13px 2px;
 	border-bottom: 1px solid var(--line);
 }
@@ -1690,35 +1694,40 @@
 	border-bottom: 0;
 }
 .daily-interval-row > i {
+	grid-area: marker;
 	align-self: stretch;
 	min-height: 42px;
 	border-radius: 999px;
 	background: currentColor;
 }
 .daily-interval-row > div {
+	grid-area: participants;
 	display: flex;
 	min-width: 0;
 	flex-direction: column;
 	gap: 3px;
 }
 .daily-interval-row strong {
+	grid-area: time;
 	color: var(--ink);
 	font-size: 17px;
 }
 .daily-interval-row small {
-	overflow: hidden;
 	color: var(--muted);
 	font-size: 12px;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	line-height: 1.7;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.daily-interval-participant {
+	display: inline-block;
+	max-width: 100%;
+	vertical-align: top;
 }
 .daily-interval-row > b {
+	grid-area: count;
 	font-size: 14px;
 	white-space: nowrap;
-}
-.daily-interval-row small.changing-participants {
-	overflow: visible;
-	white-space: normal;
 }
 .daily-interval-row.all {
 	background: var(--candidate-all-background);
