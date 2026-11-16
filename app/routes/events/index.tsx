@@ -202,7 +202,7 @@ function EventListItem(props: {
 							<span className="event-list-period-end">
 								<span>〜</span>
 								<WeekendText>
-									{formatDateTime(event.window_end_at, timeZone)}
+									{formatDateTime(event.window_end_at, timeZone, "end")}
 								</WeekendText>
 							</span>
 						</span>

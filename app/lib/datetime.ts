@@ -2,15 +2,38 @@ import { normalizeLocalDateTime } from "./time";
 
 export const DEFAULT_TIME_ZONE = "Asia/Tokyo";
 
-export function formatDateTime(value: string, timeZone = DEFAULT_TIME_ZONE) {
-	return new Intl.DateTimeFormat("ja-JP", {
+export function formatDateTime(
+	value: string,
+	timeZone = DEFAULT_TIME_ZONE,
+	boundary: "start" | "end" = "start",
+) {
+	const formatter = new Intl.DateTimeFormat("ja-JP", {
 		timeZone,
 		month: "long",
 		day: "numeric",
 		weekday: "short",
 		hour: "2-digit",
 		minute: "2-digit",
-	}).format(new Date(value));
+		hourCycle: "h23",
+	});
+	const date = new Date(value);
+	const parts = formatter.formatToParts(date);
+	if (
+		boundary === "end" &&
+		parts.some((part) => part.type === "hour" && part.value === "00") &&
+		parts.some((part) => part.type === "minute" && part.value === "00")
+	) {
+		// Use the preceding local date and weekday, including across DST changes.
+		return formatter
+			.formatToParts(new Date(date.getTime() - 60_000))
+			.map((part) => {
+				if (part.type === "hour") return "24";
+				if (part.type === "minute") return "00";
+				return part.value;
+			})
+			.join("");
+	}
+	return parts.map((part) => part.value).join("");
 }
 
 export function formatDateRange(
@@ -18,7 +41,7 @@ export function formatDateRange(
 	end: string,
 	timeZone = DEFAULT_TIME_ZONE,
 ) {
-	return `${formatDateTime(start, timeZone)} 〜 ${formatDateTime(end, timeZone)}`;
+	return `${formatDateTime(start, timeZone)} 〜 ${formatDateTime(end, timeZone, "end")}`;
 }
 
 export function minutesLabel(minutes: number) {
