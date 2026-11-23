@@ -403,16 +403,16 @@ test("results continuous count ranges", async ({ page }, testInfo) => {
 	const rows = page.locator(".daily-interval-row");
 	await expect(rows).toHaveCount(4);
 	await expect(rows.locator("strong")).toHaveText([
-		"09:00〜10:00",
 		"10:00〜11:00",
+		"09:00〜10:00",
 		"11:00〜15:00",
 		"15:00〜17:00",
 	]);
 	await expect(rows.locator(":scope > b")).toHaveText([
-		"2 / 6人",
-		"3 / 6人",
-		"2 / 6人",
-		"1 / 6人",
+		"3 / 5人",
+		"2 / 5人",
+		"2 / 5人",
+		"1 / 5人",
 	]);
 	await expect(rows.nth(2).locator("small")).toHaveText([
 		"11:00〜12:00：山田 太郎、佐藤 花子",

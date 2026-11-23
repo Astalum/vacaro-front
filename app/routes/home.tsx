@@ -207,7 +207,9 @@ export default function Home() {
 									<Icon name="calendar" />
 								</div>
 								<h3>期間を決める</h3>
-								<p>日程を調整したい期間と、必要な時間を登録します。</p>
+								<p>
+									イベント名、調整したい期間、毎日の回答受付時間、必要時間を登録します。
+								</p>
 							</article>
 							<article>
 								<span className="step-no">02</span>
@@ -215,7 +217,9 @@ export default function Home() {
 									<Icon name="link" />
 								</div>
 								<h3>URLをシェア</h3>
-								<p>発行されたURLを、参加者に送るだけ。登録は不要です。</p>
+								<p>
+									招待URLを参加者へ送ります。参加者は表示名を入力して、都合のいい時間を回答します。
+								</p>
 							</article>
 							<article>
 								<span className="step-no">03</span>
@@ -224,10 +228,11 @@ export default function Home() {
 								</div>
 								<h3>結果を見て決定</h3>
 								<p>
-									空き時間の重なりから、みんなが集まりやすい時間を見つけます。
+									参加できる人数とメンバーを確認し、主催者が日付と開始時刻を選んで確定します。
 								</p>
 							</article>
 						</div>
+						<UsageGuide />
 						<aside className="group-feature">
 							<div className="group-feature-icon">
 								<Icon name="users" size={32} />
@@ -236,14 +241,235 @@ export default function Home() {
 								<span className="section-kicker">GROUP SCHEDULING</span>
 								<h3>グループごとの日程も、まとめて調整</h3>
 								<p>
-									イベント作成時に「小グループごとに調整」を選ぶと、参加者をチームや役割ごとに分け、同じ回答からグループごとの候補時間を集計・確定できます。全員が参加する「全体」の日程も一緒に確認できます。
+									管理画面の「グループを追加」から、チームや役割ごとにメンバーを選んで小グループを作れます。結果画面で「全体」と各グループを切り替えると、同じ回答を使ってグループごとに日程を確定できます。
+								</p>
+								<p className="group-feature-note">
+									1人が複数のグループに所属することもできます。確定済みのグループを変更するときは、先に確定を取り消してください。
 								</p>
 							</div>
 						</aside>
+						<UsageFaq />
 					</div>
 				</section>
 			</main>
 			<SiteFooter />
 		</div>
+	);
+}
+
+function UsageGuide() {
+	return (
+		<div className="usage-guide">
+			<nav className="usage-guide-nav" aria-label="使い方の目次">
+				<a href="#guide-organizer">主催者の手順</a>
+				<a href="#guide-participant">参加者の手順</a>
+				<a href="#guide-results">結果の見方</a>
+				<a href="#guide-calendar">カレンダー連携</a>
+				<a href="#guide-faq">よくある質問</a>
+			</nav>
+			<div className="usage-guide-columns">
+				<section
+					className="usage-guide-card"
+					id="guide-organizer"
+					aria-labelledby="guide-organizer-title"
+				>
+					<span className="usage-guide-label">主催者の方へ</span>
+					<h3 id="guide-organizer-title">イベントを作って、日程を決める</h3>
+					<ol className="usage-guide-steps">
+						<li>
+							<strong>期間と必要時間を設定</strong>
+							<p>
+								「イベントを作る」から、イベント名、調整期間、毎日の回答受付時間、必要時間を入力します。必要時間は、会議や集まりに何分必要かを表します。回答期限も設定できます。
+							</p>
+						</li>
+						<li>
+							<strong>招待URLを共有</strong>
+							<p>
+								作成完了画面の招待URLをコピーし、メッセージやメールで参加者に送ります。主催者自身の参加可能時間も回答してください。
+							</p>
+						</li>
+						<li>
+							<strong>回答が集まったら結果を確認</strong>
+							<p>
+								結果画面で日付を選び、集まれる時間帯とメンバーを確認します。「みんなの参加可能時間」では、未回答の人や各自の回答も確認できます。
+							</p>
+						</li>
+						<li>
+							<strong>開始時刻を入力して確定</strong>
+							<p>
+								カレンダーで開催日を選び、「最終時刻を入力」で開始時刻を指定して「この日時で確定」を押します。終了時刻は設定した必要時間から自動で決まります。
+							</p>
+						</li>
+					</ol>
+					<Link className="text-link" to="/events/new">
+						イベントを作る <Icon name="arrow" size={16} />
+					</Link>
+				</section>
+				<section
+					className="usage-guide-card"
+					id="guide-participant"
+					aria-labelledby="guide-participant-title"
+				>
+					<span className="usage-guide-label">参加者の方へ</span>
+					<h3 id="guide-participant-title">都合のいい時間を回答する</h3>
+					<ol className="usage-guide-steps">
+						<li>
+							<strong>招待URLから参加</strong>
+							<p>
+								主催者から届いたURLを開き、イベントの内容と期間を確認します。表示名を入力して「参加して回答へ進む」を押します。アカウント登録なしでも参加できます。
+							</p>
+						</li>
+						<li>
+							<strong>入力する時間の種類を選択</strong>
+							<p>
+								参加できる時間が少ないときは「都合がいい時間」、忙しい時間が少ないときは「都合が悪い時間」を選び、その時間帯を入力します。
+							</p>
+						</li>
+						<li>
+							<strong>時間帯を追加・調整</strong>
+							<p>
+								カレンダーをタップまたはドラッグして時間帯を追加します。スマートフォンでは先に日付を選び、開始・終了時刻の欄で細かく調整できます。複数の日や時間帯も回答できます。
+							</p>
+						</li>
+						<li>
+							<strong>最後に「回答を保存」</strong>
+							<p>
+								入力を終えたら「回答を保存」を押してください。「回答を保存しました」と表示されたら完了です。変更するときは、編集後に「回答を更新」を押します。
+							</p>
+						</li>
+					</ol>
+					<p className="usage-guide-tip">
+						ゲストの方は、回答画面の「再回答用リンク」も保存しておくと、別の端末から回答を変更できます。
+					</p>
+				</section>
+			</div>
+			<section
+				className="usage-guide-card usage-results-guide"
+				id="guide-results"
+				aria-labelledby="guide-results-title"
+			>
+				<div>
+					<span className="usage-guide-label">結果の見方</span>
+					<h3 id="guide-results-title">
+						人数だけでなく、参加するメンバーも確認
+					</h3>
+					<p>
+						カレンダーの各日には、参加可能人数が多い順に候補が表示されます。同じ人数なら早い時間が先です。日付を選ぶと、その日のすべての時間帯と参加できる人の名前を確認できます。
+					</p>
+					<p>
+						「5 /
+						6人」は、回答済みの6人のうち5人が参加できるという意味です。未回答の人は人数の母数に含めません。同じ人数でも途中でメンバーが入れ替わる場合は、時間ごとに名前が表示されます。
+					</p>
+				</div>
+				<dl className="usage-color-legend">
+					<div className="usage-color-all">
+						<dt>緑：回答者全員が参加可能</dt>
+						<dd>回答済みの全員が参加できる時間帯です。</dd>
+					</div>
+					<div className="usage-color-high">
+						<dt>黄：参加できる人が多い</dt>
+						<dd>回答済みの人の7割以上が参加できる時間帯です。</dd>
+					</div>
+					<div className="usage-color-partial">
+						<dt>赤：一部の人が参加可能</dt>
+						<dd>
+							回答済みの人のうち参加できる人は7割未満です。メンバーを確認して検討します。
+						</dd>
+					</div>
+				</dl>
+			</section>
+			<section
+				className="usage-guide-card"
+				id="guide-calendar"
+				aria-labelledby="guide-calendar-title"
+			>
+				<span className="usage-guide-label">入力をもっと簡単に</span>
+				<h3 id="guide-calendar-title">
+					Google・iCloudの予定から空き時間を取り込む
+				</h3>
+				<ol className="usage-calendar-steps">
+					<li>
+						Googleログイン後、ユーザー設定の「カレンダー設定」で、使うサービスを選んで保存し、接続します。
+					</li>
+					<li>
+						取り込み対象のカレンダーと、毎日取り込む時間帯を選んで保存します。
+					</li>
+					<li>
+						回答画面で「Googleから取込」または「iCloudから取込」を押し、内容を確認してから回答を保存します。
+					</li>
+				</ol>
+				<p className="usage-calendar-sync">
+					日程が確定すると、対象の参加者が選んだサービスの専用カレンダーに予定が登録されます。
+				</p>
+				<p className="usage-guide-tip">
+					取り込みは入力中の回答を置き換えます。TimeTree（Google経由）は、確定した予定の書き出しに対応しています。TimeTree内の予定の取り込みには対応していません。
+				</p>
+				<div className="usage-guide-links">
+					<Link className="text-link" to="/account#calendar-settings">
+						カレンダー設定を開く <Icon name="arrow" size={16} />
+					</Link>
+					<Link className="text-link" to="/account#timetree-guide">
+						TimeTreeの表示手順を見る <Icon name="arrow" size={16} />
+					</Link>
+				</div>
+			</section>
+		</div>
+	);
+}
+
+const usageFaqs = [
+	{
+		question: "アカウント登録は必要ですか？",
+		answer:
+			"イベントの作成・参加は、アカウント登録なしで利用できます。ゲストの利用状態が有効な同じブラウザでGoogleログインすると、そのゲストで作成・参加したイベントを引き継げます。Cookieの削除や期限切れ後、別のブラウザからのログインでは自動で引き継げません。",
+	},
+	{
+		question: "回答をあとから変更できますか？",
+		answer:
+			"調整中のイベントは、回答画面で時間帯を編集し、「回答を更新」で保存できます。ゲストの方は再回答用リンクを保存しておくと、別の端末やブラウザからも変更できます。",
+	},
+	{
+		question: "参加できる時間がないときは？",
+		answer:
+			"「都合がいい時間」モードで時間帯をすべて削除してから回答を保存すると、参加可能時間なしとして回答できます。「都合が悪い時間」モードでは、入力していない時間は参加可能として扱われるので、選択中のモードを確認してください。",
+	},
+	{
+		question: "全員が集まれる候補が見つからないときは？",
+		answer:
+			"まず未回答の人がいないか確認してください。全員が参加できる時間がなくても、一部の人が参加できる候補を確認できます。メンバーごとの参加可能時間を見ながら相談し、必要に応じて主催者が調整期間や必要時間を見直します。",
+	},
+	{
+		question: "回答結果が表示されないのはなぜですか？",
+		answer:
+			"主催者が回答結果を非公開にしている場合、参加者は結果を閲覧できません。公開するかどうかは、主催者が結果画面の「回答者への公開」で設定できます。",
+	},
+	{
+		question: "確定した日時を変更するには？",
+		answer:
+			"主催者が結果画面で「確定を取り消す」を押し、開催日と開始時刻を選び直して「この日時で確定」を押します。小グループごとに確定した場合は、変更するグループを選んで操作してください。",
+	},
+];
+
+function UsageFaq() {
+	return (
+		<section
+			className="usage-faq"
+			id="guide-faq"
+			aria-labelledby="guide-faq-title"
+		>
+			<span className="usage-guide-label">困ったときに</span>
+			<h3 id="guide-faq-title">よくある質問</h3>
+			<div className="usage-faq-list">
+				{usageFaqs.map(({ question, answer }) => (
+					<details key={question}>
+						<summary>{question}</summary>
+						<p>{answer}</p>
+					</details>
+				))}
+			</div>
+			<a className="text-link usage-back-to-top" href="#how">
+				使い方の先頭へ <Icon name="arrow" size={16} />
+			</a>
+		</section>
 	);
 }

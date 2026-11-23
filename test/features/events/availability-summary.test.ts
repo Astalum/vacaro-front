@@ -91,7 +91,7 @@ describe("availability count ranges", () => {
 		expect(summarize(answers)[0].segments).toHaveLength(1);
 		expect(answers).toEqual(original);
 	});
-	it("clips answers to the event window and includes pending users only in the total", () => {
+	it("clips answers to the event window and excludes pending users from the total", () => {
 		const ranges = summarize([
 			answer("a", [[-5, 15]]),
 			answer("b", [[0, 8]], "pending"),
@@ -100,6 +100,18 @@ describe("availability count ranges", () => {
 		expect(ranges[0]).toMatchObject({
 			start_at: iso(0),
 			end_at: iso(12),
+			available_participant_count: 1,
+			total_participant_count: 1,
+		});
+	});
+	it("includes submitted answers with no available time in the total", () => {
+		const ranges = summarize([
+			answer("a", [[0, 8]]),
+			answer("b", []),
+			answer("c", [], "pending"),
+		]);
+		expect(ranges).toHaveLength(1);
+		expect(ranges[0]).toMatchObject({
 			available_participant_count: 1,
 			total_participant_count: 2,
 		});

@@ -688,7 +688,7 @@ function CandidateCalendar({
 					人が回答
 				</span>
 				<p className="candidate-calendar-description">
-					日付ごとに、参加可能人数が多い順に時間帯を表示しています。
+					回答済みの人のうち参加できる人数を、日付ごとに多い順で表示します。
 				</p>
 			</div>
 			<div className="schedule-calendar-shell">
@@ -735,7 +735,7 @@ function CandidateCalendar({
 				</div>
 				<div className="schedule-calendar-legend">
 					<span>
-						<i className="all" /> 全員参加可能
+						<i className="all" /> 回答者全員が参加可能
 					</span>
 					<span>
 						<i className="high" /> 参加可能な人が多い

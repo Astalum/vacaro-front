@@ -40,6 +40,7 @@ export function summarizeAvailability(
 			.join("-");
 	};
 	const changes = new Map<number, Map<string, number>>();
+	const respondents = new Set<string>();
 	const addChange = (instant: number, id: string, delta: number) => {
 		const entries = changes.get(instant) ?? new Map<string, number>();
 		entries.set(id, (entries.get(id) ?? 0) + delta);
@@ -47,6 +48,7 @@ export function summarizeAvailability(
 	};
 	for (const { participant, intervals } of availability) {
 		if (participant.response_status !== "submitted") continue;
+		respondents.add(participant.id);
 		for (const interval of intervals) {
 			const from = Math.max(start, Date.parse(interval.start_at));
 			const to = Math.min(end, Date.parse(interval.end_at));
@@ -58,8 +60,7 @@ export function summarizeAvailability(
 	}
 	const times = [...changes.keys()].sort((left, right) => left - right);
 	const active = new Map<string, number>();
-	const total = new Set(availability.map(({ participant }) => participant.id))
-		.size;
+	const total = respondents.size;
 	for (let index = 0; index + 1 < times.length; index++) {
 		const instant = times[index];
 		for (const [id, delta] of changes.get(instant) ?? []) {

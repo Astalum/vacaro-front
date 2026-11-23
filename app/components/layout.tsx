@@ -23,7 +23,8 @@ export function SiteFooter() {
 	return (
 		<footer className="footer wrap">
 			<Brand />
-			<nav className="footer-links" aria-label="ポリシー">
+			<nav className="footer-links" aria-label="フッター">
+				<Link to="/#how">使い方</Link>
 				<Link to="/privacy">プライバシーポリシー</Link>
 				<Link to="/terms">利用規約</Link>
 			</nav>
