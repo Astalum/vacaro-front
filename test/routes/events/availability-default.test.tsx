@@ -68,8 +68,8 @@ async function openAvailability(
 			}),
 		},
 	]);
-	const { container } = render(
-		<RouterStub initialEntries={["/events/event-1/availability"]} />,
+	const { container } = await act(async () =>
+		render(<RouterStub initialEntries={["/events/event-1/availability"]} />),
 	);
 	await screen.findByRole("button", {
 		name: responseStatus === "submitted" ? "回答を更新" : "回答を保存",
